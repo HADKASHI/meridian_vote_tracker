@@ -18,6 +18,7 @@ A locked build plan for the KPMG "Meridian Vote Tracker" home assignment (Senior
 
 ## Decisions so far
 
+- [Place the data files locally](issues/01-place-data-files.md): `data_candidate/` is gitignored and holds member_states, both Q1 exports and 2 of 6 voting sheets; the historic file is still missing.
 - [Choose current versions and tooling](issues/02-versions-and-tooling.md): .NET 10 LTS, built-in OpenAPI 3.1 + ProblemDetails, orval for the typed Angular client, Angular 22, PostgreSQL 18.
 
 ## Not yet specified
