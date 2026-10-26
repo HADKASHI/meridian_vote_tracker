@@ -18,6 +18,8 @@ A locked build plan for the KPMG "Meridian Vote Tracker" home assignment (Senior
 
 ## Decisions so far
 
+- [Choose current versions and tooling](issues/02-versions-and-tooling.md): .NET 10 LTS, built-in OpenAPI 3.1 + ProblemDetails, orval for the typed Angular client, Angular 22, PostgreSQL 18.
+
 ## Not yet specified
 
 - **Bonus: PDF extraction (section 8)**: Document Intelligence vs LLM vs both, validation against printed totals, the extraction item in the Review inbox, retries and failure surfacing. In scope as a last, optional phase; the Review inbox should already allow other item kinds.
