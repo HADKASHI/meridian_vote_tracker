@@ -1,7 +1,7 @@
 # Design the data model and history
 
 Type: grilling
-Status: open
+Status: claimed
 
 ## Question
 
