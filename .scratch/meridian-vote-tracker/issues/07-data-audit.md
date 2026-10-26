@@ -1,7 +1,7 @@
 # Audit the real data
 
 Type: research
-Status: open
+Status: claimed
 Blocked by: 01
 
 ## Question
