@@ -1,7 +1,7 @@
 # Decide the scoring rules
 
 Type: grilling
-Status: open
+Status: claimed
 
 ## Question
 
