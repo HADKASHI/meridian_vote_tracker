@@ -1,7 +1,7 @@
 # Design background jobs and live progress
 
 Type: grilling
-Status: open
+Status: claimed
 Blocked by: 09
 
 ## Question
