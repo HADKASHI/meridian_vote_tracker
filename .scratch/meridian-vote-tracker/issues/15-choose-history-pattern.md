@@ -1,7 +1,7 @@
 # Choose the history storage pattern
 
 Type: grilling
-Status: open
+Status: claimed
 Blocked by: 14
 
 ## Question
