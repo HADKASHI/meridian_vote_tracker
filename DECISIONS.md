@@ -34,6 +34,13 @@ Score = 100 × matched weight ÷ counted weight, over the votes where the state 
 - **Two analysts, one conflict:** a decision is an insert-only record, and the database allows one per conflict. Exactly one wins. The other gets 409 with the current state and is recorded as "not applied". Positions use a version for the same reason.
 - **Imports are applied one at a time, one vote per transaction**, with the vote locked against concurrent conflict decisions. Otherwise an import could read a value, have it decided underneath it, and open a bogus conflict or miss a real one.
 
+## Data access
+
+- **EF Core is the one data-access library.** Code-first migrations hold the whole schema, including the history guard trigger and the "current value" views, written as SQL inside the migrations. A one-shot `migrate` container applies them before the API starts, so `docker compose up` builds the database on a clean machine and app processes never race to migrate.
+- **Use cases, not tables.** The writes that must not go wrong (writing an import's vote, deciding a conflict, changing a position, creating a snapshot) each live in one module that owns its transaction and lock, and each is tested against real PostgreSQL. EF's in-memory provider runs no triggers, locks or constraints. Reads are plain no-tracking projections. A generic repository would only duplicate EF.
+- **Rules in C#, facts from SQL.** Classification and scoring are pure functions with no database access. A snapshot reads its facts in one consistent transaction, scores them in C#, and stores the exact revisions it used. A single SQL statement would be faster, but the scoring rules would be hidden from tests and from this document.
+- **Bulk path behind a seam.** Imports are written with EF, one vote per transaction. The budget is the ~1M-row historic file in under 5 minutes. If it is missed, only the writer's internals switch to PostgreSQL COPY.
+
 ## Import rules
 
 - **Report, don't repair, except for documented normalisations.** Codes and single-letter ballots are upper-cased, invisible characters removed, and dates read from several day-first formats (both of the brief's formats, slashes, dots, `14 March 2007`). Each normalisation is recorded on the row. Ballot words are never mapped: `Yes` is invalid, because mapping it to `Y` would make rev2's `A` a false conflict. Titles are compared ignoring case and spacing but stored as published.

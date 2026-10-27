@@ -11,3 +11,4 @@ Turn the draft [data model sketch](../research/15-data-model-sketch.md) into the
 ## Comments
 
 - From [Define import classification rules](08-import-classification.md): the schema must hold a conflict's link to the revision it was compared against (current is read live, never copied), conflicts on two subjects (ballot, vote details), several conflict links per row record, a decision as the origin of ballots approved by a membership recalculation, per-row normalisations, reason codes, and file-level warnings and a failed status on the import.
+- From [Choose how data is read and written](09-data-access.md): EF code-first migrations with snake_case names (`EFCore.NamingConventions`); trigger, views and partial unique indexes as raw SQL inside the migrations; "current value" views mapped as keyless entities; the vote row is the per-vote lock target (`FOR UPDATE`), so every vote must have a row before its first revision.
