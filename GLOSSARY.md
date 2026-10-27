@@ -61,6 +61,9 @@ How much a vote counts in the index, from 1 (marginal) to 5 (critical).
 **Alignment Index**:
 The 0–100 score per member state measuring how often it voted with the Institute's positions, weighted.
 
+**Countable vote**:
+A vote in which a member state chose yes or no; only these count towards its Alignment Index. Abstentions, absences, votes outside its membership and votes with no data are not countable.
+
 **Snapshot**:
 A saved calculation of the Alignment Index over a chosen set of votes at one moment. It never changes once saved.
 _Avoid_: Ranking, report

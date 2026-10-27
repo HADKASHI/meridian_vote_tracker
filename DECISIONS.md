@@ -15,3 +15,13 @@ Key decisions and trade-offs. Terms follow [GLOSSARY.md](GLOSSARY.md). The full 
 - **Changes store only the new value.** History is append-only and ordered by sequence (not timestamp, which can tie or skew), so "previous" is always the earlier entry. The API, not the client, returns "from → to" pairs for positions, weights, country votes and vote details, so every client agrees and nothing redundant can drift.
 - **Conflicts and decisions:** a conflict keeps both sides with their origins, and its decision (who, when, comment). A losing simultaneous decision is recorded as "not applied" and shown on the vote's timeline, so nothing is overwritten silently.
 - **Membership periods** must not overlap. This is checked in application code, not by a database constraint.
+
+## Scoring rules
+
+Score = 100 × matched weight ÷ counted weight, over the votes where the state voted yes or no (the brief's formula).
+
+- **Abstentions and absences are not counted.** Neither is a stance for or against the position. Half credit or counting them as misses would add an editorial judgement the Institute didn't make.
+- **Votes held before or after membership are excluded**, and **"no data"** (a member with no row for a vote) is kept apart from "absent", which the Assembly reported. Each is labelled in the breakdown.
+- **Nothing countable means n/a**, not 0, and no rank.
+- **Exactness:** matched and counted weights are stored as integers, so every published score can be recomputed by hand. It is displayed to 1 decimal and ranked on the exact value. Exact ties share a rank (1, 2, 2, 4) and are listed by code.
+- **No minimum-vote threshold**; every score shows how many votes and how much weight it rests on.
