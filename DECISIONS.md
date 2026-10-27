@@ -33,3 +33,13 @@ Score = 100 × matched weight ÷ counted weight, over the votes where the state 
 - **Simplified identity, real authorization.** The user switcher's header feeds a small ASP.NET authentication handler that produces a standard user with role claims. Endpoints are guarded by `Analyst` and `Admin` policies (401/403, ProblemDetails), and an integration test exercises every write endpoint per role. Real sign-in would replace only the handler.
 - **Two analysts, one conflict:** a decision is an insert-only record, and the database allows one per conflict. Exactly one wins. The other gets 409 with the current state and is recorded as "not applied". Positions use a version for the same reason.
 - **Imports are applied one at a time, one vote per transaction**, with the vote locked against concurrent conflict decisions. Otherwise an import could read a value, have it decided underneath it, and open a bogus conflict or miss a real one.
+
+## Import rules
+
+- **Report, don't repair, except for documented normalisations.** Codes and single-letter ballots are upper-cased, invisible characters removed, and dates read from several day-first formats (both of the brief's formats, slashes, dots, `14 March 2007`). Each normalisation is recorded on the row. Ballot words are never mapped: `Yes` is invalid, because mapping it to `Y` would make rev2's `A` a false conflict. Titles are compared ignoring case and spacing but stored as published.
+- **One outcome per row:** invalid, then contradiction, then duplicate, then conflict, unchanged or new. Name and `published_at` are ignored when comparing.
+- **When a file disagrees with itself on a vote's date, title or session, the whole vote is held back.** Picking the majority value would be the importer repairing the data.
+- **A vote-details change is one conflict per vote**, not one per row: rev2 gives reviewers 8 decisions (6 ballots, 2 vote details), not 304.
+- **A conflict stores the incoming value and the revision it was compared against**; the current value is read live, so deciding one conflict never rewrites another. Re-sending a pending value links to the open conflict instead of opening a new one; a different value opens its own.
+- **Every vote-details decision recalculates membership** for that vote: ballots of states no longer members on the date stop counting, and ballots rejected only for membership are approved, with the decision as origin.
+- **Absence means nothing.** A missing vote (040 in rev2) or state changes nothing; an incomplete vote is a warning. Re-uploading the same file is allowed and shows nothing changed.

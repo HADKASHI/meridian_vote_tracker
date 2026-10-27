@@ -43,8 +43,16 @@ _Avoid_: Source (when meaning the whole file)
 A row identical to another row in the same file.
 
 **Contradiction**:
-Rows in the same file that disagree: one member state with different values in one vote, or different vote details for one vote.
+Rows in the same file that disagree: one member state with different values in one vote, or different vote details for one vote. When the vote details disagree, the whole vote is a contradiction.
 _Avoid_: Conflict (for in-file disagreement)
+
+**Normalisation**:
+A documented, mechanical change the import makes to a value before judging it, such as upper-casing a country code or rewriting a date in ISO form. It never changes what a value means.
+_Avoid_: Correction, fix
+
+**Incomplete vote**:
+A vote in which some member states on its date have no approved value yet. Missing values may arrive in a later file.
+_Avoid_: Partial import
 
 **Conflict**:
 An incoming value that differs from approved data already in the system, waiting for a person to accept or reject it.

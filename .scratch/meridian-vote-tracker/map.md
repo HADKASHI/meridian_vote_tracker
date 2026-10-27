@@ -27,6 +27,7 @@ A locked build plan for the KPMG "Meridian Vote Tracker" home assignment (Senior
 - [Decide the scoring rules](issues/05-scoring-rules.md): only yes/no count; abstain, absent, non-member and "no data" are excluded and labelled; nothing countable scores n/a; exact integers stored; competition ranking; every score shows its basis.
 - [Decide concurrency and roles](issues/06-concurrency-and-roles.md): a header user switcher feeds a real ASP.NET auth handler with Analyst/Admin policies (401/403, tested); conflict decisions are conditional updates with a 409 loser; positions are versioned; imports are applied serially, one locked vote per transaction.
 - [Choose the history storage pattern](issues/15-choose-history-pattern.md): typed append-only revisions with current pointers; the database refuses updates to history; one insert-only decision per conflict.
+- [Define import classification rules](issues/08-import-classification.md): header-driven parsing; documented normalisations (many day-first date formats, upper-cased codes and ballots, never ballot words); order invalid → contradiction → duplicate → conflict/unchanged/new; disagreeing vote details hold back the whole vote; one details conflict per vote; conflicts link to the revision they were compared against; every details decision recalculates membership.
 
 ## Not yet specified
 
