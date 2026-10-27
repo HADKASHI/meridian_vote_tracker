@@ -11,3 +11,5 @@ How is a snapshot stored so it is immutable and reproduces exactly in a year (SN
 ## Comments
 
 - From [Choose how data is read and written](09-data-access.md): calculation is decided. In one `REPEATABLE READ` transaction, a query streams facts (state, vote, ballot or none, membership, stance, weight) from the current views, a pure C# function applies the scoring rules, and inputs and results are written. Still open here: whether a snapshot may start while an import is part-way through (it would see the votes committed so far).
+
+- From [Design background jobs and live progress](10-background-jobs.md): a snapshot is calculated as a job (queued, running, done, failed) in the `worker` container, alongside imports, one snapshot at a time, with a 10-min ceiling and progress polled every second. Still yours: whether a snapshot started during an import warns or blocks.

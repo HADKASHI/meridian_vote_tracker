@@ -18,3 +18,7 @@ Decided with the user in one grilling round, plus a follow-up on Q7.
 5. **Positions**: optimistic concurrency with a version; a stale save gets 409 plus the current value.
 6. **Imports are applied one at a time** in upload order by a single worker; uploads are still accepted instantly. Safety net: a unique constraint allowing at most one pending conflict per subject and incoming value (ING-12). How the queue works is [Design background jobs and live progress](10-background-jobs.md).
 7. **Per-vote consistency**: an import applies one vote per transaction and locks that vote; a conflict decision locks the same vote. This makes "read the approved value, write the verdict" one step, preventing both a bogus conflict and a missed conflict (a later file disagreeing with a just-decided value without a conflict opening).
+
+## Comments
+
+- Refined by [Design background jobs and live progress](10-background-jobs.md): "one at a time in upload order" is now a setting (`Imports:MaxConcurrent`, default 1) enforced when the worker claims a job, not "a single worker". The behaviour by default is unchanged.

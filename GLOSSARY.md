@@ -28,6 +28,10 @@ The session, date and title of a vote.
 One upload of one file, together with its report and the outcome of every row.
 _Avoid_: Upload (for the whole record), ingest
 
+**Job**:
+Work the system does in the background on a user's behalf: processing an import or calculating a snapshot. A job is queued, running, done or failed. Done means the work finished, not that every row was new.
+_Avoid_: Status, task, process
+
 **Outcome**:
 The single classification an import gives one row of a file: new, unchanged, duplicate, invalid, contradiction or conflict. It is fixed at the moment of import.
 _Avoid_: Status, result
