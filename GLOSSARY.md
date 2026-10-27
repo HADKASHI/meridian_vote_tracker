@@ -28,8 +28,16 @@ The session, date and title of a vote.
 One upload of one file, together with its report and the outcome of every row.
 _Avoid_: Upload (for the whole record), ingest
 
+**Outcome**:
+The single classification an import gives one row of a file: new, unchanged, duplicate, invalid, contradiction or conflict. It is fixed at the moment of import.
+_Avoid_: Status, result
+
 **Approved data**:
 A value that was imported or that a person approved. Only approved data feeds snapshots.
+
+**Origin**:
+Where an approved value came from: either the file row that brought it in as new, or the conflict decision that approved it.
+_Avoid_: Source (when meaning the whole file)
 
 **Duplicate**:
 A row identical to another row in the same file.
