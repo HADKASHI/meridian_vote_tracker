@@ -1,0 +1,9 @@
+# Lock the database schema
+
+Type: grilling
+Status: open
+Blocked by: 08, 09, 10, 11, 15
+
+## Question
+
+Turn the draft [data model sketch](../research/15-data-model-sketch.md) into the final schema the build follows: every table and column with its type, keys, indexes, check and unique constraints, the database guard (which tables refuse UPDATE and DELETE), the views used for current values and timelines, and the seed data. It must fold in what [Define import classification rules](08-import-classification.md), [Choose how data is read and written](09-data-access.md), [Design background jobs and live progress](10-background-jobs.md) and [Design snapshots](11-snapshots.md) decide. Output: the final diagram plus a table list, ready for the first migration.

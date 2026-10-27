@@ -16,6 +16,8 @@ Key decisions and trade-offs. Terms follow [GLOSSARY.md](GLOSSARY.md). The full 
 - **Conflicts and decisions:** a conflict keeps both sides with their origins, and its decision (who, when, comment). A losing simultaneous decision is recorded as "not applied" and shown on the vote's timeline, so nothing is overwritten silently.
 - **Membership periods** must not overlap. This is checked in application code, not by a database constraint.
 
+- **History pattern: typed append-only revisions plus a "current" pointer.** Country votes, vote details and positions each keep an insert-only history; a small current table points at the approved revision, and only the pointer moves. A snapshot references the exact revisions it used, so later corrections can't touch it. The database refuses UPDATE and DELETE on history (a guard against mistakes; production would also run the app as a non-owner role). Rejected: a JSON audit log (EF's SaveChanges hook misses the bulk import path), event sourcing (too heavy for 3 days, and it sidelines EF Core), triggers copying old rows (record diffs, not decisions), and temporal tables (EF supports them only on SQL Server; PostgreSQL 18 has no system versioning).
+
 ## Scoring rules
 
 Score = 100 × matched weight ÷ counted weight, over the votes where the state voted yes or no (the brief's formula).
@@ -29,5 +31,5 @@ Score = 100 × matched weight ÷ counted weight, over the votes where the state 
 ## Roles and concurrency
 
 - **Simplified identity, real authorization.** The user switcher's header feeds a small ASP.NET authentication handler that produces a standard user with role claims. Endpoints are guarded by `Analyst` and `Admin` policies (401/403, ProblemDetails), and an integration test exercises every write endpoint per role. Real sign-in would replace only the handler.
-- **Two analysts, one conflict:** the decision is a conditional update ("only if still pending"). Exactly one wins. The other gets 409 with the current state and is recorded as "not applied". Positions use a version for the same reason.
+- **Two analysts, one conflict:** a decision is an insert-only record, and the database allows one per conflict. Exactly one wins. The other gets 409 with the current state and is recorded as "not applied". Positions use a version for the same reason.
 - **Imports are applied one at a time, one vote per transaction**, with the vote locked against concurrent conflict decisions. Otherwise an import could read a value, have it decided underneath it, and open a bogus conflict or miss a real one.
