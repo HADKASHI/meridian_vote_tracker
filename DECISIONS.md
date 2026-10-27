@@ -12,4 +12,6 @@ Key decisions and trade-offs. Terms follow [GLOSSARY.md](GLOSSARY.md). The full 
 - **Every approved value has exactly one origin:** the import row that brought it in as new, or the conflict decision that approved it. That answers "which file, who uploaded it, who approved it" directly.
 - **Only approved data is stored as approved.** Invalid and contradicting values exist only as row records. When a later file sends a clear value for them, it is *new*, not a conflict.
 - **Identity is the code.** Member states are keyed by their ISO alpha-3 code. The published country name is kept on the row record only, so "Turkey" vs "Türkiye" can't become a conflict.
+- **Changes store only the new value.** History is append-only and ordered by sequence (not timestamp, which can tie or skew), so "previous" is always the earlier entry. The API, not the client, returns "from → to" pairs for positions, weights, country votes and vote details, so every client agrees and nothing redundant can drift.
+- **Conflicts and decisions:** a conflict keeps both sides with their origins, and its decision (who, when, comment). A losing simultaneous decision is recorded as "not applied" and shown on the vote's timeline, so nothing is overwritten silently.
 - **Membership periods** must not overlap. This is checked in application code, not by a database constraint.

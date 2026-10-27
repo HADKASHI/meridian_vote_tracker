@@ -22,6 +22,7 @@ A locked build plan for the KPMG "Meridian Vote Tracker" home assignment (Senior
 - [Choose current versions and tooling](issues/02-versions-and-tooling.md): .NET 10 LTS, built-in OpenAPI 3.1 + ProblemDetails, orval for the typed Angular client, Angular 22, PostgreSQL 18.
 - [Set up the dev environment](issues/03-dev-environment.md): .NET 10 SDK, Node 24 and Docker work in the cloud session via `.claude/cloud-dev-setup.sh`; container builds here need a sandbox-only proxy override.
 - [Audit the real data](issues/07-data-audit.md): 25 defect classes catalogued with predicted import counts; files use yyyy-mm-dd; rev2 drops vote 040 and re-sends never-approved values as A; historic file not yet audited.
+- [Design the data model and history](issues/04-data-model-and-history.md): keep each file plus a record for every row; every approved value has one origin; conflicts, losing attempts, position changes and snapshots all land on the vote timeline; only new values are stored, and "previous" is derived by the API.
 - [Compare history storage patterns](issues/14-compare-history-patterns.md): six options compared on the Brazil scenario; PostgreSQL 18 and EF Core offer no ready-made history for Npgsql; snapshots must reference exact revision ids.
 
 ## Not yet specified
