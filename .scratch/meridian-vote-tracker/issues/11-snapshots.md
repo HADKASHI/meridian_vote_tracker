@@ -1,7 +1,7 @@
 # Design snapshots
 
 Type: grilling
-Status: open
+Status: claimed
 Blocked by: 04, 05, 15
 
 ## Question
