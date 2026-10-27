@@ -1,7 +1,7 @@
 # Choose how data is read and written
 
 Type: grilling
-Status: open
+Status: claimed
 Blocked by: 02
 
 ## Question
