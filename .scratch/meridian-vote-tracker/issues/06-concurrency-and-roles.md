@@ -1,7 +1,7 @@
 # Decide concurrency and roles
 
 Type: grilling
-Status: open
+Status: claimed
 
 ## Question
 
