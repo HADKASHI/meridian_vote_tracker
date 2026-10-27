@@ -25,3 +25,9 @@ Score = 100 × matched weight ÷ counted weight, over the votes where the state 
 - **Nothing countable means n/a**, not 0, and no rank.
 - **Exactness:** matched and counted weights are stored as integers, so every published score can be recomputed by hand. It is displayed to 1 decimal and ranked on the exact value. Exact ties share a rank (1, 2, 2, 4) and are listed by code.
 - **No minimum-vote threshold**; every score shows how many votes and how much weight it rests on.
+
+## Roles and concurrency
+
+- **Simplified identity, real authorization.** The user switcher's header feeds a small ASP.NET authentication handler that produces a standard user with role claims. Endpoints are guarded by `Analyst` and `Admin` policies (401/403, ProblemDetails), and an integration test exercises every write endpoint per role. Real sign-in would replace only the handler.
+- **Two analysts, one conflict:** the decision is a conditional update ("only if still pending"). Exactly one wins. The other gets 409 with the current state and is recorded as "not applied". Positions use a version for the same reason.
+- **Imports are applied one at a time, one vote per transaction**, with the vote locked against concurrent conflict decisions. Otherwise an import could read a value, have it decided underneath it, and open a bogus conflict or miss a real one.
