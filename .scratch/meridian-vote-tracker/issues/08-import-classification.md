@@ -1,7 +1,7 @@
 # Define import classification rules
 
 Type: grilling
-Status: open
+Status: claimed
 Blocked by: 04, 07, 15
 
 ## Question
