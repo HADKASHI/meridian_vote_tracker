@@ -58,11 +58,14 @@ describe('CurrentUser', () => {
     expect(localStorage.getItem(LAST_USER_KEY)).toBe('omar');
   });
 
-  it('asks for another user when the API rejects this one', async () => {
+  it('forgets the chosen user and asks for another when the API rejects it', async () => {
+    sessionStorage.setItem(TAB_USER_KEY, 'omar');
     const current = await start();
 
     current.rejected();
 
     expect(current.switcherRequested()).toBe(true);
+    expect(sessionStorage.getItem(TAB_USER_KEY)).toBeNull();
+    expect(current.id()).toBe('dana');
   });
 });

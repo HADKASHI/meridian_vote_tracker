@@ -14,3 +14,11 @@ export function writeStorage(storage: () => Storage, key: string, value: string)
     // Not persisted; the choice still holds for this page.
   }
 }
+
+export function removeStorage(storage: () => Storage, key: string): void {
+  try {
+    storage().removeItem(key);
+  } catch {
+    // Nothing stored to remove.
+  }
+}

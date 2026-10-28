@@ -1,7 +1,7 @@
 import { computed, Injectable, signal } from '@angular/core';
 import { listUsersResource } from '../../api/users/users.resource';
 import { Role, UserDto } from '../../api/model';
-import { readStorage, writeStorage } from '../browser-storage';
+import { readStorage, removeStorage, writeStorage } from '../browser-storage';
 
 export const TAB_USER_KEY = 'mvt.user';
 export const LAST_USER_KEY = 'mvt.lastUser';
@@ -45,6 +45,12 @@ export class CurrentUser {
 
   /** The API refused this tab's user: forget it and ask for another. */
   rejected(): void {
+    this.chosenId.set(null);
+    removeStorage(() => sessionStorage, TAB_USER_KEY);
+    removeStorage(() => localStorage, LAST_USER_KEY);
     this.switcherRequested.set(true);
   }
+
+  /** The user to send, '' when the user list failed (calls then go without one), or null while it loads. */
+  readonly identityForCalls = computed(() => this.id() ?? (this.users.status() === 'error' ? '' : null));
 }

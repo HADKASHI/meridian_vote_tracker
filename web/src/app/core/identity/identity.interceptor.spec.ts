@@ -35,6 +35,22 @@ describe('identityInterceptor', () => {
     expect(http.expectOne('/api/status').request.headers.get(USER_HEADER)).toBe('dana');
   });
 
+  it('lets a held call go without a user when the user list fails, so its error shows', async () => {
+    sessionStorage.clear();
+    const http = TestBed.inject(HttpTestingController);
+    let failed = false;
+    TestBed.inject(HttpClient).get('/api/status').subscribe({ error: () => (failed = true) });
+    TestBed.tick();
+
+    http.expectOne('/api/users').flush(null, { status: 503, statusText: 'Unavailable' });
+    await TestBed.inject(ApplicationRef).whenStable();
+    const held = http.expectOne('/api/status');
+    held.flush(null, { status: 401, statusText: 'Unauthorized' });
+
+    expect(held.request.headers.has(USER_HEADER)).toBe(false);
+    expect(failed).toBe(true);
+  });
+
   it('leaves calls outside /api/ alone', () => {
     TestBed.inject(HttpClient).get('/assets/logo.svg').subscribe();
 
