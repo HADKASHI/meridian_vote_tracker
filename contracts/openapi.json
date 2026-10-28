@@ -509,6 +509,16 @@
               }
             }
           },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Unauthorized",
             "content": {
@@ -1624,7 +1634,8 @@
           "pending",
           "decided",
           "all"
-        ]
+        ],
+        "type": "string"
       },
       "ConflictListItemDto": {
         "required": [

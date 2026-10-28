@@ -4,10 +4,10 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `GET /api/conflicts` returns pending conflicts by default, paged, ordered by vote then subject, each with vote ref, subject, state code, live current value, incoming value, opening import and opened-at time (stories 50, 64)
-- [ ] `state=decided` and `state=all` include decided conflicts with their decision; `voteIds` and `importId` narrow the list
-- [ ] The current value shown is the approved value now, not the one the conflict was compared against
-- [ ] `/review` lists the conflicts in a split pane, with the pending/decided filter kept in the query params, and links each item to `/review/:conflictId`
-- [ ] Tests: API tests for ordering, filters, paging and the live current value; a Vitest test for the list
+- [x] `GET /api/conflicts` returns pending conflicts by default, paged, ordered by vote then subject, each with vote ref, subject, state code, live current value, incoming value, opening import and opened-at time (stories 50, 64)
+- [x] `state=decided` and `state=all` include decided conflicts with their decision; `voteIds` and `importId` narrow the list
+- [x] The current value shown is the approved value now, not the one the conflict was compared against
+- [x] `/review` lists the conflicts in a split pane, with the pending/decided filter kept in the query params, and links each item to `/review/:conflictId`
+- [x] Tests: API tests for ordering, filters, paging and the live current value; a Vitest test for the list

@@ -1,0 +1,88 @@
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { TestBed } from '@angular/core/testing';
+import { provideRouter, withComponentInputBinding } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
+import { ConflictListItemDto, PageDtoOfConflictListItemDto } from '../../api/model';
+import reviewRoutes from './review.routes';
+
+export function listItem(overrides: Partial<ConflictListItemDto> = {}): ConflictListItemDto {
+  return {
+    kind: 'conflict', id: 7, vote: { voteId: 101, assemblyVoteId: 'MA/2024/101' }, subject: 'ballot', stateCode: 'BRA',
+    current: { ballot: 'y', session: null, voteDate: null, title: null },
+    incoming: { ballot: 'a', session: null, voteDate: null, title: null },
+    importId: 2, openedAt: '2024-04-02T10:00:00Z', decision: null,
+    ...overrides,
+  };
+}
+
+export function page(items: ConflictListItemDto[]): PageDtoOfConflictListItemDto {
+  return { items, total: items.length, page: 1, pageSize: 50 };
+}
+
+describe('Review inbox', () => {
+  let http: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([{ path: 'review', children: reviewRoutes }], withComponentInputBinding()),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+      ],
+    });
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  async function open(url: string): Promise<RouterTestingHarness> {
+    const harness = await RouterTestingHarness.create(url);
+    TestBed.tick();
+    return harness;
+  }
+
+  function rows(harness: RouterTestingHarness): string[] {
+    return [...harness.routeNativeElement!.querySelectorAll('[data-testid="inbox-item"]')].map((row) =>
+      [...row.querySelectorAll('span')].map((field) => field.textContent!.trim()).join(' '),
+    );
+  }
+
+  it('lists pending conflicts with their vote, subject, current → incoming and import', async () => {
+    const harness = await open('/review');
+
+    http.expectOne((r) => r.url === '/api/conflicts' && r.params.get('state') === 'pending').flush(page([
+      listItem({
+        id: 8, subject: 'details', stateCode: null,
+        current: { ballot: null, session: 79, voteDate: '2024-01-15', title: 'Ocean Treaty' },
+        incoming: { ballot: null, session: 79, voteDate: '2024-01-16', title: 'Ocean Treaty' },
+      }),
+      listItem(),
+    ]));
+    await harness.fixture.whenStable();
+
+    expect(rows(harness)).toEqual([
+      'MA/2024/101 Vote details date 2024-01-15 → 2024-01-16 Import #2',
+      'MA/2024/101 Ballot · BRA Y → A Import #2',
+    ]);
+    const link = harness.routeNativeElement!.querySelector<HTMLAnchorElement>('[data-testid="inbox-item"] a');
+    expect(link?.getAttribute('href')).toBe('/review/8?state=pending');
+  });
+
+  it('shows decided conflicts with their decision when the filter says so', async () => {
+    const harness = await open('/review?state=decided');
+
+    http.expectOne((r) => r.url === '/api/conflicts' && r.params.get('state') === 'decided')
+      .flush(page([listItem({ decision: 'reject' })]));
+    await harness.fixture.whenStable();
+
+    expect(rows(harness)).toEqual(['MA/2024/101 Ballot · BRA Y → A Import #2 Rejected']);
+  });
+
+  it('says so when nothing waits for review', async () => {
+    const harness = await open('/review');
+
+    http.expectOne((r) => r.url === '/api/conflicts').flush(page([]));
+    await harness.fixture.whenStable();
+
+    expect(harness.routeNativeElement!.textContent).toContain('No conflicts waiting for review.');
+  });
+});
