@@ -1,3 +1,4 @@
+using Meridian.Data;
 using Meridian.Platform.Contracts;
 using Meridian.Platform.Http;
 using Microsoft.AspNetCore.Builder;
@@ -17,13 +18,14 @@ public static class VotesModule
     {
         var votes = api.MapGroup("/votes").WithTags("Votes");
 
-        votes.MapGet("", Results<Ok<PageDto<VoteSummaryDto>>, ProblemHttpResult> (
+        votes.MapGet("", async Task<Results<Ok<PageDto<VoteSummaryDto>>, ProblemHttpResult>> (
+                    MeridianDbContext db, CancellationToken ct,
                     string? q, int? session, DateOnly? from, DateOnly? to, bool noPosition = false,
                     int page = 1, int pageSize = 50) =>
-                EndpointConventions.NotImplemented())
+                TypedResults.Ok(await VoteSearch.SearchAsync(db, new(q, session, from, to, noPosition), page, pageSize, ct)))
             .WithName("searchVotes")
             .WithSummary("Search by assembly vote id or title, session, date range, or votes with no position.")
-            .ForAnalysts().Stub();
+            .ForAnalysts();
 
         votes.MapGet("/{voteId:long}", Results<Ok<VoteDto>, ProblemHttpResult> (long voteId) =>
                 EndpointConventions.NotImplemented())

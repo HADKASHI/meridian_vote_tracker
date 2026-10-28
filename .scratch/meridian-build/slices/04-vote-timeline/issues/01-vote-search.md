@@ -4,10 +4,10 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `GET /api/votes` matches on assembly vote id or title, session, date range and `noPosition`, each alone and combined, and only votes with approved details are listed
-- [ ] Results are ordered by approved date, newest first, then by assembly vote id, and paged with the total count; page size is clamped
-- [ ] Each result carries the vote's current position (stance, weight, who set it) or none
-- [ ] The `/votes` screen keeps its filters and page in query params and links each vote to `/votes/:voteId`
-- [ ] Integration tests through the API arrange votes with the fixture builders and prove each filter
+- [x] `GET /api/votes` matches on assembly vote id or title, session, date range and `noPosition`, each alone and combined, and only votes with approved details are listed
+- [x] Results are ordered by approved date, newest first, then by assembly vote id, and paged with the total count; page size is clamped
+- [x] Each result carries the vote's current position (stance, weight, who set it) or none
+- [x] The `/votes` screen keeps its filters and page in query params and links each vote to `/votes/:voteId`
+- [x] Integration tests through the API arrange votes with the fixture builders and prove each filter
