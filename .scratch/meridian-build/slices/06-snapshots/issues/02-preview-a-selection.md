@@ -4,10 +4,10 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A date range resolves inclusively on each vote's approved date; sessions and an explicit list resolve as entered; removed votes are left out of all three
-- [ ] A selection matching no votes answers 400 `no-votes-match`; an invalid selection answers 400 `validation` with camelCase keys
-- [ ] Votes without a position are listed (internal id and assembly vote id), and the count still includes them
-- [ ] Warnings name each selected vote with pending conflicts (with how many), each incomplete vote (with the missing member state codes), and a running import (its id and votes done of total)
-- [ ] The screen shows the count, the blocking list with "Remove these votes", "Check again", and the warnings; Calculate stays disabled while any vote has no position
+- [x] A date range resolves inclusively on each vote's approved date; sessions and an explicit list resolve as entered; removed votes are left out of all three
+- [x] A selection matching no votes answers 400 `no-votes-match`; an invalid selection answers 400 `validation` with camelCase keys
+- [x] Votes without a position are listed (internal id and assembly vote id), and the count still includes them
+- [x] Warnings name each selected vote with pending conflicts (with how many), each incomplete vote (with the missing member state codes), and a running import (its id and votes done of total)
+- [x] The screen shows the count, the blocking list with "Remove these votes", "Check again", and the warnings; Calculate stays disabled while any vote has no position

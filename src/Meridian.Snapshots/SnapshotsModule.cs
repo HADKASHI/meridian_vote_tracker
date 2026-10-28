@@ -1,9 +1,12 @@
+using Meridian.Data;
 using Meridian.Platform.Contracts;
 using Meridian.Platform.Http;
+using Meridian.Platform.Problems;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Meridian.Snapshots;
@@ -20,12 +23,20 @@ public static class SnapshotsModule
     {
         var snapshots = api.MapGroup("/snapshots").WithTags("Snapshots");
 
-        snapshots.MapPost("/preview", Results<Ok<SnapshotPreviewDto>, ProblemHttpResult> (SnapshotSelectionDto selection) =>
-                EndpointConventions.NotImplemented())
+        snapshots.MapPost("/preview", async Task<Results<Ok<SnapshotPreviewDto>, ProblemHttpResult>> (
+                    SnapshotSelectionDto selection, MeridianDbContext db, CancellationToken ct) =>
+            {
+                var votes = SnapshotSelection.Resolve(db, selection);
+                var count = await votes.CountAsync(ct);
+                if (count == 0) return NoVotesMatch();
+                return TypedResults.Ok(new SnapshotPreviewDto(count,
+                    await SnapshotSelection.NoPositionAsync(votes, ct),
+                    await SnapshotSelection.WarningsAsync(db, votes, calculating: false, ct)));
+            })
             .WithName("previewSnapshot")
             .WithSummary("Resolve a selection: vote count, votes without a position, and warnings. Runs no job.")
             .ProducesProblems(StatusCodes.Status400BadRequest)
-            .ForAnalysts().Stub();
+            .ForAnalysts();
 
         snapshots.MapPost("", Results<Accepted<SnapshotCreatedDto>, ProblemHttpResult> (CreateSnapshotRequest request) =>
                 EndpointConventions.NotImplemented())
@@ -79,4 +90,8 @@ public static class SnapshotsModule
 
         return api;
     }
+
+    private static ProblemHttpResult NoVotesMatch() =>
+        ProblemDetailsSetup.Problem(StatusCodes.Status400BadRequest, ProblemTypes.NoVotesMatch,
+            "No votes match", "The selection matches no votes with approved details.");
 }
