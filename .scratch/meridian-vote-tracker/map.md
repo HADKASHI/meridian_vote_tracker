@@ -35,15 +35,10 @@ A locked build plan for the KPMG "Meridian Vote Tracker" home assignment (Senior
 - [Bring in the historic file](issues/13-historic-file.md): uploaded zipped through chat into gitignored `data_candidate/`; 962,171 rows, checksum recorded; container reclaims wipe `data_candidate/`, so the other data files need re-uploading here.
 - [Audit the historic file](issues/17-historic-audit.md): very clean (62 bad rows in 962,171), no overlap with Q1, so it predicts 962,109 new; 6,480 interleaved votes of about 150 rows; the title column is `resolution_title` (corrects 08); schema flags are handed to the schema ticket.
 - [Lock the database schema](issues/16-lock-database-schema.md): full schema in research/16-schema.md. Revisions only added, plus pointers, under a guard trigger; one shared history sequence orders the timeline; unique indexes enforce one decision per conflict, a rejected value never reopening, and one publication chain per quarter; reason and warning kinds are C# enums (no database CHECK).
+- [Set the build order](issues/12-build-order.md): six planning tickets first, then a walking skeleton (whole schema as migration 1, auth, generated client, CI); then import → import at scale → conflicts → vote timeline → positions → snapshots → comparison extra → protected finishing pass → PDF bonus, with a half-day limit; one PR per slice, tests inside each slice.
 
 ## Not yet specified
 
 - **Bonus: PDF extraction (section 8)**: Document Intelligence vs LLM vs both, validation against printed totals, the extraction item in the Review inbox, retries and failure surfacing. In scope as a last, optional phase; the Review inbox should already allow other item kinds.
-- **Correlation IDs end to end**: from the Angular request through the API and into the job and worker to AI calls (the job row can carry it); logging shape; Application Insights or local only.
-- **Angular app structure**: routing for the four screens, the user switcher, field-level validation errors from the API error format, presenting a 409 for concurrent decisions or publications, the snapshot preview dialog, polling a job's progress, the header jobs indicator and the Jobs list.
-- **Test strategy**: beyond the required integration test against real PostgreSQL. Likely the brief's 7.2 example as an end-to-end import scenario, pure unit tests for classification and scoring, use-case modules tested against real PostgreSQL (not EF in-memory), a concurrency test, the guard-trigger test, and a timed synthetic ~1M-row import against the 5-minute budget.
-- **DECISIONS.md outline**: the 2-page limit, what goes in, the plan for splitting the next phase across four developers, and which standards to set first.
-- **Docker Compose and image builds**: services (db, api, web, worker, azurite), a one-shot `migrate` service (EF migration bundle) that the others wait on, seeding member states and users on `up`, mounting `data_candidate/` read-only, configuration for Azure resources (Blob is decided: Azurite locally, a real connection string optional), and a sandbox-only override for the proxy.
-- **Trim the skills folder before submission**: keep only the skills this project uses; record the AI workflow in AI_USAGE.md.
 
 ## Out of scope

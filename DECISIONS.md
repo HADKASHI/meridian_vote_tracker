@@ -66,3 +66,10 @@ Score = 100 × matched weight ÷ counted weight, over the votes where the state 
 - **A conflict stores the incoming value and the revision it was compared against**; the current value is read live, so deciding one conflict never rewrites another. Re-sending a pending value links to the open conflict instead of opening a new one; a different value opens its own.
 - **Every vote-details decision recalculates membership** for that vote: ballots of states no longer members on the date stop counting, and ballots rejected only for membership are approved, with the decision as origin.
 - **Absence means nothing.** A missing vote (040 in rev2) or state changes nothing; an incomplete vote is a warning. Re-uploading the same file is allowed and shows nothing changed.
+
+## Build order
+
+- **Walking skeleton first.** Before any feature: `docker compose up` on a clean clone runs every service, with the whole schema and its guard in the first migration, real role-based authorization, the generated client and CI. Integration risk is removed on day one, and every later step is pure feature work.
+- **Then follow the data:** import → import at scale (the ~1M-row file within 5 minutes) → conflicts → vote timeline → positions → snapshots and publication. Nothing can be reviewed before it is imported or scored without positions, so stopping after any step leaves a coherent product, and the riskiest parts (ingestion correctness and scale) are proven first.
+- **Each step is complete:** API, background work, screen and tests together, merged as one PR that lists the requirements it covers. There is no separate testing or UI phase.
+- **Extras stay small:** CI, and a comparison of two snapshots. The PDF bonus comes only after everything else, with a hard limit. When time is short, the bonus goes first, then the extra; the final check on a fresh clone and the documentation are never cut.
