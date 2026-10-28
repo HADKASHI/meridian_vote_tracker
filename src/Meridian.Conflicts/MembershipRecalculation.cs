@@ -96,9 +96,14 @@ public static class MembershipRecalculation
         {
             var before = await db.VoteDetailsRevisions.SingleAsync(r => r.Id == decision.ReplacedDetailsRevisionId, ct);
             var after = conflict.IncomingVoteDate!.Value;
-            var counted = await db.CountryVoteRevisions
-                .Where(r => r.VoteId == conflict.VoteId && r.Id < decision.Id)
-                .Select(r => r.StateCode).Distinct().ToListAsync(ct);
+            // The country votes current when it was decided (the last revision per state before
+            // it); only yes and no ever counted.
+            var counted = (await db.CountryVoteRevisions.AsNoTracking()
+                    .Where(r => r.VoteId == conflict.VoteId && r.Id < decision.Id)
+                    .Select(r => new { r.Id, r.StateCode, r.Ballot }).ToListAsync(ct))
+                .GroupBy(r => r.StateCode, (state, revisions) => (State: state, revisions.MaxBy(r => r.Id)!.Ballot))
+                .Where(r => r.Ballot is Ballot.Y or Ballot.N)
+                .Select(r => r.State).ToList();
             var periods = (await db.MembershipPeriods.AsNoTracking().Where(p => counted.Contains(p.StateCode)).ToListAsync(ct))
                 .ToLookup(p => p.StateCode);
             noLongerCounted = counted.Where(s => IsMember(periods[s], before.VoteDate) && !IsMember(periods[s], after))

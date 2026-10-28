@@ -67,6 +67,21 @@ public sealed class MembershipRecalculationTests(PostgresFixture postgres, Azuri
     }
 
     [Fact]
+    public async Task A_state_whose_current_country_vote_never_counted_is_not_reported_as_no_longer_counted()
+    {
+        await using var api = await ApiFactory.CreateAsync(postgres, azurite);
+        await using var fx = Meridian.Fixtures.Fixtures.For(api.ConnectionString);
+        var vote = await fx.VoteAsync("MA/2021/015", new DateOnly(2021, 6, 30));
+        await fx.CountryVotesAsync(vote, ("NZL", Y));
+        await fx.DecideAsync(await fx.BallotConflictAsync(vote, "NZL", A), Decision.Accept);
+        var conflict = await fx.DetailsConflictAsync(vote, voteDate: new DateOnly(2021, 7, 1));
+
+        var decision = await DecideAsync(api, conflict.Id, "accept");
+
+        Assert.Empty(decision.GetProperty("membership").GetProperty("noLongerCountedStateCodes").EnumerateArray());
+    }
+
+    [Fact]
     public async Task The_earliest_row_is_approved_and_each_later_different_ballot_opens_a_conflict()
     {
         await using var api = await ApiFactory.CreateAsync(postgres, azurite);
