@@ -1,7 +1,7 @@
 # Lock the database schema
 
 Type: grilling
-Status: open
+Status: claimed
 Blocked by: 08, 09, 10, 11, 15, 17
 
 ## Question
