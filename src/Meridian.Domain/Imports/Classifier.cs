@@ -24,7 +24,6 @@ public static class Classifier
         var firstLine = new Dictionary<string, int>();
         VoteDetails? newDetails = null;
         var (detailsLink, detailsPart) = valid.Count == 0 ? (Link.None, null) : CompareDetails(valid[0].N.Details!, approved);
-        VoteDetails? newDetailsConflict = detailsLink.Kind == LinkKind.NewConflict ? valid[0].N.Details : null;
         foreach (var (row, n) in normalised)
         {
             if (n.Invalid is { } reason)
@@ -47,6 +46,8 @@ public static class Classifier
             if (detailsLink.Kind == LinkKind.NewRevision) newDetails ??= n.Details;
             verdicts.Add(AgainstApproved(row, n, approved, detailsLink, detailsPart));
         }
+        // Only a row that reaches the comparison carries the details; contradictions open nothing.
+        var newDetailsConflict = verdicts.Any(v => v.Details.Kind == LinkKind.NewConflict) ? valid[0].N.Details : null;
         return new VoteVerdict(verdicts, newDetails, newDetailsConflict);
     }
 

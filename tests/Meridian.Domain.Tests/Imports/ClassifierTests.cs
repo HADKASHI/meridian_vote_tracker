@@ -416,4 +416,14 @@ public sealed class ClassifierTests
 
         Assert.Empty(Classifier.MissingMembers(verdict, ApprovedVote.Nothing, Members));
     }
+
+    [Fact]
+    public void Rule5_changed_details_on_contradicting_rows_only_open_no_details_conflict()
+    {
+        var verdict = Classify([Row("FRA", "Y", title: "Oceans"), Row("FRA", "N", title: "Oceans")],
+            Approved(ballots: ("BRA", Ballot.Y, 501)));
+
+        Assert.All(verdict.Rows, r => Assert.Equal((Outcome.Contradiction, LinkKind.None), (r.Outcome, r.Details.Kind)));
+        Assert.Null(verdict.NewDetailsConflict);
+    }
 }
