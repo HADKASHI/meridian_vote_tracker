@@ -112,7 +112,7 @@ The snapshot job writes votes, lines, results and warnings in its single final t
 
 | Table | Columns | Keys, constraints, indexes |
 |---|---|---|
-| `job` | `id` (own identity), `kind text`, `import_id NULL`, `snapshot_id NULL`, `state text`, `rows_read int`, `votes_done int`, `votes_total int NULL`, `heartbeat_at NULL`, `attempts int`, `last_error text NULL`, `created_at`, `started_at NULL`, `finished_at NULL` | CHECK `kind IN ('import','snapshot')` (later `pdf_extraction`); CHECK `state IN ('queued','running','done','failed')`; CHECK the link matches the kind; UNIQUE `import_id`, UNIQUE `snapshot_id`; partial index `(kind, id) WHERE state = 'queued'` (claim the oldest); partial index `(heartbeat_at) WHERE state = 'running'` (sweeper) |
+| `job` | `id` (own identity), `kind text`, `import_id NULL`, `snapshot_id NULL`, `state text`, `rows_read int`, `votes_done int`, `votes_total int NULL`, `heartbeat_at NULL`, `attempts int`, `last_error text NULL`, `trace_parent text NULL` (from the request that queued it, per [Decide correlation IDs and logging](../issues/21-correlation-and-logging.md)), `created_at`, `started_at NULL`, `finished_at NULL` | CHECK `kind IN ('import','snapshot')` (later `pdf_extraction`); CHECK `state IN ('queued','running','done','failed')`; CHECK the link matches the kind; UNIQUE `import_id`, UNIQUE `snapshot_id`; partial index `(kind, id) WHERE state = 'queued'` (claim the oldest); partial index `(heartbeat_at) WHERE state = 'running'` (sweeper) |
 
 ## Views (raw SQL in migrations, mapped as keyless entities)
 

@@ -80,3 +80,9 @@ Score = 100 × matched weight ÷ counted weight, over the votes where the state 
 - **Guarantees are tested so they can't be forgotten.** The guard test finds every table from the catalog, the role test finds every endpoint from metadata, and race tests run two real connections at once (exactly one wins, the other gets 409). A new table or endpoint can't silently escape.
 - **Rules are written test-first**, one named test per numbered classification or scoring rule. The brief's 7.2 example is the end-to-end integration test, and the real files are checked locally against the audit's predicted counts.
 - **Scale is measured, not assumed:** a seeded synthetic copy of the ~1M-row historic file must import in under 5 minutes, with peak memory reported.
+
+## Observability
+
+- **One trace from click to worker.** Each request starts a W3C trace. A job keeps the trace of the request that queued it, so one trace id finds the upload, the background processing of every vote, and any failure. Users see that id as "Reference" on every error.
+- **Built-in structured logs, nothing extra.** JSON console logs carry the trace id and the user, job, import and vote ids. Application Insights switches on only when its connection string is configured.
+- **Logs never contain the client's data**, only ids, counts and timings. The data stays in the database, which has access control and history.
