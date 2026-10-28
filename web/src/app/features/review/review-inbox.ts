@@ -16,6 +16,19 @@ export class ReviewInbox {
   readonly list = listConflictsResource(computed(() => ({ state: this.filter(), pageSize: INBOX_PAGE_SIZE })));
   readonly items = computed<ConflictListItemDto[]>(() => (this.list.hasValue() ? this.list.value()?.items ?? [] : []));
   readonly total = computed(() => (this.list.hasValue() ? this.list.value()?.total ?? 0 : 0));
+
+  /** The ids after `id` in inbox order, then those before it: where "Next conflict" looks. */
+  orderAfter(id: number): number[] {
+    const ids = this.items().map((item) => item.id);
+    const at = ids.indexOf(id);
+    return at < 0 ? ids : [...ids.slice(at + 1), ...ids.slice(0, at)];
+  }
+
+  /** The first pending conflict in `order` that is still listed, else the first pending one. */
+  nextPending(order: number[], exclude: number): ConflictListItemDto | undefined {
+    const pending = this.items().filter((item) => !item.decision && item.id !== exclude);
+    return order.map((id) => pending.find((item) => item.id === id)).find((item) => item !== undefined) ?? pending[0];
+  }
 }
 
 /** The filter a `?state=` query param names, or pending. */

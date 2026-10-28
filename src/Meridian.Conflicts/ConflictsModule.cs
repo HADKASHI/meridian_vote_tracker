@@ -1,6 +1,8 @@
+using System.Security.Claims;
 using Meridian.Data;
 using Meridian.Platform.Contracts;
 using Meridian.Platform.Http;
+using Meridian.Platform.Identity;
 using Meridian.Platform.Problems;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -45,14 +47,20 @@ public static class ConflictsModule
             .ProducesProblems(StatusCodes.Status404NotFound)
             .ForAnalysts();
 
-        conflicts.MapPost("/{conflictId:long}/decision", Results<Ok<ConflictDecisionDto>, ProblemHttpResult> (
-                    long conflictId, DecideConflictRequest request) =>
-                EndpointConventions.NotImplemented())
+        conflicts.MapPost("/{conflictId:long}/decision", async Task<Results<Ok<ConflictDecisionDto>, ProblemHttpResult>> (
+                    long conflictId, DecideConflictRequest request, MeridianDbContext db, ClaimsPrincipal user,
+                    CancellationToken ct) =>
+                await DecideConflict.RunAsync(db, conflictId, request.Decision!.Value,
+                        user.UserId(), request.Comment, ct) switch
+                {
+                    DecideConflict.Decided decided => TypedResults.Ok(decided.Decision),
+                    _ => NotFound(conflictId),
+                })
             .WithName("decideConflict")
             .WithSummary("Accept or reject a conflict. Exactly one of two simultaneous decisions applies.")
             .ProducesProblems(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound)
             .ProducesProblem<AlreadyDecidedProblem>(StatusCodes.Status409Conflict)
-            .ForAnalysts().Stub();
+            .ForAnalysts();
 
         return api;
     }

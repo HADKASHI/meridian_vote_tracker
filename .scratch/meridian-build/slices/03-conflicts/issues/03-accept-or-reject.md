@@ -4,12 +4,12 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `POST /api/conflicts/{conflictId}/decision` with accept makes the incoming value the approved value with the decision as its origin, and the previous revision stays in history (stories 53, 54)
-- [ ] Reject changes no approved value and no pointer
-- [ ] The decision records the replaced revision as the current one at decision time (story 55); another pending conflict on the same subject is unchanged and is then judged against the new current value
-- [ ] Works for both subjects: a ballot conflict and a vote-details conflict (CON-03); the vote row is locked first, so a decision never interleaves with an import of the same vote (story 64)
-- [ ] The response is the decision with from (current at decision time) → to (incoming) and the comment; a comment over 2,000 characters is a `validation` problem keyed `comment`; 404 for an unknown conflict
-- [ ] The pane offers Accept / Keep current with a comment field, shows the decision once made, and "Next conflict" goes to the next pending conflict in inbox order
-- [ ] Tests: API tests for accept and reject on both subjects, story 55, validation and 404; a Vitest test for deciding and Next conflict
+- [x] `POST /api/conflicts/{conflictId}/decision` with accept makes the incoming value the approved value with the decision as its origin, and the previous revision stays in history (stories 53, 54)
+- [x] Reject changes no approved value and no pointer
+- [x] The decision records the replaced revision as the current one at decision time (story 55); another pending conflict on the same subject is unchanged and is then judged against the new current value
+- [x] Works for both subjects: a ballot conflict and a vote-details conflict (CON-03); the vote row is locked first, so a decision never interleaves with an import of the same vote (story 64)
+- [x] The response is the decision with from (current at decision time) → to (incoming) and the comment; a comment over 2,000 characters is a `validation` problem keyed `comment`; 404 for an unknown conflict
+- [x] The pane offers Accept / Keep current with a comment field, shows the decision once made, and "Next conflict" goes to the next pending conflict in inbox order
+- [x] Tests: API tests for accept and reject on both subjects, story 55, validation and 404; a Vitest test for deciding and Next conflict

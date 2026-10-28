@@ -1,14 +1,27 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, linkedSignal } from '@angular/core';
 import { DatePipe } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { Router, RouterLink } from '@angular/router';
 import { getConflictResource } from '../../api/conflicts/conflicts.resource';
-import { ConflictDto, ConflictValueDto } from '../../api/model';
+import { ConflictsService } from '../../api/conflicts/conflicts.service';
+import { ConflictDto, ConflictValueDto, Decision } from '../../api/model';
+import { ProblemBanner } from '../../shared/problem/problem-banner';
+import { Problem, toProblem } from '../../shared/problem/problem';
+import { problemToFieldErrors } from '../../shared/problem/to-field-errors';
 import { decisionLabel, originLabel, subjectLabel, valueLabel } from './conflict-values';
+import { ReviewInbox } from './review-inbox';
+
+/** The longest comment the API takes. */
+const COMMENT_MAX = 2000;
+
+type CommentField = 'comment';
 
 /** The decision pane: both values with their origins, so the analyst decides on evidence. */
 @Component({
   selector: 'app-conflict-page',
-  imports: [DatePipe, RouterLink],
+  imports: [DatePipe, RouterLink, MatButtonModule, MatFormFieldModule, MatInputModule, ProblemBanner],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <article data-testid="decision-pane">
@@ -43,6 +56,30 @@ import { decisionLabel, originLabel, subjectLabel, valueLabel } from './conflict
               <blockquote>{{ d.comment }}</blockquote>
             }
           </section>
+        }
+        @if (!c.decision) {
+          <form class="decide" (submit)="$event.preventDefault()">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Comment (optional)</mat-label>
+              <textarea matInput rows="3" [maxLength]="commentMax" [value]="comment()"
+                (input)="comment.set($any($event.target).value)"></textarea>
+            </mat-form-field>
+            @if (commentError(); as message) {
+              <p class="field-error" role="alert" data-testid="comment-error">{{ message }}</p>
+            }
+            <app-problem-banner [messages]="formErrors()" [traceId]="problem()?.traceId" />
+            <div class="actions">
+              <button mat-flat-button type="button" [disabled]="deciding()" (click)="decide(c, 'accept')">Accept incoming</button>
+              <button mat-stroked-button type="button" [disabled]="deciding()" (click)="decide(c, 'reject')">Keep current</button>
+            </div>
+          </form>
+        } @else {
+          <div class="actions">
+            <button mat-stroked-button type="button" (click)="next()">Next conflict</button>
+            @if (noneLeft()) {
+              <span class="none-left">No more pending conflicts.</span>
+            }
+          </div>
         }
         @if (c.notApplied.length > 0) {
           <ul class="not-applied" data-testid="not-applied">
@@ -84,6 +121,25 @@ import { decisionLabel, originLabel, subjectLabel, valueLabel } from './conflict
     .decided {
       margin-block-start: 16px;
     }
+    .decide {
+      margin-block-start: 16px;
+    }
+    .decide mat-form-field {
+      width: 100%;
+    }
+    .actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-block-start: 12px;
+    }
+    .field-error {
+      color: var(--mat-sys-error);
+      margin-block: 4px 0;
+    }
+    .none-left {
+      opacity: 0.75;
+    }
     blockquote {
       margin: 4px 0 0;
       padding-inline-start: 12px;
@@ -100,6 +156,54 @@ export class ConflictPage {
   protected readonly subject = subjectLabel;
   protected readonly origin = originLabel;
   protected readonly decision = decisionLabel;
+  protected readonly commentMax = COMMENT_MAX;
+
+  private readonly inbox = inject(ReviewInbox);
+  private readonly conflicts = inject(ConflictsService);
+  private readonly router = inject(Router);
+
+  // The pane is reused when "Next conflict" changes the id, so its own state follows the id.
+  protected readonly comment = linkedSignal({ source: this.conflictId, computation: () => '' });
+  protected readonly deciding = linkedSignal({ source: this.conflictId, computation: () => false });
+  protected readonly problem = linkedSignal<string, Problem | null>({ source: this.conflictId, computation: () => null });
+  protected readonly noneLeft = linkedSignal({ source: this.conflictId, computation: () => false });
+  /** Inbox order when this conflict was decided, so "Next conflict" moves on from here. */
+  private readonly order = linkedSignal<string, number[] | null>({ source: this.conflictId, computation: () => null });
+
+  private readonly errors = computed(() =>
+    problemToFieldErrors<CommentField>(this.problem(), (path) => (path === 'comment' ? 'comment' : undefined)),
+  );
+  protected readonly commentError = computed(() => this.errors().fieldErrors.find((e) => e.field === 'comment')?.message);
+  protected readonly formErrors = computed(() => this.errors().formErrors);
+
+  protected decide(c: ConflictDto, decision: Decision): void {
+    this.deciding.set(true);
+    this.problem.set(null);
+    this.order.set(this.inbox.orderAfter(c.id));
+    this.conflicts.decideConflict(c.id, { decision, comment: this.comment().trim() || null }).subscribe({
+      next: () => this.afterDecision(),
+      error: (error: unknown) => {
+        this.deciding.set(false);
+        this.problem.set(toProblem(error));
+      },
+    });
+  }
+
+  protected next(): void {
+    const id = Number(this.conflictId());
+    const next = this.inbox.nextPending(this.order() ?? this.inbox.orderAfter(id), id);
+    if (!next) {
+      this.noneLeft.set(true);
+      return;
+    }
+    void this.router.navigate(['/review', next.id], { queryParams: { state: this.inbox.filter() } });
+  }
+
+  private afterDecision(): void {
+    this.deciding.set(false);
+    this.resource.reload();
+    this.inbox.list.reload();
+  }
 
   protected value(c: ConflictDto, value: ConflictValueDto | null): string {
     return valueLabel(c.subject, value);
