@@ -81,7 +81,15 @@ A saved calculation of the Alignment Index over a chosen set of votes at one mom
 _Avoid_: Ranking, report
 
 **Published snapshot**:
-The one snapshot per quarter that the admin marks as the Institute's official index.
+The one snapshot per reporting quarter that the admin marks as the Institute's official index. The admin may replace it with another snapshot, giving a reason; the earlier one then stays visible as superseded.
+
+**Reporting quarter**:
+The quarter a published snapshot is the official index for, chosen by the admin when publishing. It need not match the dates of the votes the snapshot covers.
+_Avoid_: Period, quarter of the votes
+
+**Superseded**:
+A published snapshot that the admin later replaced for the same reporting quarter. It is kept and shown, never deleted.
+_Avoid_: Unpublished, withdrawn
 
 ## People
 

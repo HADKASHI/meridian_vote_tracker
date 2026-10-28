@@ -11,3 +11,4 @@ In what order are the vertical slices built, so that a partial submission is sti
 ## Comments
 
 - From [Design background jobs and live progress](10-background-jobs.md): compose gains `worker` and `azurite` services, and the integration tests need Azurite via Testcontainers. The Jobs list and the header indicator are UI to schedule.
+- From [Design snapshots](11-snapshots.md): candidate extra: comparing two snapshots (rank movement between quarters, or a publication and the one it superseded), a pure read over stored snapshot lines. The create dialog has a preview step (vote count, blocking "no position" list with "Remove these votes", warnings).

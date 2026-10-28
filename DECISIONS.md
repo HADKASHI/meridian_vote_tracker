@@ -43,6 +43,13 @@ Score = 100 × matched weight ÷ counted weight, over the votes where the state 
 - **Uploaded files live in Azure Blob Storage from day one**, with Azurite (Microsoft's emulator) in compose and tests, so the app runs without an Azure account and switches to real Azure by connection string. The API streams the file to Blob while hashing it, then creates the import and its job in one transaction. Files are never deleted. Direct browser-to-Blob upload with a SAS link is the scale-out path.
 - **The historic file is grouped by vote in memory**, and the 1M-row test records peak memory. If it goes over about 1 GB, the parser switches to two passes (index line offsets per vote, then re-read), with classification unchanged.
 
+## Snapshots
+
+- **A snapshot stores its answer, not just its inputs.** For each vote and member state it keeps the exact revision used and how that ballot was treated (match, mismatch, abstain, absent, non-member, no data), plus the per-state results. Nothing is recalculated when it is opened, so neither later corrections nor later code changes can alter an old snapshot or its breakdown. It costs about 70 MB for a snapshot over all history; a quarter's is far smaller.
+- **A vote with no position blocks the snapshot.** Excluding it silently would publish an index that quietly covers fewer votes than were chosen. The preview lists such votes and offers to remove them from the selection, and the removal is recorded with the selection. The job checks again when it runs, because an import may add a vote in between.
+- **Everything else only warns:** pending conflicts (the snapshot uses approved values), incomplete votes, and an import that is still running. Each warning is kept on the snapshot as it was when calculated.
+- **Publishing is per reporting quarter, chosen by the admin.** A published snapshot can be replaced with a reason; the old one stays visible as superseded. Publication is insert-only, and the database allows one current publication per quarter.
+
 ## Data access
 
 - **EF Core is the one data-access library.** Code-first migrations hold the whole schema, including the history guard trigger and the "current value" views, written as SQL inside the migrations. A one-shot `migrate` container applies them before the API starts, so `docker compose up` builds the database on a clean machine and app processes never race to migrate.
