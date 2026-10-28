@@ -10,7 +10,8 @@ public sealed record NormalisedRow(
     VoteDetails? Details, Ballot? Ballot);
 
 /// <summary>
-/// Map ticket 08 rule 2 and the invalid checks of rules 3 and 12. Only documented, mechanical
+/// Map ticket 08 rule 2 and the invalid checks of rule 3, except membership, which the
+/// classifier checks because its date depends on the approved details. Only documented, mechanical
 /// changes are made, each recorded: trimming, Unicode NFC, invisible characters removed,
 /// codes and single-letter ballots upper-cased, day-first dates rewritten as ISO. Ballot
 /// words, empty ballots, unknown codes and ambiguous dates are invalid, never guessed.
@@ -65,7 +66,6 @@ public static partial class RowNormaliser
             : ballot is null ? (ReasonCode.InvalidBallot, $"Invalid ballot {ballotText}: only Y, N, A or X.")
             : date is null ? (ReasonCode.InvalidDate, $"Invalid date {dateText}: not one of the accepted day-first formats.")
             : session is null ? (ReasonCode.InvalidSession, $"Invalid session {sessionText}: not a positive integer.")
-            : !members.IsMemberOn(codeUpper, date.Value) ? (ReasonCode.NotMemberOnDate, $"{codeUpper} was not a member on {date:yyyy-MM-dd}.")
             : null;
 
         return invalid is var (reason, message)

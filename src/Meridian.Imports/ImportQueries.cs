@@ -47,10 +47,25 @@ internal static class ImportQueries
                 select new { Warning = w, Vote = v == null ? null : new VoteRefDto(v.Id, v.AssemblyVoteId) })
             .AsNoTracking().ToListAsync(ct);
 
+        var opened = await (
+                from c in db.Conflicts
+                where c.OpenedByImportId == importId
+                join v in db.Votes on c.VoteId equals v.Id
+                orderby c.Id
+                select new
+                {
+                    c.Id, v.AssemblyVoteId, c.VoteId, c.Subject, c.StateCode,
+                    Rows = db.ImportRowConflicts.Count(l => l.ConflictId == c.Id
+                        && db.ImportRows.Any(r => r.Id == l.ImportRowId && r.ImportId == importId)),
+                })
+            .AsNoTracking().ToListAsync(ct);
+
         return new ImportDto(
             import.Id, import.FileName, import.Sha256, import.SizeBytes, import.UploadedBy, import.RecordedAt,
             job, parse is null ? null : ToDto(parse), counts.GetValueOrDefault(importId, NoRows),
-            warnings.Select(w => ImportWarningDetail.ToDto(w.Warning, w.Vote)).ToList(), []);
+            warnings.Select(w => ImportWarningDetail.ToDto(w.Warning, w.Vote)).ToList(),
+            opened.Select(c => new ImportConflictDto(c.Id, new VoteRefDto(c.VoteId, c.AssemblyVoteId), c.Subject,
+                c.StateCode?.Trim(), c.Rows)).ToList());
     }
 
     public static async Task<PageDto<ImportRowDto>?> RowsAsync(MeridianDbContext db, long importId,

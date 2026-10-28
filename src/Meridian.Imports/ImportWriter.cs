@@ -47,15 +47,42 @@ internal sealed class ImportWriter(MeridianDbContext db)
             .SingleOrDefaultAsync(ct);
         var ballots = await db.CurrentCountryVotes.AsNoTracking().Where(c => c.VoteId == voteId)
             .ToDictionaryAsync(c => c.StateCode.Trim(), c => new Approved<Ballot>(c.RevisionId, c.Ballot), ct);
-        return new ApprovedVote(details, ballots);
+        var conflicts = await (
+                from c in db.Conflicts
+                where c.VoteId == voteId
+                join d in db.ConflictDecisions on c.Id equals d.ConflictId into decisions
+                from d in decisions.DefaultIfEmpty()
+                select new { Conflict = c, Decision = d == null ? (Decision?)null : d.Decision })
+            .AsNoTracking().ToListAsync(ct);
+        return new ApprovedVote(details, ballots, conflicts.Select(x => x.Conflict.Subject == ConflictSubject.Ballot
+                ? new KnownConflict(x.Conflict.Id, ConflictSubject.Ballot, x.Conflict.ComparedCountryVoteRevisionId!.Value,
+                    x.Conflict.StateCode!.Trim(), x.Conflict.IncomingBallot, null, x.Decision)
+                : new KnownConflict(x.Conflict.Id, ConflictSubject.Details, x.Conflict.ComparedDetailsRevisionId!.Value, null, null,
+                    new VoteDetails(x.Conflict.IncomingSession!.Value, x.Conflict.IncomingVoteDate!.Value, x.Conflict.IncomingTitle!),
+                    x.Decision))
+            .ToList());
     }
 
     private async Task WriteAsync(long importId, long? voteId, VoteVerdict verdict, ApprovedVote approved, CancellationToken ct)
     {
         var newBallots = verdict.Rows.Count(r => r.Ballot.Kind == LinkKind.NewRevision);
-        var ids = new Queue<long>(await ReserveIdsAsync(verdict.Rows.Count + newBallots + (verdict.NewDetails is null ? 0 : 1), ct));
+        var newBallotConflicts = verdict.Rows.Count(r => r.Ballot.Kind == LinkKind.NewConflict);
+        var ids = new Queue<long>(await ReserveIdsAsync(verdict.Rows.Count + newBallots + newBallotConflicts
+            + (verdict.NewDetails is null ? 0 : 1) + (verdict.NewDetailsConflict is null ? 0 : 1), ct));
 
         var rowIds = verdict.Rows.Select(_ => ids.Dequeue()).ToList();
+        long? detailsConflictId = null;
+        if (verdict.NewDetailsConflict is { } incoming)
+        {
+            detailsConflictId = ids.Dequeue();
+            db.Conflicts.Add(new Conflict
+            {
+                Id = detailsConflictId.Value, VoteId = voteId!.Value, Subject = ConflictSubject.Details, OpenedByImportId = importId,
+                IncomingSession = incoming.Session, IncomingVoteDate = incoming.VoteDate, IncomingTitle = incoming.Title,
+                IncomingTitleKey = RowNormaliser.ComparisonKey(incoming.Title),
+                ComparedDetailsRevisionId = approved.Details!.RevisionId,
+            });
+        }
         long? newDetailsId = null;
         if (verdict.NewDetails is { } details)
         {
@@ -76,7 +103,7 @@ internal sealed class ImportWriter(MeridianDbContext db)
             long? ballotRevisionId = row.Ballot.Kind switch
             {
                 LinkKind.NewRevision => ids.Dequeue(),
-                LinkKind.Approved => row.Ballot.RevisionId,
+                LinkKind.Approved => row.Ballot.Id,
                 _ => null,
             };
             if (row.Ballot.Kind == LinkKind.NewRevision)
@@ -89,15 +116,33 @@ internal sealed class ImportWriter(MeridianDbContext db)
                 });
                 db.CountryVoteCurrents.Add(new CountryVoteCurrent { VoteId = voteId.Value, StateCode = state, RevisionId = ballotRevisionId.Value });
             }
+            if (row.Ballot.Kind == LinkKind.NewConflict)
+            {
+                var state = row.Values!.StateCode!;
+                var conflictId = ids.Dequeue();
+                db.Conflicts.Add(new Conflict
+                {
+                    Id = conflictId, VoteId = voteId!.Value, Subject = ConflictSubject.Ballot, OpenedByImportId = importId,
+                    StateCode = state, IncomingBallot = row.Values.Ballot, ComparedCountryVoteRevisionId = approved.Ballots[state].RevisionId,
+                });
+                Link(rowIds[i], conflictId);
+            }
+            else if (row.Ballot.Kind == LinkKind.Conflict) Link(rowIds[i], row.Ballot.Id!.Value);
+            if (row.Details.Kind == LinkKind.NewConflict) Link(rowIds[i], detailsConflictId!.Value);
+            else if (row.Details.Kind == LinkKind.Conflict) Link(rowIds[i], row.Details.Id!.Value);
+
             db.ImportRows.Add(ToRecord(importId, voteId, rowIds[i], row, ballotRevisionId, row.Details.Kind switch
             {
                 LinkKind.NewRevision => newDetailsId,
-                LinkKind.Approved => row.Details.RevisionId,
+                LinkKind.Approved => row.Details.Id,
                 _ => null,
             }));
         }
         await db.SaveChangesAsync(ct);
     }
+
+    private void Link(long rowId, long conflictId) =>
+        db.ImportRowConflicts.Add(new ImportRowConflict { ImportRowId = rowId, ConflictId = conflictId });
 
     private static ImportRow ToRecord(long importId, long? voteId, long id, RowVerdict row, long? ballotRevisionId, long? detailsRevisionId) => new()
     {

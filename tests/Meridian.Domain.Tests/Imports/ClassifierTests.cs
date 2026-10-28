@@ -41,7 +41,7 @@ public sealed class ClassifierTests
         Assert.Equal([Ballot.Y, Ballot.N], verdict.Rows.Select(r => r.Values!.Ballot));
     }
 
-    private static RowVerdict One(ExportRow row) => Assert.Single(Classify([row]).Rows);
+    private static RowVerdict One(ExportRow row, ApprovedVote? approved = null) => Assert.Single(Classify([row], approved).Rows);
 
     [Fact]
     public void Rule3_a_row_whose_field_count_differs_from_the_header_is_invalid()
@@ -243,5 +243,151 @@ public sealed class ClassifierTests
 
         Assert.Equal([Outcome.New, Outcome.New], Outcomes(verdict));
         Assert.Equal("States’ Duties — Review", verdict.NewDetails!.Title);
+    }
+
+    private static readonly VoteDetails Approved101 = new(79, new DateOnly(2024, 1, 10), "Oceans and the Law of the Sea");
+
+    private static ApprovedVote Approved(IReadOnlyList<KnownConflict>? conflicts = null, VoteDetails? details = null,
+        params (string State, Ballot Ballot, long Revision)[] ballots) =>
+        new(new Approved<VoteDetails>(500, details ?? Approved101),
+            ballots.ToDictionary(b => b.State, b => new Approved<Ballot>(b.Revision, b.Ballot)),
+            conflicts ?? []);
+
+    [Fact]
+    public void Rule5_a_row_matching_approved_data_is_unchanged_and_links_the_approved_revisions()
+    {
+        var verdict = One(Row("BRA", "Y"), Approved(ballots: ("BRA", Ballot.Y, 501)));
+
+        Assert.Equal((Outcome.Unchanged, ReasonCode.MatchesApproved), (verdict.Outcome, verdict.Reason));
+        Assert.Equal(Link.ToApproved(501), verdict.Ballot);
+        Assert.Equal(Link.ToApproved(500), verdict.Details);
+    }
+
+    [Fact]
+    public void Rule5_a_ballot_with_nothing_approved_is_new_under_the_approved_details()
+    {
+        var verdict = Classify([Row("FRA", "N")], Approved(ballots: ("BRA", Ballot.Y, 501)));
+
+        Assert.Equal((Outcome.New, LinkKind.NewRevision, LinkKind.Approved), (verdict.Rows[0].Outcome, verdict.Rows[0].Ballot.Kind, verdict.Rows[0].Details.Kind));
+        Assert.Null(verdict.NewDetails);
+    }
+
+    [Fact]
+    public void Rule5_a_ballot_that_differs_from_approved_data_opens_a_conflict()
+    {
+        var verdict = One(Row("BRA", "A"), Approved(ballots: ("BRA", Ballot.Y, 501)));
+
+        Assert.Equal((Outcome.Conflict, ReasonCode.DiffersFromApproved), (verdict.Outcome, verdict.Reason));
+        Assert.Equal(LinkKind.NewConflict, verdict.Ballot.Kind);
+        Assert.Equal(Link.ToApproved(500), verdict.Details);
+        Assert.Equal("Ballot A differs from the approved Y; a conflict is opened and Y stays approved.", verdict.Message);
+    }
+
+    [Fact]
+    public void Rule5_comparisons_ignore_country_name_and_title_formatting()
+    {
+        var verdict = One(Row("BRA", "Y", name: "Brasil", title: "OCEANS and the law  of the sea"), Approved(ballots: ("BRA", Ballot.Y, 501)));
+
+        Assert.Equal(Outcome.Unchanged, verdict.Outcome);
+    }
+
+    [Fact]
+    public void Rule5_changed_details_open_one_conflict_for_the_vote_that_every_row_links_to()
+    {
+        var verdict = Classify([Row("BRA", "Y", title: "Oceans"), Row("FRA", "N", title: "Oceans")],
+            Approved(ballots: [("BRA", Ballot.Y, 501), ("FRA", Ballot.N, 502)]));
+
+        Assert.All(verdict.Rows, r =>
+        {
+            Assert.Equal((Outcome.Conflict, ReasonCode.DiffersFromApproved), (r.Outcome, r.Reason));
+            Assert.Equal(LinkKind.NewConflict, r.Details.Kind);
+            Assert.Equal(LinkKind.Approved, r.Ballot.Kind);
+        });
+        Assert.Equal(Approved101 with { Title = "Oceans" }, verdict.NewDetailsConflict);
+        Assert.Null(verdict.NewDetails);
+    }
+
+    [Fact]
+    public void Rule5_a_row_with_new_details_still_has_its_ballot_compared_on_its_own()
+    {
+        var verdict = Classify([Row("BRA", "A", title: "Oceans"), Row("JPN", "Y", title: "Oceans")],
+            Approved(ballots: ("BRA", Ballot.Y, 501)));
+
+        Assert.Equal((LinkKind.NewConflict, LinkKind.NewConflict), (verdict.Rows[0].Details.Kind, verdict.Rows[0].Ballot.Kind));
+        Assert.Equal((LinkKind.NewConflict, LinkKind.NewRevision), (verdict.Rows[1].Details.Kind, verdict.Rows[1].Ballot.Kind));
+        Assert.Equal(Outcome.Conflict, verdict.Rows[1].Outcome);
+    }
+
+    [Fact]
+    public void Rule5_membership_of_a_row_with_new_details_is_checked_against_the_approved_date()
+    {
+        var approvedBefore = Approved101 with { VoteDate = new DateOnly(2021, 6, 1) };
+
+        var verdict = One(Row("NZL", "Y", date: "2024-01-10"), Approved(details: approvedBefore));
+
+        Assert.Equal(LinkKind.NewRevision, verdict.Ballot.Kind);
+        Assert.Equal(LinkKind.NewConflict, verdict.Details.Kind);
+        Assert.Equal(Outcome.Invalid, One(Row("NZL", "Y", date: "2021-06-01"), Approved(details: Approved101)).Outcome);
+    }
+
+    [Fact]
+    public void Rule7_a_value_equal_to_a_pending_conflict_links_to_it()
+    {
+        var pending = new KnownConflict(77, ConflictSubject.Ballot, 501, "BRA", Ballot.A, null, null);
+
+        var verdict = One(Row("BRA", "A"), Approved([pending], ballots: ("BRA", Ballot.Y, 501)));
+
+        Assert.Equal((Outcome.Conflict, ReasonCode.PendingConflict), (verdict.Outcome, verdict.Reason));
+        Assert.Equal(Link.ToConflict(77), verdict.Ballot);
+    }
+
+    [Fact]
+    public void Rule7_changed_details_equal_to_a_pending_details_conflict_link_to_it()
+    {
+        var pending = new KnownConflict(78, ConflictSubject.Details, 500, null, null, Approved101 with { Title = "Oceans" }, null);
+
+        var verdict = One(Row("BRA", "Y", title: "OCEANS"), Approved([pending], ballots: ("BRA", Ballot.Y, 501)));
+
+        Assert.Equal(Link.ToConflict(78), verdict.Details);
+        Assert.Equal(ReasonCode.PendingConflict, verdict.Reason);
+    }
+
+    [Fact]
+    public void Rule7_a_value_already_rejected_never_reopens()
+    {
+        var rejected = new KnownConflict(79, ConflictSubject.Ballot, 501, "BRA", Ballot.A, null, Decision.Reject);
+
+        var verdict = One(Row("BRA", "A"), Approved([rejected], ballots: ("BRA", Ballot.Y, 501)));
+
+        Assert.Equal((Outcome.Conflict, ReasonCode.PreviouslyRejected), (verdict.Outcome, verdict.Reason));
+        Assert.Equal(Link.ToConflict(79), verdict.Ballot);
+    }
+
+    [Fact]
+    public void Rule7_a_conflict_compared_against_an_older_revision_does_not_match()
+    {
+        var old = new KnownConflict(80, ConflictSubject.Ballot, 400, "BRA", Ballot.A, null, Decision.Reject);
+
+        var verdict = One(Row("BRA", "A"), Approved([old], ballots: ("BRA", Ballot.Y, 501)));
+
+        Assert.Equal(LinkKind.NewConflict, verdict.Ballot.Kind);
+    }
+
+    [Fact]
+    public void Rule7_a_different_incoming_value_on_the_same_subject_opens_its_own_conflict()
+    {
+        var pending = new KnownConflict(77, ConflictSubject.Ballot, 501, "BRA", Ballot.A, null, null);
+
+        var verdict = One(Row("BRA", "N"), Approved([pending], ballots: ("BRA", Ballot.Y, 501)));
+
+        Assert.Equal((Outcome.Conflict, ReasonCode.DiffersFromApproved, LinkKind.NewConflict), (verdict.Outcome, verdict.Reason, verdict.Ballot.Kind));
+    }
+
+    [Fact]
+    public void Rule7_a_value_equal_to_the_approved_one_is_unchanged_even_while_a_conflict_is_pending()
+    {
+        var pending = new KnownConflict(77, ConflictSubject.Ballot, 501, "BRA", Ballot.A, null, null);
+
+        Assert.Equal(Outcome.Unchanged, One(Row("BRA", "Y"), Approved([pending], ballots: ("BRA", Ballot.Y, 501))).Outcome);
     }
 }

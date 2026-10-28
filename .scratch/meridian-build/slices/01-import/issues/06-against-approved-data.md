@@ -37,11 +37,11 @@ Re-uploading the revised file gives 0 new values and 0 new conflicts.
 
 **Blocked by:** 05
 
-**Status:** ready-for-agent
+**Status:** done
 
 Requirements: ING-09, ING-11, ING-12, CON-01, CON-03 (stories 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 44)
 
-- [ ] Named domain tests for rules 5, 6 and 7, and for ignoring `country_name`, `published_at` and title formatting
-- [ ] The 7.2 example through the API: outcome counts of both uploads, the approved values afterwards, the ballot conflict (BRA Y → A) and the details conflict on 101, and a second upload of the revised file opening no conflict
-- [ ] A rejected conflict's value re-sent gets `previously_rejected` and opens nothing
-- [ ] The report lists the conflicts opened with their row counts
+- [x] Named domain tests for rules 5, 6 and 7, and for ignoring `country_name`, `published_at` and title formatting
+- [x] The 7.2 example through the API: outcome counts of both uploads, the approved values afterwards, the ballot conflict (BRA Y → A) and the details conflict on 101, and a second upload of the revised file opening no conflict
+- [x] A rejected conflict's value re-sent gets `previously_rejected` and opens nothing
+- [x] The report lists the conflicts opened with their row counts

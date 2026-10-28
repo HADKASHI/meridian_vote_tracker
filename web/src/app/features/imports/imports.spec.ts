@@ -175,4 +175,23 @@ describe('imports feature', () => {
     expect(table).toContain('MA/2024/001,79,2024-01-10,A,FRN,X');
     expect(table).toContain('Unknown country code FRN.');
   });
+
+  it('lists the conflicts the import opened with their rows', async () => {
+    const harness = await RouterTestingHarness.create('/imports/7');
+    http.expectOne('/api/imports/7').flush({
+      ...importDto('running'),
+      conflictsOpened: [
+        { conflictId: 31, vote: { voteId: 41, assemblyVoteId: '101' }, subject: 'details', stateCode: null, rows: 2 },
+        { conflictId: 32, vote: { voteId: 41, assemblyVoteId: '101' }, subject: 'ballot', stateCode: 'BRA', rows: 1 },
+      ],
+    });
+    await harness.fixture.whenStable();
+
+    const items = [...harness.routeNativeElement!.querySelectorAll('[data-testid=conflicts-opened] li')];
+    expect(items.map((li) => li.textContent!.replace(/\s+/g, ' ').trim())).toEqual([
+      'Conflict #31 101 · vote details · 2 rows',
+      'Conflict #32 101 · BRA ballot · 1 row',
+    ]);
+    expect(items[0].querySelector('a')!.getAttribute('href')).toBe('/review/31');
+  });
 });

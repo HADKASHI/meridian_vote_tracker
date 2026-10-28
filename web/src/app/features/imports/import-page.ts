@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, numberAttribute } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { getImportResource } from '../../api/imports/imports.resource';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { JobState, Outcome } from '../../api/model';
 import { pollWhile } from '../../shared/http/poll';
 import { jobProgress } from '../../shared/ui/job-progress';
@@ -11,7 +11,7 @@ import { ImportRows } from './import-rows';
 /** The import report: the file's evidence and its job, polled while the job is active. */
 @Component({
   selector: 'app-import-page',
-  imports: [DatePipe, DecimalPipe, JobStateBadge, ImportRows],
+  imports: [DatePipe, DecimalPipe, RouterLink, JobStateBadge, ImportRows],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <h1>Import report</h1>
@@ -47,6 +47,18 @@ import { ImportRows } from './import-rows';
                 <strong>{{ vote.assemblyVoteId }}:</strong>
               }
               {{ w.message }}
+            </li>
+          }
+        </ul>
+      }
+      @if (r.conflictsOpened.length > 0) {
+        <h2>Conflicts opened</h2>
+        <ul data-testid="conflicts-opened">
+          @for (c of r.conflictsOpened; track c.conflictId) {
+            <li>
+              <a [routerLink]="['/review', c.conflictId]">Conflict #{{ c.conflictId }}</a>
+              {{ c.vote.assemblyVoteId }} · {{ c.subject === 'details' ? 'vote details' : c.stateCode + ' ballot' }} ·
+              {{ c.rows }} {{ c.rows === 1 ? 'row' : 'rows' }}
             </li>
           }
         </ul>

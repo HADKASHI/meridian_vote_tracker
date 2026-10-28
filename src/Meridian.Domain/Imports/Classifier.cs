@@ -8,7 +8,7 @@ public static class Classifier
 {
     public static VoteVerdict Classify(IReadOnlyList<ExportRow> rows, ApprovedVote approved, MemberStates members)
     {
-        var normalised = rows.Select(r => (Row: r, N: RowNormaliser.Normalise(r, members))).ToList();
+        var normalised = rows.Select(r => (Row: r, N: CheckMembership(RowNormaliser.Normalise(r, members), approved, members))).ToList();
         var valid = normalised.Where(x => x.N.Invalid is null).ToList();
 
         // Rule 4: a file that disagrees with itself about the details holds back the whole vote.
@@ -23,6 +23,8 @@ public static class Classifier
         var verdicts = new List<RowVerdict>(rows.Count);
         var firstLine = new Dictionary<string, int>();
         VoteDetails? newDetails = null;
+        var (detailsLink, detailsPart) = valid.Count == 0 ? (Link.None, null) : CompareDetails(valid[0].N.Details!, approved);
+        VoteDetails? newDetailsConflict = detailsLink.Kind == LinkKind.NewConflict ? valid[0].N.Details : null;
         foreach (var (row, n) in normalised)
         {
             if (n.Invalid is { } reason)
@@ -42,12 +44,88 @@ public static class Classifier
                 verdicts.Add(Verdict(row, n, Outcome.Duplicate, ReasonCode.Duplicate, $"Identical to line {firstLine[state]}."));
                 continue;
             }
-            newDetails ??= n.Details;
-            verdicts.Add(Verdict(row, n, Outcome.New, ReasonCode.NewValue, "New value: nothing was approved for it yet.",
-                Link.NewRevision, Link.NewRevision));
+            if (detailsLink.Kind == LinkKind.NewRevision) newDetails ??= n.Details;
+            verdicts.Add(AgainstApproved(row, n, approved, detailsLink, detailsPart));
         }
-        return new VoteVerdict(verdicts, newDetails);
+        return new VoteVerdict(verdicts, newDetails, newDetailsConflict);
     }
+
+    /// <summary>
+    /// Rule 12, and rule 5's twist: membership is checked on the approved date when the vote
+    /// has one, so a row carrying new details is judged against the details that count.
+    /// </summary>
+    private static NormalisedRow CheckMembership(NormalisedRow n, ApprovedVote approved, MemberStates members)
+    {
+        if (n.Invalid is not null) return n;
+        var date = approved.Details?.Value.VoteDate ?? n.Details!.VoteDate;
+        var code = n.Values.StateCode!;
+        return members.IsMemberOn(code, date)
+            ? n
+            : n with { Invalid = ReasonCode.NotMemberOnDate, Message = $"{code} was not a member on {date:yyyy-MM-dd}.", Details = null, Ballot = null };
+    }
+
+    /// <summary>The vote's details against the approved ones (rules 5 to 7): one verdict for the whole vote.</summary>
+    private static (Link Link, Part? Part) CompareDetails(VoteDetails incoming, ApprovedVote approved)
+    {
+        if (approved.Details is not { } current) return (Link.NewRevision, null);
+        if (DetailsKey(incoming) == DetailsKey(current.Value)) return (Link.ToApproved(current.RevisionId), null);
+
+        var known = approved.Conflicts.FirstOrDefault(c => c.Subject == ConflictSubject.Details
+            && c.ComparedRevisionId == current.RevisionId && DetailsKey(c.IncomingDetails!) == DetailsKey(incoming));
+        return known switch
+        {
+            null => (Link.NewConflict, new Part(ReasonCode.DiffersFromApproved,
+                "The vote details differ from the approved ones; one conflict is opened for the vote and the approved details stay.")),
+            { Decision: Decision.Reject } => (Link.ToConflict(known.Id), new Part(ReasonCode.PreviouslyRejected,
+                $"These vote details were already rejected in conflict #{known.Id}; it does not reopen.")),
+            _ => (Link.ToConflict(known.Id), new Part(ReasonCode.PendingConflict,
+                $"These vote details are already pending as conflict #{known.Id}.")),
+        };
+    }
+
+    /// <summary>A valid row against approved data: its ballot compared on its own, whatever its details did.</summary>
+    private static RowVerdict AgainstApproved(ExportRow row, NormalisedRow n, ApprovedVote approved, Link details, Part? detailsPart)
+    {
+        var state = n.Values.StateCode!;
+        var ballot = n.Ballot!.Value;
+        Link ballotLink;
+        Part ballotPart;
+        if (!approved.Ballots.TryGetValue(state, out var current))
+            (ballotLink, ballotPart) = (Link.NewRevision, new Part(ReasonCode.NewValue, detailsPart is null
+                ? "New value: nothing was approved for it yet."
+                : "The ballot is new and is stored under the approved details."));
+        else if (current.Value == ballot)
+            (ballotLink, ballotPart) = (Link.ToApproved(current.RevisionId), new Part(ReasonCode.MatchesApproved, detailsPart is null
+                ? "Matches the approved data."
+                : "The ballot matches the approved one."));
+        else
+        {
+            var known = approved.Conflicts.FirstOrDefault(c => c.Subject == ConflictSubject.Ballot
+                && c.ComparedRevisionId == current.RevisionId && c.IncomingBallot == ballot);
+            (ballotLink, ballotPart) = known switch
+            {
+                null => (Link.NewConflict, new Part(ReasonCode.DiffersFromApproved,
+                    $"Ballot {ballot} differs from the approved {current.Value}; a conflict is opened and {current.Value} stays approved.")),
+                { Decision: Decision.Reject } => (Link.ToConflict(known.Id), new Part(ReasonCode.PreviouslyRejected,
+                    $"Ballot {ballot} was already rejected in conflict #{known.Id}; it does not reopen.")),
+                _ => (Link.ToConflict(known.Id), new Part(ReasonCode.PendingConflict,
+                    $"Ballot {ballot} is already pending as conflict #{known.Id}.")),
+            };
+        }
+
+        var conflictParts = new[] { detailsPart, ballotLink.IsConflict ? ballotPart : null }.OfType<Part>().ToList();
+        var outcome = conflictParts.Count > 0 ? Outcome.Conflict
+            : ballotLink.Kind == LinkKind.NewRevision ? Outcome.New
+            : Outcome.Unchanged;
+        var reason = conflictParts.Count == 0 ? ballotPart.Reason
+            : conflictParts.Any(p => p.Reason == ReasonCode.DiffersFromApproved) ? ReasonCode.DiffersFromApproved
+            : conflictParts.Any(p => p.Reason == ReasonCode.PendingConflict) ? ReasonCode.PendingConflict
+            : ReasonCode.PreviouslyRejected;
+        var message = string.Join(" ", new[] { detailsPart?.Message, ballotPart.Message }.OfType<string>());
+        return Verdict(row, n, outcome, reason, message, ballotLink, details);
+    }
+
+    private sealed record Part(ReasonCode Reason, string Message);
 
     private static VoteVerdict HeldBack(List<(ExportRow Row, NormalisedRow N)> normalised, List<(ExportRow Row, NormalisedRow N)> valid)
     {

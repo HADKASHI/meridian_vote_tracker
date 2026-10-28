@@ -15,6 +15,10 @@ public enum ReasonCode
     BallotContradiction,
     DetailsContradiction,
     Duplicate,
+    MatchesApproved,
+    DiffersFromApproved,
+    PendingConflict,
+    PreviouslyRejected,
 }
 
 /// <summary>A vote's session, date and title.</summary>
@@ -38,10 +42,19 @@ public sealed record MemberStates(IReadOnlyDictionary<string, IReadOnlyList<Memb
 /// <summary>An approved value with the revision it lives in.</summary>
 public sealed record Approved<T>(long RevisionId, T Value);
 
-/// <summary>What is approved for one vote when its rows are classified, read under the vote's lock.</summary>
-public sealed record ApprovedVote(Approved<VoteDetails>? Details, IReadOnlyDictionary<string, Approved<Ballot>> Ballots)
+/// <summary>
+/// A conflict already opened on the vote, pending or decided: the revision it was compared
+/// against and its incoming value (a ballot for one state, or vote details).
+/// </summary>
+public sealed record KnownConflict(
+    long Id, ConflictSubject Subject, long ComparedRevisionId, string? StateCode, Ballot? IncomingBallot,
+    VoteDetails? IncomingDetails, Decision? Decision);
+
+/// <summary>What is approved for one vote when its rows are classified, and its conflicts, read under the vote's lock.</summary>
+public sealed record ApprovedVote(
+    Approved<VoteDetails>? Details, IReadOnlyDictionary<string, Approved<Ballot>> Ballots, IReadOnlyList<KnownConflict> Conflicts)
 {
-    public static readonly ApprovedVote Nothing = new(null, new Dictionary<string, Approved<Ballot>>());
+    public static readonly ApprovedVote Nothing = new(null, new Dictionary<string, Approved<Ballot>>(), []);
 }
 
 /// <summary>A row's values as stored on its row record: normalised where valid, as found otherwise.</summary>
@@ -49,17 +62,22 @@ public sealed record RowValues(
     string? AssemblyVoteId, string? StateCode, string? CountryName, string? BallotText, Ballot? Ballot,
     int? Session, DateOnly? VoteDate, string? Title, DateTimeOffset? PublishedAt);
 
-public enum LinkKind { None, NewRevision, Approved }
+public enum LinkKind { None, NewRevision, Approved, NewConflict, Conflict }
 
 /// <summary>
 /// What a row points at for one subject (its ballot or its vote's details): nothing, the
-/// revision it brings in as new, or the approved revision it matched.
+/// revision it brings in as new, the approved revision it matched (<see cref="Id"/>), the
+/// conflict it opens, or an existing conflict it links to (<see cref="Id"/>).
 /// </summary>
-public readonly record struct Link(LinkKind Kind, long? RevisionId = null)
+public readonly record struct Link(LinkKind Kind, long? Id = null)
 {
     public static readonly Link None = new(LinkKind.None);
     public static readonly Link NewRevision = new(LinkKind.NewRevision);
+    public static readonly Link NewConflict = new(LinkKind.NewConflict);
     public static Link ToApproved(long revisionId) => new(LinkKind.Approved, revisionId);
+    public static Link ToConflict(long conflictId) => new(LinkKind.Conflict, conflictId);
+
+    public bool IsConflict => Kind is LinkKind.NewConflict or LinkKind.Conflict;
 }
 
 /// <summary>The verdict on one line, fixed at the moment of import.</summary>
@@ -69,7 +87,8 @@ public sealed record RowVerdict(
 
 /// <summary>
 /// One vote's verdicts and what they change: the details to approve when the vote has
-/// none (the first row linking <see cref="Link.NewRevision"/> is their origin), and the
-/// ballots each row with a new ballot brings in.
+/// none (the first row linking <see cref="Link.NewRevision"/> is their origin), the
+/// incoming details of the one details conflict to open, if any, and through each row
+/// the ballot it brings in or the ballot conflict it opens.
 /// </summary>
-public sealed record VoteVerdict(IReadOnlyList<RowVerdict> Rows, VoteDetails? NewDetails);
+public sealed record VoteVerdict(IReadOnlyList<RowVerdict> Rows, VoteDetails? NewDetails, VoteDetails? NewDetailsConflict = null);
