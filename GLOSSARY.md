@@ -1,0 +1,100 @@
+# Meridian Vote Tracker
+
+Tracks how member states of the Meridian Assembly vote, so the Northwind Policy Institute can publish a reproducible Alignment Index.
+
+## Assembly data
+
+**Member state**:
+A country belonging to the Assembly, identified by its ISO 3166-1 alpha-3 code, with one or more membership periods. Its identity is the code, never the name.
+_Avoid_: Country (when membership matters), nation
+
+**Session**:
+The Assembly's yearly sitting, identified by a number, during which many votes are held.
+
+**Vote**:
+One resolution the Assembly voted on, with a fixed identifier (e.g. MA/2024/003), a session, a date and a title.
+_Avoid_: Resolution, ballot
+
+**Country vote**:
+What one member state chose in one vote: Y (yes), N (no), A (abstain) or X (absent).
+_Avoid_: Ballot (the CSV column name), row
+
+**Vote details**:
+The session, date and title of a vote.
+
+## Ingestion
+
+**Import**:
+One upload of one file, together with its report and the outcome of every row.
+_Avoid_: Upload (for the whole record), ingest
+
+**Job**:
+Work the system does in the background on a user's behalf: processing an import or calculating a snapshot. A job is queued, running, done or failed. Done means the work finished, not that every row was new.
+_Avoid_: Status, task, process
+
+**Outcome**:
+The single classification an import gives one row of a file: new, unchanged, duplicate, invalid, contradiction or conflict. It is fixed at the moment of import.
+_Avoid_: Status, result
+
+**Approved data**:
+A value that was imported or that a person approved. Only approved data feeds snapshots.
+
+**Origin**:
+Where an approved value came from: either the file row that brought it in as new, or the conflict decision that approved it.
+_Avoid_: Source (when meaning the whole file)
+
+**Duplicate**:
+A row identical to another row in the same file.
+
+**Contradiction**:
+Rows in the same file that disagree: one member state with different values in one vote, or different vote details for one vote. When the vote details disagree, the whole vote is a contradiction.
+_Avoid_: Conflict (for in-file disagreement)
+
+**Normalisation**:
+A documented, mechanical change the import makes to a value before judging it, such as upper-casing a country code or rewriting a date in ISO form. It never changes what a value means.
+_Avoid_: Correction, fix
+
+**Incomplete vote**:
+A vote in which some member states on its date have no approved value yet. Missing values may arrive in a later file.
+_Avoid_: Partial import
+
+**Conflict**:
+An incoming value that differs from approved data already in the system, waiting for a person to accept or reject it.
+_Avoid_: Contradiction (for cross-file disagreement)
+
+## Index
+
+**Position**:
+What the Institute wanted to happen in a vote (yes or no), together with its weight.
+
+**Weight**:
+How much a vote counts in the index, from 1 (marginal) to 5 (critical).
+
+**Alignment Index**:
+The 0–100 score per member state measuring how often it voted with the Institute's positions, weighted.
+
+**Countable vote**:
+A vote in which a member state chose yes or no; only these count towards its Alignment Index. Abstentions, absences, votes outside its membership and votes with no data are not countable.
+
+**Snapshot**:
+A saved calculation of the Alignment Index over a chosen set of votes at one moment. It never changes once saved.
+_Avoid_: Ranking, report
+
+**Published snapshot**:
+The one snapshot per reporting quarter that the admin marks as the Institute's official index. The admin may replace it with another snapshot, giving a reason; the earlier one then stays visible as superseded.
+
+**Reporting quarter**:
+The quarter a published snapshot is the official index for, chosen by the admin when publishing. It need not match the dates of the votes the snapshot covers.
+_Avoid_: Period, quarter of the votes
+
+**Superseded**:
+A published snapshot that the admin later replaced for the same reporting quarter. It is kept and shown, never deleted.
+_Avoid_: Unpublished, withdrawn
+
+## People
+
+**Analyst**:
+A user who imports files, resolves conflicts and creates snapshots.
+
+**Admin**:
+The head of research, who sets positions and weights and marks snapshots as published.

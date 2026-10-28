@@ -1,0 +1,21 @@
+# AI usage
+
+## Tools
+
+Claude Code, driven by a small set of skills in `.claude/skills/`:
+- **wayfinder** keeps a decision map of tickets in `.scratch/meridian-vote-tracker/`.
+- **grilling** and **domain-modeling** run design interviews and maintain the glossary.
+- **research** runs background investigations against primary sources.
+
+The AI proposes options with a recommendation; I decide.
+
+## Where AI output was checked, rejected or corrected
+
+- **Data audit:** the AI catalogued 25 defect classes in the candidate files. Its headline counts (vote 040 missing from rev2, vote 031 truncated, the slash dates, the 5-field row) were re-counted independently before being relied on. It quoted data rows in its report; these were removed, so the client's data stays out of git.
+- **Keeping uploaded files:** the AI first proposed copying a row's raw text only for rejected or flagged rows. Questioning what the system must answer at any moment led to a simpler model: keep the file, and a record for every row.
+- **Database-level enforcement:** the AI proposed triggers that refuse updates to history, and an exclusion constraint on membership periods. Both are deferred. The history guard is to be revisited once the storage pattern is chosen; the overlap rule is enforced in application code.
+- **Recording previous values:** the AI proposed storing the previous stance and weight on every position change. I questioned why, since the previous value is just the earlier entry. We dropped the redundant copy and had the API derive "from → to" instead.
+- **History storage pattern:** instead of accepting the AI's first recommendation, I had it write a sourced comparison of six designs (checked against PostgreSQL and EF Core source docs), then chose with it. When the discussion got abstract, I asked it to draw the entities; the diagram, not the prose, is what made the choice clear.
+- **Import classification:** the AI proposed accepting only the two date formats the brief names; I widened it to every unambiguous day-first format. When two conflicts can be pending on one value, I set the rule that a conflict keeps only the incoming value and a link to the revision it was compared against, so resolving one never forces updates to the other. The AI proposed warning when a date change affects membership; I made it a recalculation on every vote-details decision.
+- **Snapshot calculation:** the AI proposed computing the Alignment Index in a single SQL statement so that ~1M ballots would never leave the database. I pushed back: scoring is domain logic, not data. Now SQL only streams the facts (ballot, membership, stance, weight) from one consistent read, and a pure C# function applies the rules, so each rule is unit-tested and readable. The AI's size concern held up poorly: the facts are tens of MB even across all of history.
+- **Repository layer:** rather than accept "no repository layer" as stated, I asked for the trade-offs. Three options were laid out side by side, and we chose use-case modules for the race-sensitive writes, with plain EF projections for reads.
