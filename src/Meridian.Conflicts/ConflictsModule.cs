@@ -20,7 +20,7 @@ public static class ConflictsModule
         var conflicts = api.MapGroup("/conflicts").WithTags("Conflicts");
 
         conflicts.MapGet("", Results<Ok<PageDto<ConflictListItemDto>>, ProblemHttpResult> (
-                    ConflictFilter state = ConflictFilter.Pending, long? voteId = null, long? importId = null,
+                    ConflictFilter state = ConflictFilter.Pending, long[]? voteIds = null, long? importId = null,
                     int page = 1, int pageSize = 50) =>
                 EndpointConventions.NotImplemented())
             .WithName("listConflicts")

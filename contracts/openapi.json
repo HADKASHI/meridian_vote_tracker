@@ -461,11 +461,14 @@
             }
           },
           {
-            "name": "voteId",
+            "name": "voteIds",
             "in": "query",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              }
             }
           },
           {
