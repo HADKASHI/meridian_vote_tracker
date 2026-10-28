@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using Meridian.Imports;
+using Meridian.Integration.Tests.Infrastructure;
 using Meridian.Platform.Hosting;
 
 namespace Meridian.Integration.Tests.Imports;
@@ -38,6 +39,43 @@ public static class ImportApi
             $"GET {url} answered {(int)response.StatusCode}: {await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)}");
         return (await response.Content.ReadFromJsonAsync<T>(Json, TestContext.Current.CancellationToken))!;
     }
+
+    /// <summary>The worker with the import job handler, on the API's database and blob container.</summary>
+    public static Microsoft.Extensions.Hosting.IHost Worker(ApiFactory api, IDictionary<string, string?>? settings = null)
+    {
+        var all = new Dictionary<string, string?>
+        {
+            ["Blob:ConnectionString"] = api.BlobConnectionString,
+            ["Blob:Container"] = api.BlobContainer,
+        };
+        foreach (var (key, value) in settings ?? new Dictionary<string, string?>()) all[key] = value;
+        return WorkerHost.Build(api.ConnectionString, [], all, services => services.AddImportsJobs());
+    }
+
+    /// <summary>Runs every queued job to the end, as the worker would.</summary>
+    public static async Task RunJobsAsync(ApiFactory api)
+    {
+        using var worker = Worker(api);
+        await worker.Processor().RunUntilIdleAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Uploads <paramref name="content"/> as dana, runs the import and returns its report.</summary>
+    public static async Task<ImportDto> ImportAsync(ApiFactory api, string fileName, string content, string user = "dana") =>
+        await ImportAsync(api, fileName, Encoding.UTF8.GetBytes(content), user);
+
+    public static async Task<ImportDto> ImportAsync(ApiFactory api, string fileName, byte[] content, string user = "dana")
+    {
+        var client = api.ClientAs(user);
+        var response = await UploadAsync(client, fileName, content);
+        Assert.Equal(202, (int)response.StatusCode);
+        var created = (await response.Content.ReadFromJsonAsync<ImportCreatedDto>(Json, TestContext.Current.CancellationToken))!;
+        await RunJobsAsync(api);
+        return await GetAsync<ImportDto>(client, $"/api/imports/{created.ImportId}");
+    }
+
+    /// <summary>Imports a committed fixture from <c>Imports/Files</c>.</summary>
+    public static Task<ImportDto> ImportFixtureAsync(ApiFactory api, string fileName, string user = "dana") =>
+        ImportAsync(api, fileName, File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "Imports", "Files", fileName)), user);
 
     private static JsonSerializerOptions CreateJson()
     {

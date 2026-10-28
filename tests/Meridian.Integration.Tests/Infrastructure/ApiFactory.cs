@@ -18,6 +18,8 @@ public sealed class ApiFactory(string connectionString, string blobConnectionStr
 
     public string ConnectionString => connectionString;
 
+    public string BlobConnectionString => blobConnectionString;
+
     /// <summary>
     /// Each API gets its own container: every test database numbers its imports from the
     /// same sequence, so their blob names would collide in the shared Azurite.

@@ -38,10 +38,19 @@ internal static class ImportQueries
         var job = (await JobQueries.LoadAsync(db, db.Jobs.Where(j => j.ImportId == importId), ct)).Single();
         var parse = await db.ImportParses.AsNoTracking().SingleOrDefaultAsync(p => p.ImportId == importId, ct);
         var counts = await CountsAsync(db, db.ImportRows.Where(r => r.ImportId == importId), r => r.ImportId, ct);
+        var warnings = await (
+                from w in db.ImportWarnings
+                where w.ImportId == importId
+                join v in db.Votes on w.VoteId equals v.Id into votes
+                from v in votes.DefaultIfEmpty()
+                orderby w.Id
+                select new { Warning = w, Vote = v == null ? null : new VoteRefDto(v.Id, v.AssemblyVoteId) })
+            .AsNoTracking().ToListAsync(ct);
 
         return new ImportDto(
             import.Id, import.FileName, import.Sha256, import.SizeBytes, import.UploadedBy, import.RecordedAt,
-            job, parse is null ? null : ToDto(parse), counts.GetValueOrDefault(importId, NoRows), [], []);
+            job, parse is null ? null : ToDto(parse), counts.GetValueOrDefault(importId, NoRows),
+            warnings.Select(w => ImportWarningDetail.ToDto(w.Warning, w.Vote)).ToList(), []);
     }
 
     public static readonly OutcomeCountsDto NoRows = new(0, 0, 0, 0, 0, 0);

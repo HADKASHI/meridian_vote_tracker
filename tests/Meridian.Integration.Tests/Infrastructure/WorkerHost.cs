@@ -14,7 +14,7 @@ namespace Meridian.Integration.Tests.Infrastructure;
 public static class WorkerHost
 {
     public static IHost Build(string connectionString, IEnumerable<IJobHandler> handlers,
-        IDictionary<string, string?>? settings = null)
+        IDictionary<string, string?>? settings = null, Action<IServiceCollection>? services = null)
     {
         var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings { EnvironmentName = "Testing" });
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
@@ -32,6 +32,7 @@ public static class WorkerHost
         builder.AddMeridianWorkerPlatform();
         builder.Logging.ClearProviders();
         foreach (var handler in handlers) builder.Services.AddSingleton(handler);
+        services?.Invoke(builder.Services);
         return builder.Build();
     }
 

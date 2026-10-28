@@ -24,7 +24,31 @@ import { JobStateBadge } from '../../shared/ui/job-state-badge';
         <dd>{{ r.uploadedBy }}, {{ r.uploadedAt | date: 'yyyy-MM-dd HH:mm:ss' }}</dd>
         <dt>Job</dt>
         <dd><app-job-state-badge [state]="r.job.state" /> {{ progress() }}</dd>
+        @if (r.parse; as parse) {
+          <dt>Parsed</dt>
+          @if (parse.rejectedReason) {
+            <dd class="rejected">Rejected: {{ parse.rejectedReason }} Nothing was applied.</dd>
+          } @else {
+            <dd>
+              {{ parse.dataRows | number }} data rows, {{ parse.lineEndings.toUpperCase() }} line endings,
+              {{ parse.hasBom ? 'with BOM' : 'no BOM' }}
+            </dd>
+          }
+        }
       </dl>
+      @if (r.warnings.length > 0) {
+        <h2>Warnings</h2>
+        <ul data-testid="warnings">
+          @for (w of r.warnings; track w.id) {
+            <li>
+              @if (w.vote; as vote) {
+                <strong>{{ vote.assemblyVoteId }}:</strong>
+              }
+              {{ w.message }}
+            </li>
+          }
+        </ul>
+      }
     }
   `,
   styles: `
@@ -32,6 +56,9 @@ import { JobStateBadge } from '../../shared/ui/job-state-badge';
       display: grid;
       grid-template-columns: max-content 1fr;
       gap: 4px 16px;
+    }
+    .rejected {
+      color: var(--mat-sys-error);
     }
     .hash {
       font-family: monospace;

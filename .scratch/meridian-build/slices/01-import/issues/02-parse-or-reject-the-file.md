@@ -4,11 +4,11 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
 Requirements: ING-03, ING-04 (stories 19, 20, 21, 22, 23)
 
-- [ ] Domain tests for rule 1: header order and case, `resolution_title`, BOM and no BOM, LF, CRLF and mixed, extra columns, missing required column, invalid UTF-8, header only
-- [ ] Through the API, each rejected-file fixture ends with its reason, no row records and nothing approved
-- [ ] An extra column gives an `extra_columns` warning naming it
-- [ ] The report page shows the rejection reason or the parse facts and warnings
+- [x] Domain tests for rule 1: header order and case, `resolution_title`, BOM and no BOM, LF, CRLF and mixed, extra columns, missing required column, invalid UTF-8, header only
+- [x] Through the API, each rejected-file fixture ends with its reason, no row records and nothing approved
+- [x] An extra column gives an `extra_columns` warning naming it
+- [x] The report page shows the rejection reason or the parse facts and warnings

@@ -1,7 +1,9 @@
 using Meridian.Data;
 using Meridian.Domain;
 using Meridian.Platform.Contracts;
+using Meridian.Platform.Hosting;
 using Meridian.Platform.Http;
+using Meridian.Platform.Storage;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
@@ -26,7 +28,8 @@ public static class ImportsModule
     }
 
     /// <summary>The worker side: the import job handler goes here (<c>services.AddJobHandler&lt;…&gt;()</c>).</summary>
-    public static IServiceCollection AddImportsJobs(this IServiceCollection services) => services;
+    public static IServiceCollection AddImportsJobs(this IServiceCollection services) =>
+        services.AddMeridianBlobStorage().AddJobHandler<ImportJobHandler>();
 
     public static IEndpointRouteBuilder MapImportsModule(this IEndpointRouteBuilder api)
     {

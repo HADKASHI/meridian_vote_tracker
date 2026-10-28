@@ -110,4 +110,33 @@ describe('imports feature', () => {
     TestBed.tick();
     http.expectNone('/api/imports/7');
   });
+
+  it('shows why a file was rejected', async () => {
+    const harness = await RouterTestingHarness.create('/imports/7');
+    http.expectOne('/api/imports/7').flush({
+      ...importDto('done'),
+      parse: { header: ['a'], hasBom: false, lineEndings: 'lf', dataRows: 0, maxPublishedAt: null,
+        rejectedReason: 'Missing required column: ballot.' },
+    });
+    await harness.fixture.whenStable();
+
+    expect(harness.routeNativeElement!.textContent).toContain('Rejected: Missing required column: ballot.');
+  });
+
+  it('shows the parse facts and the warnings', async () => {
+    const harness = await RouterTestingHarness.create('/imports/7');
+    http.expectOne('/api/imports/7').flush({
+      ...importDto('done'),
+      parse: { header: ['a'], hasBom: true, lineEndings: 'crlf', dataRows: 1204, maxPublishedAt: null, rejectedReason: null },
+      warnings: [{ id: 1, kind: 'extra_columns', message: 'Ignored column not in the export format: region.', vote: null,
+        identicalToImportId: null, columns: ['region'], missingStateCodes: null, newestPublishedAt: null }],
+    });
+    await harness.fixture.whenStable();
+
+    const text = harness.routeNativeElement!.textContent!;
+    expect(text).toContain('1,204 data rows');
+    expect(text).toContain('CRLF');
+    expect(text).toContain('with BOM');
+    expect(text).toContain('Ignored column not in the export format: region.');
+  });
 });
