@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Meridian.Data;
+using Meridian.Domain;
 using Meridian.Platform.Health;
 using Meridian.Platform.Identity;
 using Meridian.Platform.Jobs;
@@ -35,8 +36,8 @@ public static class ApiHosting
         services.AddAuthentication(UserHeaderHandler.SchemeName)
             .AddScheme<AuthenticationSchemeOptions, UserHeaderHandler>(UserHeaderHandler.SchemeName, null);
         services.AddAuthorizationBuilder()
-            .AddPolicy(Policies.Analyst, p => p.RequireRole("analyst", "admin"))
-            .AddPolicy(Policies.Admin, p => p.RequireRole("admin"));
+            .AddPolicy(Policies.Analyst, p => p.RequireRole(RoleName(Role.Analyst), RoleName(Role.Admin)))
+            .AddPolicy(Policies.Admin, p => p.RequireRole(RoleName(Role.Admin)));
 
         // nginx in front forwards the client address and scheme; nothing else reaches the API.
         services.Configure<ForwardedHeadersOptions>(o =>
@@ -46,6 +47,8 @@ public static class ApiHosting
             o.KnownProxies.Clear();
         });
     }
+
+    private static string RoleName(Role role) => SnakeCaseEnumConverter<Role>.ToName(role);
 
     /// <summary>
     /// camelCase names, enums as their glossary words, and strict numbers, so the
