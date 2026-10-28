@@ -86,15 +86,8 @@ public static class Classifier
 
         var known = approved.Conflicts.FirstOrDefault(c => c.Subject == ConflictSubject.Details
             && c.ComparedRevisionId == current.RevisionId && DetailsKey(c.IncomingDetails!) == DetailsKey(incoming));
-        return known switch
-        {
-            null => (Link.NewConflict, new Part(ReasonCode.DiffersFromApproved,
-                "The vote details differ from the approved ones; one conflict is opened for the vote and the approved details stay.")),
-            { Decision: Decision.Reject } => (Link.ToConflict(known.Id), new Part(ReasonCode.PreviouslyRejected,
-                $"These vote details were already rejected in conflict #{known.Id}; it does not reopen.")),
-            _ => (Link.ToConflict(known.Id), new Part(ReasonCode.PendingConflict,
-                $"These vote details are already pending as conflict #{known.Id}.")),
-        };
+        return AgainstConflict(known, "These vote details", plural: true,
+            "The vote details differ from the approved ones; one conflict is opened for the vote and the approved details stay.");
     }
 
     /// <summary>A valid row against approved data: its ballot compared on its own, whatever its details did.</summary>
@@ -116,15 +109,8 @@ public static class Classifier
         {
             var known = approved.Conflicts.FirstOrDefault(c => c.Subject == ConflictSubject.Ballot
                 && c.ComparedRevisionId == current.RevisionId && c.IncomingBallot == ballot);
-            (ballotLink, ballotPart) = known switch
-            {
-                null => (Link.NewConflict, new Part(ReasonCode.DiffersFromApproved,
-                    $"Ballot {ballot} differs from the approved {current.Value}; a conflict is opened and {current.Value} stays approved.")),
-                { Decision: Decision.Reject } => (Link.ToConflict(known.Id), new Part(ReasonCode.PreviouslyRejected,
-                    $"Ballot {ballot} was already rejected in conflict #{known.Id}; it does not reopen.")),
-                _ => (Link.ToConflict(known.Id), new Part(ReasonCode.PendingConflict,
-                    $"Ballot {ballot} is already pending as conflict #{known.Id}.")),
-            };
+            (ballotLink, ballotPart) = AgainstConflict(known, $"Ballot {ballot}", plural: false,
+                $"Ballot {ballot} differs from the approved {current.Value}; a conflict is opened and {current.Value} stays approved.");
         }
 
         var conflictParts = new[] { detailsPart, ballotLink.IsConflict ? ballotPart : null }.OfType<Part>().ToList();
@@ -138,6 +124,19 @@ public static class Classifier
         var message = string.Join(" ", new[] { detailsPart?.Message, ballotPart.Message }.OfType<string>());
         return Verdict(row, n, outcome, reason, message, ballotLink, details);
     }
+
+    /// <summary>
+    /// Rules 6 and 7 for either subject: no matching conflict opens one; a matching conflict
+    /// is linked to, as pending or, once rejected, as never reopening.
+    /// </summary>
+    private static (Link, Part) AgainstConflict(KnownConflict? known, string value, bool plural, string opens) => known switch
+    {
+        null => (Link.NewConflict, new Part(ReasonCode.DiffersFromApproved, opens)),
+        { Decision: Decision.Reject } => (Link.ToConflict(known.Id), new Part(ReasonCode.PreviouslyRejected,
+            $"{value} {(plural ? "were" : "was")} already rejected in conflict #{known.Id}; it does not reopen.")),
+        _ => (Link.ToConflict(known.Id), new Part(ReasonCode.PendingConflict,
+            $"{value} {(plural ? "are" : "is")} already pending as conflict #{known.Id}.")),
+    };
 
     private sealed record Part(ReasonCode Reason, string Message);
 
