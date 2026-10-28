@@ -24,8 +24,8 @@ describe('Decision pane', () => {
 
   let harness: RouterTestingHarness;
 
-  async function open(body: ConflictDto, list = [listItem({ id: body.id })]): Promise<HTMLElement> {
-    harness = await RouterTestingHarness.create(`/review/${body.id}`);
+  async function open(body: ConflictDto, list = [listItem({ id: body.id })], query = ''): Promise<HTMLElement> {
+    harness = await RouterTestingHarness.create(`/review/${body.id}${query}`);
     TestBed.tick();
     http.expectOne((r) => r.url === '/api/conflicts').flush(page(list));
     http.expectOne(`/api/conflicts/${body.id}`).flush(body);
@@ -189,5 +189,18 @@ describe('Decision pane', () => {
     expect(membership).toContain('No longer counted (outside membership on the new date): MNE');
     expect(membership).toContain('Conflicts opened: #12');
     expect(pane.querySelector<HTMLAnchorElement>('[data-testid="membership"] a')?.getAttribute('href')).toBe('/review/12');
+  });
+
+  it('finds the next pending conflict from the API when the list shows decided ones', async () => {
+    const decided = conflict({ decision: accepted });
+    const pane = await open(decided, [listItem({ id: 7, decision: 'accept' })], '?state=decided');
+
+    button(pane, 'Next conflict').click();
+    TestBed.tick();
+    const request = http.expectOne((r) => r.url === '/api/conflicts' && r.params.get('state') === 'pending');
+    expect(request.request.params.get('pageSize')).toBe('2');
+    request.flush(page([listItem({ id: 9 })]));
+
+    await vi.waitFor(() => expect(TestBed.inject(Router).url).toBe('/review/9?state=pending'));
   });
 });

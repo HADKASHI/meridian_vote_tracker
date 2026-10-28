@@ -6,7 +6,7 @@ import { MatInputModule } from '@angular/material/input';
 import { Router, RouterLink } from '@angular/router';
 import { getConflictResource } from '../../api/conflicts/conflicts.resource';
 import { ConflictsService } from '../../api/conflicts/conflicts.service';
-import { AlreadyDecidedProblem, ConflictDecisionDto, ConflictDto, ConflictValueDto, Decision } from '../../api/model';
+import { AlreadyDecidedProblem, ConflictDecisionDto, ConflictDto, ConflictFilter, ConflictValueDto, Decision } from '../../api/model';
 import { ConflictCard } from '../../shared/problem/conflict-card';
 import { ProblemBanner } from '../../shared/problem/problem-banner';
 import { isProblem, Problem, ProblemType, toProblem } from '../../shared/problem/problem';
@@ -250,11 +250,19 @@ export class ConflictPage {
   protected next(): void {
     const id = Number(this.conflictId());
     const next = this.inbox.nextPending(this.order() ?? this.inbox.orderAfter(id), id);
-    if (!next) {
+    if (next) {
+      void this.router.navigate(['/review', next.id], { queryParams: this.inbox.queryParams() });
+    } else if (this.inbox.filter() === ConflictFilter.pending && this.inbox.total() <= this.inbox.items().length) {
       this.noneLeft.set(true);
-      return;
+    } else {
+      // The list shows decided conflicts, or not all pending ones: ask for the first pending one.
+      const pending = { ...this.inbox.queryParams(), state: ConflictFilter.pending };
+      this.conflicts.listConflicts({ ...pending, pageSize: 2 }).subscribe((page) => {
+        const first = page.items.find((item) => item.id !== id);
+        if (first) void this.router.navigate(['/review', first.id], { queryParams: pending });
+        else this.noneLeft.set(true);
+      });
     }
-    void this.router.navigate(['/review', next.id], { queryParams: this.inbox.queryParams() });
   }
 
   private afterDecision(): void {
