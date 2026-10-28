@@ -47,3 +47,5 @@ A locked build plan for the KPMG "Meridian Vote Tracker" home assignment (Senior
 - **Bonus: PDF extraction (section 8)**: Document Intelligence vs LLM vs both, validation against printed totals, the extraction item in the Review inbox, retries and failure surfacing. In scope as a last, optional phase; the Review inbox should already allow other item kinds.
 
 ## Out of scope
+
+- [Decide what AI tooling ships with the submission](issues/23-shipped-ai-tooling.md): which skills, `.scratch/` and `.claude/sandbox/` ship, and how AI_USAGE.md tells it. It can only be judged after development, so it is decided in the build's finishing pass, not on this map.
