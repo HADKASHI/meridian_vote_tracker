@@ -694,6 +694,7 @@ namespace Meridian.Data.Migrations
 
                     b.Property<int>("Attempts")
                         .HasColumnType("integer")
+                        .HasDefaultValue(0)
                         .HasColumnName("attempts");
 
                     b.Property<DateTimeOffset>("CreatedAt")
@@ -725,6 +726,7 @@ namespace Meridian.Data.Migrations
 
                     b.Property<int>("RowsRead")
                         .HasColumnType("integer")
+                        .HasDefaultValue(0)
                         .HasColumnName("rows_read");
 
                     b.Property<long?>("SnapshotId")
@@ -746,6 +748,7 @@ namespace Meridian.Data.Migrations
 
                     b.Property<int>("VotesDone")
                         .HasColumnType("integer")
+                        .HasDefaultValue(0)
                         .HasColumnName("votes_done");
 
                     b.Property<int?>("VotesTotal")

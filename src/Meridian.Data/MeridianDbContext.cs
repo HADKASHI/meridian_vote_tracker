@@ -405,6 +405,9 @@ public sealed class MeridianDbContext(DbContextOptions<MeridianDbContext> option
             e.HasIndex(x => new { x.Kind, x.Id }).HasFilter("state = 'queued'").HasDatabaseName("ix_job_queued");
             e.HasIndex(x => x.HeartbeatAt).HasFilter("state = 'running'").HasDatabaseName("ix_job_running_heartbeat");
             e.Property(x => x.CreatedAt).HasDefaultValueSql("now()");
+            // Defaults for inserts written in SQL; EF always sends its own values.
+            foreach (var counter in new[] { nameof(Job.RowsRead), nameof(Job.VotesDone), nameof(Job.Attempts) })
+                e.Property<int>(counter).HasDefaultValue(0).ValueGeneratedNever();
         });
     }
 
