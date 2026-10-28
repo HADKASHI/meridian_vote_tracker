@@ -23,6 +23,8 @@ const none = {
   publicationId: null,
   quarter: null,
   reason: null,
+  decidedBy: null,
+  supersedesPublicationId: null,
 } satisfies Partial<TimelineEventDto>;
 
 function event(historyId: number, fields: Partial<TimelineEventDto>): TimelineEventDto {
@@ -132,9 +134,10 @@ describe('describeEvent', () => {
           subject: 'ballot',
           stateCode: 'BRA',
           decision: 'accept',
+          decidedBy: 'dana',
         }),
       ),
-    ).toBe('Decision to accept conflict #9 not applied: it was already decided');
+    ).toBe('Decision to accept conflict #9 not applied: already decided by dana');
     expect(describeEvent(event(8, { kind: 'snapshot', snapshotId: 2, snapshotName: 'Q1' }))).toBe(
       'Used in snapshot “Q1”',
     );
@@ -145,9 +148,10 @@ describe('describeEvent', () => {
           snapshotName: 'Q1',
           quarter: '2024-Q1',
           reason: 'Fixed data',
+          supersedesPublicationId: 41,
         }),
       ),
-    ).toBe('Snapshot “Q1” published for 2024-Q1, replacing the earlier publication: Fixed data');
+    ).toBe('Snapshot “Q1” published for 2024-Q1, replacing publication #41: Fixed data');
   });
 });
 

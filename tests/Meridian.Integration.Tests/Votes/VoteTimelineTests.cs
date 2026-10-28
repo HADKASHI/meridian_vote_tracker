@@ -95,8 +95,9 @@ public sealed class VoteTimelineTests(PostgresFixture postgres, AzuriteFixture a
              decided.GetProperty("comment").GetString(), decided.GetProperty("actor").GetString(), decided.GetProperty("stateCode").GetString()));
 
         var lost = byKind["decision_not_applied"].Single();
-        Assert.Equal((ballot.Id, "reject", "omar"),
-            (lost.GetProperty("conflictId").GetInt64(), lost.GetProperty("decision").GetString(), lost.GetProperty("actor").GetString()));
+        Assert.Equal((ballot.Id, "reject", "omar", "dana"),
+            (lost.GetProperty("conflictId").GetInt64(), lost.GetProperty("decision").GetString(), lost.GetProperty("actor").GetString(),
+             lost.GetProperty("decidedBy").GetString()));
 
         var snap = byKind["snapshot"].Single();
         Assert.Equal((snapshot.Id, "2024-Q1 index", "omar"),
@@ -106,7 +107,9 @@ public sealed class VoteTimelineTests(PostgresFixture postgres, AzuriteFixture a
         Assert.Equal(("2024-Q1", "Republished after review", snapshot.Id, "2024-Q1 index"),
             (publications[0].GetProperty("quarter").GetString(), publications[0].GetProperty("reason").GetString(),
              publications[0].GetProperty("snapshotId").GetInt64(), publications[0].GetProperty("snapshotName").GetString()));
+        Assert.Equal(publications[1].GetProperty("publicationId").GetInt64(), publications[0].GetProperty("supersedesPublicationId").GetInt64());
         Assert.Equal(JsonValueKind.Null, publications[1].GetProperty("reason").ValueKind);
+        Assert.Equal(JsonValueKind.Null, publications[1].GetProperty("supersedesPublicationId").ValueKind);
         Assert.All(events, e => Assert.Equal(JsonValueKind.String, e.GetProperty("at").ValueKind));
     }
 

@@ -3690,7 +3690,9 @@
           "snapshotName",
           "publicationId",
           "quarter",
-          "reason"
+          "reason",
+          "decidedBy",
+          "supersedesPublicationId"
         ],
         "type": "object",
         "properties": {
@@ -3831,6 +3833,19 @@
               "null",
               "string"
             ]
+          },
+          "decidedBy": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "supersedesPublicationId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
           }
         }
       },

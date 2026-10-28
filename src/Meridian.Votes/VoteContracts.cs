@@ -27,12 +27,15 @@ public sealed record TimelineValueDto(Ballot? Ballot, int? Session, DateOnly? Vo
 
 /// <summary>One event on a vote's timeline. Which fields are set depends on <see cref="Kind"/>.</summary>
 /// <param name="From">For revisions: the previous value for the same subject, computed by the API.</param>
+/// <param name="DecidedBy">For a decision not applied: who made the decision that won.</param>
+/// <param name="SupersedesPublicationId">For a publication: the publication of the same quarter it replaced.</param>
 public sealed record TimelineEventDto(
     long HistoryId, TimelineEventKind Kind, string Actor, DateTimeOffset At,
     string? StateCode, TimelineValueDto? From, TimelineValueDto? To, OriginDto? Origin,
     long? ImportId, string? FileName, OutcomeCountsDto? Counts,
     long? ConflictId, ConflictSubject? Subject, Decision? Decision, string? Comment,
-    long? SnapshotId, string? SnapshotName, long? PublicationId, string? Quarter, string? Reason);
+    long? SnapshotId, string? SnapshotName, long? PublicationId, string? Quarter, string? Reason,
+    string? DecidedBy, long? SupersedesPublicationId);
 
 /// <param name="NextBefore">Pass as <c>before</c> to read the next (older) page; null on the last page.</param>
 public sealed record TimelinePageDto(IReadOnlyList<TimelineEventDto> Items, long? NextBefore);

@@ -36,7 +36,7 @@ public static class VoteTimeline
     private static TimelineEventDto ToDto(VoteTimelineEvent row, JsonElement d, Lookups lookups)
     {
         var e = new TimelineEventDto(row.HistoryId, KindOf(row.Kind), row.Actor, row.At,
-            null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+            null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         switch (e.Kind)
         {
             case TimelineEventKind.Import:
@@ -98,6 +98,7 @@ public static class VoteTimeline
                     ConflictId = attempted, Subject = Vocabulary<ConflictSubject>(d.GetProperty("subject").GetString()!),
                     StateCode = lookups.ConflictStates.GetValueOrDefault(attempted),
                     Decision = Vocabulary<Decision>(d.GetProperty("attempted").GetString()!),
+                    DecidedBy = lookups.Winners.GetValueOrDefault(attempted),
                 };
             case TimelineEventKind.Snapshot:
                 return e with { SnapshotId = d.GetProperty("snapshotId").GetInt64(), SnapshotName = d.GetProperty("name").GetString() };
@@ -108,6 +109,7 @@ public static class VoteTimeline
                     PublicationId = d.GetProperty("publicationId").GetInt64(), SnapshotId = snapshotId,
                     SnapshotName = lookups.SnapshotNames.GetValueOrDefault(snapshotId),
                     Quarter = d.GetProperty("quarter").GetString(), Reason = d.GetProperty("reason").GetString(),
+                    SupersedesPublicationId = LongOf(d, "supersedesPublicationId"),
                 };
             default:
                 throw new InvalidOperationException($"Unknown timeline event kind {row.Kind}.");
@@ -139,7 +141,7 @@ public static class VoteTimeline
     /// <param name="Previous">For each revision on the page, the value it replaced; absent for the first of its subject.</param>
     private sealed record Lookups(
         Origins Origins, Dictionary<long, string> FileNames, Dictionary<long, string?> ConflictStates,
-        Dictionary<long, string> SnapshotNames, Dictionary<long, TimelineValueDto> Previous)
+        Dictionary<long, string> SnapshotNames, Dictionary<long, TimelineValueDto> Previous, Dictionary<long, string> Winners)
     {
         public static async Task<Lookups> LoadAsync(MeridianDbContext db, long voteId,
             List<(VoteTimelineEvent Row, JsonElement Detail)> events, CancellationToken ct)
@@ -152,13 +154,16 @@ public static class VoteTimeline
             var importIds = Ids("conflict_opened", "importId");
             var conflictIds = Ids("conflict_decided", "conflictId").Union(Ids("decision_not_applied", "conflictId")).ToList();
             var snapshotIds = Ids("publication", "snapshotId");
+            var lostIds = Ids("decision_not_applied", "conflictId");
 
             return new Lookups(
                 await Origins.LoadAsync(db, revisions, ct),
                 await db.Imports.Where(i => importIds.Contains(i.Id)).ToDictionaryAsync(i => i.Id, i => i.FileName, ct),
                 await db.Conflicts.Where(c => conflictIds.Contains(c.Id)).ToDictionaryAsync(c => c.Id, c => c.StateCode, ct),
                 await db.Snapshots.Where(s => snapshotIds.Contains(s.Id)).ToDictionaryAsync(s => s.Id, s => s.Name, ct),
-                await PreviousAsync(db, voteId, events, ct));
+                await PreviousAsync(db, voteId, events, ct),
+                await db.ConflictDecisions.Where(w => lostIds.Contains(w.ConflictId))
+                    .ToDictionaryAsync(w => w.ConflictId, w => w.DecidedBy, ct));
         }
 
         /// <summary>

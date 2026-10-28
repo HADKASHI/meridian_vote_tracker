@@ -53,12 +53,12 @@ export function describeEvent(event: TimelineEventDto): string {
     case 'conflict_decided':
       return `Conflict #${event.conflictId} on ${subjectLabel(event)} ${event.decision === 'accept' ? 'accepted' : 'rejected (current value kept)'}`;
     case 'decision_not_applied':
-      return `Decision to ${event.decision} conflict #${event.conflictId} not applied: it was already decided`;
+      return `Decision to ${event.decision} conflict #${event.conflictId} not applied: already decided by ${event.decidedBy}`;
     case 'snapshot':
       return `Used in snapshot “${event.snapshotName}”`;
     case 'publication':
-      return event.reason
-        ? `Snapshot “${event.snapshotName}” published for ${event.quarter}, replacing the earlier publication: ${event.reason}`
+      return event.supersedesPublicationId
+        ? `Snapshot “${event.snapshotName}” published for ${event.quarter}, replacing publication #${event.supersedesPublicationId}: ${event.reason}`
         : `Snapshot “${event.snapshotName}” published for ${event.quarter}`;
   }
 }
