@@ -1,10 +1,13 @@
+using Meridian.Data;
 using Meridian.Domain;
 using Meridian.Platform.Contracts;
 using Meridian.Platform.Http;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Meridian.Imports;
@@ -12,7 +15,15 @@ namespace Meridian.Imports;
 /// <summary>ING: upload, the import job, and the import report. Owned by slice 1.</summary>
 public static class ImportsModule
 {
-    public static IServiceCollection AddImportsModule(this IServiceCollection services) => services;
+    public static IServiceCollection AddImportsModule(this IServiceCollection services)
+    {
+        services.AddSingleton(provider => new UploadLimit(
+            provider.GetRequiredService<IConfiguration>().GetValue("Imports:MaxUploadBytes", 200L * 1024 * 1024)));
+        // The form reader buffers the file before the handler runs; the endpoint's own limit decides.
+        services.AddOptions<FormOptions>().Configure<UploadLimit>((form, limit) =>
+            form.MultipartBodyLengthLimit = limit.MaxRequestBodySize!.Value + 64 * 1024);
+        return services;
+    }
 
     /// <summary>The worker side: the import job handler goes here (<c>services.AddJobHandler&lt;…&gt;()</c>).</summary>
     public static IServiceCollection AddImportsJobs(this IServiceCollection services) => services;
@@ -21,24 +32,27 @@ public static class ImportsModule
     {
         var imports = api.MapGroup("/imports").WithTags("Imports");
 
-        imports.MapPost("", Results<Accepted<ImportCreatedDto>, ProblemHttpResult> (IFormFile file) =>
-                EndpointConventions.NotImplemented())
+        imports.MapPost("", Upload.HandleAsync)
             .WithName("uploadImport")
             .WithSummary("Upload an export file; its import runs as a job.")
             .DisableAntiforgery()
+            .WithMetadata(api.ServiceProvider.GetRequiredService<UploadLimit>())
             .ProducesProblems(StatusCodes.Status400BadRequest, StatusCodes.Status413PayloadTooLarge)
-            .ForAnalysts().Stub();
+            .ForAnalysts();
 
-        imports.MapGet("", Results<Ok<PageDto<ImportSummaryDto>>, ProblemHttpResult> (int page = 1, int pageSize = 50) =>
-                EndpointConventions.NotImplemented())
+        imports.MapGet("", async Task<Ok<PageDto<ImportSummaryDto>>> (MeridianDbContext db, CancellationToken ct,
+                    int page = 1, int pageSize = 50) =>
+                TypedResults.Ok(await ImportQueries.ListAsync(db, page, pageSize, ct)))
             .WithName("listImports")
-            .ForAnalysts().Stub();
+            .WithSummary("Every import, newest first, with its job and counts per outcome.")
+            .ForAnalysts();
 
-        imports.MapGet("/{importId:long}", Results<Ok<ImportDto>, ProblemHttpResult> (long importId) =>
-                EndpointConventions.NotImplemented())
+        imports.MapGet("/{importId:long}", async Task<Results<Ok<ImportDto>, NotFound>> (
+                    long importId, MeridianDbContext db, CancellationToken ct) =>
+                await ImportQueries.GetAsync(db, importId, ct) is { } import ? TypedResults.Ok(import) : TypedResults.NotFound())
             .WithName("getImport")
             .ProducesProblems(StatusCodes.Status404NotFound)
-            .ForAnalysts().Stub();
+            .ForAnalysts();
 
         imports.MapGet("/{importId:long}/rows", Results<Ok<PageDto<ImportRowDto>>, ProblemHttpResult> (
                     long importId, Outcome? outcome, long? voteId, int page = 1, int pageSize = 100) =>

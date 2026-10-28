@@ -8,7 +8,8 @@ using Microsoft.Extensions.Logging;
 namespace Meridian.Integration.Tests.Infrastructure;
 
 /// <summary>The API in process, against its own database copied from the template and Azurite.</summary>
-public sealed class ApiFactory(string connectionString, string blobConnectionString) : WebApplicationFactory<Program>
+public sealed class ApiFactory(string connectionString, string blobConnectionString,
+    IReadOnlyDictionary<string, string?>? settings = null) : WebApplicationFactory<Program>
 {
     public const string UnreachableDatabase = "Host=127.0.0.1;Port=1;Database=none;Username=x;Password=x;Timeout=1";
 
@@ -16,6 +17,16 @@ public sealed class ApiFactory(string connectionString, string blobConnectionStr
         new(await postgres.CreateDatabaseAsync(), azurite.ConnectionString);
 
     public string ConnectionString => connectionString;
+
+    /// <summary>
+    /// Each API gets its own container: every test database numbers its imports from the
+    /// same sequence, so their blob names would collide in the shared Azurite.
+    /// </summary>
+    public string BlobContainer { get; } = $"imports-{Guid.NewGuid():N}";
+
+    /// <summary>Another API on the same database and storage, with some settings replaced.</summary>
+    public ApiFactory WithSettings(Dictionary<string, string?> overrides) =>
+        new(connectionString, blobConnectionString, new Dictionary<string, string?>(overrides) { ["Blob:Container"] = BlobContainer });
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -25,8 +36,10 @@ public sealed class ApiFactory(string connectionString, string blobConnectionStr
         {
             ["ConnectionStrings:Meridian"] = connectionString,
             ["Blob:ConnectionString"] = blobConnectionString,
-            ["Blob:Container"] = "imports",
+            ["Blob:Container"] = BlobContainer,
         }));
+        if (settings is not null)
+            builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(settings));
     }
 
     /// <summary>A client calling as <paramref name="userId"/>, or as nobody when it is null.</summary>

@@ -148,9 +148,6 @@
           "content": {
             "multipart/form-data": {
               "schema": {
-                "required": [
-                  "file"
-                ],
                 "type": "object",
                 "properties": {
                   "file": {
@@ -209,6 +206,7 @@
         "tags": [
           "Imports"
         ],
+        "summary": "Every import, newest first, with its job and counts per outcome.",
         "operationId": "listImports",
         "parameters": [
           {

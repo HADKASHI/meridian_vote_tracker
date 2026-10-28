@@ -4,12 +4,12 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
 Requirements: ING-01, ING-02, ING-15 (stories 9, 10, 11, 12, 18, 49)
 
-- [ ] Uploading a file returns 202 with ids; the blob holds the exact bytes and the import's SHA-256 matches them
-- [ ] The import and its job are visible through `GET /api/imports/{importId}` and in `GET /api/imports`, with the job queued and its place in queue
-- [ ] A missing file is a validation problem; an unknown import is 404
-- [ ] The job stores the upload request's trace parent
-- [ ] The Angular imports list uploads a file and opens its report, which polls while the job is active and stops once it is done or failed (Vitest)
+- [x] Uploading a file returns 202 with ids; the blob holds the exact bytes and the import's SHA-256 matches them
+- [x] The import and its job are visible through `GET /api/imports/{importId}` and in `GET /api/imports`, with the job queued and its place in queue
+- [x] A missing file is a validation problem; an unknown import is 404
+- [x] The job stores the upload request's trace parent
+- [x] The Angular imports list uploads a file and opens its report, which polls while the job is active and stops once it is done or failed (Vitest)

@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { listJobsResource } from '../../api/jobs/jobs.resource';
 import { JobDto, JobState } from '../../api/model';
 import { pollWhile } from '../../shared/http/poll';
+import { jobProgress } from '../../shared/ui/job-progress';
 import { JobStateBadge } from '../../shared/ui/job-state-badge';
 
 /** Every job: kind, state, place in queue, progress and failure reason. */
@@ -67,23 +68,5 @@ export class JobsPage {
 
   protected progress(job: JobDto): string {
     return jobProgress(job);
-  }
-}
-
-/** The words a job's progress is shown in, everywhere. */
-export function jobProgress(job: JobDto): string {
-  switch (job.state) {
-    case JobState.queued:
-      return job.placeInQueue === 1 ? 'Next in queue' : `${(job.placeInQueue ?? 1) - 1} ahead in queue`;
-    case JobState.running:
-      return job.votesTotal
-        ? `${job.votesDone.toLocaleString('en')} of ${job.votesTotal.toLocaleString('en')} votes`
-        : `${job.rowsRead.toLocaleString('en')} rows read`;
-    case JobState.done:
-      return job.votesTotal ? `${job.votesTotal.toLocaleString('en')} votes` : 'Done';
-    case JobState.failed:
-      return job.votesTotal
-        ? `Failed after ${job.votesDone.toLocaleString('en')} of ${job.votesTotal.toLocaleString('en')} votes: ${job.lastError ?? ''}`
-        : `Failed: ${job.lastError ?? ''}`;
   }
 }

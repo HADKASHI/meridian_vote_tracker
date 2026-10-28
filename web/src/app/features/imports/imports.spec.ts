@@ -1,0 +1,113 @@
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { TestBed } from '@angular/core/testing';
+import { provideRouter, Router, withComponentInputBinding } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
+import { ImportDto, JobDto, PageDtoOfImportSummaryDto } from '../../api/model';
+import routes from './imports.routes';
+
+const job = (state: JobDto['state'], extra: Partial<JobDto> = {}): JobDto => ({
+  id: 3, kind: 'import', state, importId: 7, snapshotId: null, placeInQueue: state === 'queued' ? 1 : null,
+  rowsRead: 0, votesDone: 0, votesTotal: null, attempts: state === 'queued' ? 0 : 1, lastError: null,
+  traceId: null, startedBy: 'dana', createdAt: '2024-01-01T00:00:00Z', startedAt: null, finishedAt: null, ...extra,
+});
+const counts = { new: 0, unchanged: 0, duplicate: 0, invalid: 0, contradiction: 0, conflict: 0 };
+const importDto = (state: JobDto['state'], extra: Partial<JobDto> = {}): ImportDto => ({
+  id: 7, fileName: 'q1.csv', sha256: 'ab'.repeat(32), sizeBytes: 120, uploadedBy: 'dana',
+  uploadedAt: '2024-01-01T00:00:00Z', job: job(state, extra), parse: null, counts, warnings: [], conflictsOpened: [],
+});
+
+describe('imports feature', () => {
+  let http: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([{ path: 'imports', children: routes }], withComponentInputBinding()),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+      ],
+    });
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => vi.useRealTimers());
+
+  it('lists imports with uploader, job state and counts', async () => {
+    const harness = await RouterTestingHarness.create('/imports');
+    const page: PageDtoOfImportSummaryDto = {
+      items: [{ id: 7, fileName: 'q1.csv', uploadedBy: 'dana', uploadedAt: '2024-01-01T00:00:00Z', sizeBytes: 120,
+        job: job('done'), rejectedReason: null, counts: { ...counts, new: 5, invalid: 2 } }],
+      total: 1, page: 1, pageSize: 50,
+    };
+    http.expectOne((r) => r.url === '/api/imports').flush(page);
+    await harness.fixture.whenStable();
+
+    const text = harness.routeNativeElement!.textContent!;
+    expect(text).toContain('q1.csv');
+    expect(text).toContain('dana');
+    expect(text).toContain('done');
+    expect(text).toContain('5 new');
+    expect(text).toContain('2 invalid');
+  });
+
+  it('uploads the chosen file and opens its report', async () => {
+    const harness = await RouterTestingHarness.create('/imports');
+    http.expectOne((r) => r.url === '/api/imports' && r.method === 'GET')
+      .flush({ items: [], total: 0, page: 1, pageSize: 50 });
+    await harness.fixture.whenStable();
+
+    const input = harness.routeNativeElement!.querySelector<HTMLInputElement>('input[type=file]')!;
+    const file = new File(['a,b\n'], 'q1.csv', { type: 'text/csv' });
+    Object.defineProperty(input, 'files', { value: [file] });
+    input.dispatchEvent(new Event('change'));
+
+    const upload = http.expectOne((r) => r.url === '/api/imports' && r.method === 'POST');
+    expect((upload.request.body as FormData).get('file')).toBe(file);
+    upload.flush({ importId: 7, jobId: 3 });
+
+    await vi.waitFor(() => expect(TestBed.inject(Router).url).toBe('/imports/7'));
+  });
+
+  it('shows an upload refused by the API on the page', async () => {
+    const harness = await RouterTestingHarness.create('/imports');
+    http.expectOne((r) => r.method === 'GET').flush({ items: [], total: 0, page: 1, pageSize: 50 });
+    await harness.fixture.whenStable();
+
+    const input = harness.routeNativeElement!.querySelector<HTMLInputElement>('input[type=file]')!;
+    Object.defineProperty(input, 'files', { value: [new File(['x'], 'big.csv')] });
+    input.dispatchEvent(new Event('change'));
+    http.expectOne((r) => r.method === 'POST').flush(
+      { type: 'payload-too-large', title: 'The file is too large', status: 413, detail: 'Files up to 200 MB can be imported.', traceId: 't1' },
+      { status: 413, statusText: 'Payload Too Large' },
+    );
+    await harness.fixture.whenStable();
+
+    expect(harness.routeNativeElement!.textContent).toContain('Files up to 200 MB can be imported.');
+  });
+
+  it('polls the report every second while its job is active, then stops', async () => {
+    const harness = await RouterTestingHarness.create('/imports/7');
+    vi.useFakeTimers();
+    http.expectOne('/api/imports/7').flush(importDto('queued'));
+    TestBed.tick();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(harness.routeNativeElement!.textContent).toContain('Next in queue');
+    expect(harness.routeNativeElement!.querySelector('h1')!.textContent).toBe('Import report');
+
+    await vi.advanceTimersByTimeAsync(1000);
+    TestBed.tick();
+    http.expectOne('/api/imports/7').flush(importDto('running', { votesDone: 3, votesTotal: 40 }));
+    TestBed.tick();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(harness.routeNativeElement!.textContent).toContain('3 of 40 votes');
+
+    await vi.advanceTimersByTimeAsync(1000);
+    TestBed.tick();
+    http.expectOne('/api/imports/7').flush(importDto('done', { votesDone: 40, votesTotal: 40 }));
+    TestBed.tick();
+    await vi.advanceTimersByTimeAsync(5000);
+    TestBed.tick();
+    http.expectNone('/api/imports/7');
+  });
+});
