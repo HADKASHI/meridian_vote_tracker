@@ -1,16 +1,18 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { MatTableModule } from '@angular/material/table';
+import { RouterLink } from '@angular/router';
 import { JobDto, JobState, SnapshotResultDto } from '../../api/model';
 import { getSnapshotResource } from '../../api/snapshots/snapshots.resource';
 import { pollWhile } from '../../shared/http/poll';
 import { JobStateBadge } from '../../shared/ui/job-state-badge';
+import { BreakdownPanel } from './breakdown-panel';
 import { describeStoredSelection, formatScore } from './selection';
 
 /** SNP-03: one snapshot, followed while its job runs, then its ranking with each score's basis. */
 @Component({
   selector: 'app-snapshot-page',
-  imports: [DatePipe, MatTableModule, JobStateBadge],
+  imports: [DatePipe, MatTableModule, RouterLink, JobStateBadge, BreakdownPanel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (snapshot.hasValue() && snapshot.value(); as s) {
@@ -44,7 +46,9 @@ import { describeStoredSelection, formatScore } from './selection';
           </ng-container>
           <ng-container matColumnDef="state">
             <th mat-header-cell *matHeaderCellDef>Member state</th>
-            <td mat-cell *matCellDef="let r">{{ r.stateName }} ({{ r.stateCode }})</td>
+            <td mat-cell *matCellDef="let r">
+              <a [routerLink]="[]" [queryParams]="{ state: r.stateCode }">{{ r.stateName }} ({{ r.stateCode }})</a>
+            </td>
           </ng-container>
           <ng-container matColumnDef="score">
             <th mat-header-cell *matHeaderCellDef>Score</th>
@@ -55,8 +59,11 @@ import { describeStoredSelection, formatScore } from './selection';
             <td mat-cell *matCellDef="let r">{{ basis(r) }}</td>
           </ng-container>
           <tr mat-header-row *matHeaderRowDef="columns"></tr>
-          <tr mat-row *matRowDef="let row; columns: columns"></tr>
+          <tr mat-row *matRowDef="let row; columns: columns" [class.selected]="row.stateCode === state()"></tr>
         </table>
+        @if (state(); as code) {
+          <app-breakdown-panel [snapshotId]="s.id" [stateCode]="code" />
+        }
       }
     } @else {
       <h1>Snapshot</h1>
@@ -77,6 +84,9 @@ import { describeStoredSelection, formatScore } from './selection';
       border-radius: 8px;
       padding: 8px 16px;
     }
+    .selected {
+      background: var(--mat-sys-surface-container-high);
+    }
     .warnings h2 {
       font-size: 1em;
       margin-block: 4px;
@@ -85,6 +95,8 @@ import { describeStoredSelection, formatScore } from './selection';
 })
 export class SnapshotPage {
   readonly snapshotId = input.required<string>();
+  /** The member state whose breakdown is open, from <code>?state=</code>. */
+  readonly state = input<string>();
 
   protected readonly columns = ['rank', 'state', 'score', 'basis'];
   protected readonly snapshot = getSnapshotResource(computed(() => Number(this.snapshotId())));

@@ -35,6 +35,47 @@ internal static class SnapshotQueries
             await PublicationQueries.ForSnapshotsAsync(db, [snapshotId], ct));
     }
 
+    /// <summary>A page of snapshots, newest first; the vote count is null until the job is done.</summary>
+    public static async Task<PageDto<SnapshotSummaryDto>> ListAsync(MeridianDbContext db, int page, int pageSize, CancellationToken ct)
+    {
+        var total = await db.Snapshots.CountAsync(ct);
+        var rows = await db.Snapshots.AsNoTracking().OrderByDescending(s => s.Id).Skip((page - 1) * pageSize).Take(pageSize)
+            .Select(s => new { s.Id, s.Name, s.CreatedBy, s.RecordedAt, Votes = db.SnapshotVotes.Count(v => v.SnapshotId == s.Id) })
+            .ToListAsync(ct);
+        var ids = rows.Select(r => r.Id).ToList();
+        var jobs = (await JobQueries.LoadAsync(db, db.Jobs.Where(j => j.SnapshotId != null && ids.Contains(j.SnapshotId.Value)), ct))
+            .ToDictionary(j => j.SnapshotId!.Value);
+        var publications = (await PublicationQueries.ForSnapshotsAsync(db, ids, ct)).ToLookup(p => p.SnapshotId);
+
+        return new PageDto<SnapshotSummaryDto>(rows.Select(r => new SnapshotSummaryDto(
+                r.Id, r.Name, r.CreatedBy, r.RecordedAt, jobs[r.Id].State == JobState.Done ? r.Votes : null, jobs[r.Id],
+                publications[r.Id].ToList()))
+            .ToList(), total, page, pageSize);
+    }
+
+    /// <summary>One state's result and a line per snapshot vote, with the revisions the snapshot stored.</summary>
+    public static async Task<SnapshotBreakdownDto?> BreakdownAsync(MeridianDbContext db, long snapshotId, string stateCode,
+        CancellationToken ct)
+    {
+        var result = (await ResultsAsync(db, snapshotId, stateCode, ct)).SingleOrDefault();
+        if (result is null) return null;
+
+        var lines = await (
+                from l in db.SnapshotLines
+                where l.SnapshotId == snapshotId && l.StateCode == stateCode
+                join sv in db.SnapshotVotes on new { l.SnapshotId, l.VoteId } equals new { sv.SnapshotId, sv.VoteId }
+                join v in db.Votes on l.VoteId equals v.Id
+                join d in db.VoteDetailsRevisions on sv.DetailsRevisionId equals d.Id
+                join p in db.PositionRevisions on sv.PositionRevisionId equals p.Id
+                join c in db.CountryVoteRevisions on l.CountryVoteRevisionId equals c.Id into ballots
+                from c in ballots.DefaultIfEmpty()
+                orderby d.VoteDate, v.AssemblyVoteId
+                select new SnapshotLineDto(new VoteRefDto(v.Id, v.AssemblyVoteId), d.VoteDate, d.Title, p.Stance, p.Weight,
+                    c != null ? c.Ballot : null, l.Category, l.CountryVoteRevisionId))
+            .AsNoTracking().ToListAsync(ct);
+        return new SnapshotBreakdownDto(result, lines);
+    }
+
     /// <summary>Ranked states by rank then code, then the n/a states by code; or just one state.</summary>
     public static async Task<List<SnapshotResultDto>> ResultsAsync(MeridianDbContext db, long snapshotId, string? stateCode,
         CancellationToken ct)

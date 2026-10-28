@@ -62,3 +62,15 @@ export function describeStoredSelection(selection: SnapshotSelectionDto): string
 export function formatScore(score: number | null): string {
   return score === null ? 'n/a' : score.toFixed(1);
 }
+
+/** A line's category in the glossary's words. */
+export function categoryLabel(category: string): string {
+  return category.replace('_', ' ').replace('non member', 'non-member');
+}
+
+/** The publication badge: the quarter a snapshot is the official index for, or was. */
+export function publicationBadge(publications: { quarter: string; supersededByPublicationId: number | null }[]): string | null {
+  const current = publications.find((p) => p.supersededByPublicationId === null);
+  if (current) return `Published ${current.quarter}`;
+  return publications.length > 0 ? `Superseded ${publications.map((p) => p.quarter).join(', ')}` : null;
+}

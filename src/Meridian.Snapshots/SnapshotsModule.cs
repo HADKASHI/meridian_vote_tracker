@@ -78,10 +78,11 @@ public static class SnapshotsModule
             .ProducesProblem<NoPositionProblem>(StatusCodes.Status400BadRequest)
             .ForAnalysts();
 
-        snapshots.MapGet("", Results<Ok<PageDto<SnapshotSummaryDto>>, ProblemHttpResult> (int page = 1, int pageSize = 50) =>
-                EndpointConventions.NotImplemented())
+        snapshots.MapGet("", async Task<Results<Ok<PageDto<SnapshotSummaryDto>>, ProblemHttpResult>> (
+                    MeridianDbContext db, CancellationToken ct, int page = 1, int pageSize = 50) =>
+                TypedResults.Ok(await SnapshotQueries.ListAsync(db, Math.Max(page, 1), Math.Clamp(pageSize, 1, 200), ct)))
             .WithName("listSnapshots")
-            .ForAnalysts().Stub();
+            .ForAnalysts();
 
         snapshots.MapGet("/compare", Results<Ok<SnapshotComparisonDto>, ProblemHttpResult> (long a, long b) =>
                 EndpointConventions.NotImplemented())
@@ -99,13 +100,15 @@ public static class SnapshotsModule
             .ProducesProblems(StatusCodes.Status404NotFound)
             .ForAnalysts();
 
-        snapshots.MapGet("/{snapshotId:long}/states/{stateCode}", Results<Ok<SnapshotBreakdownDto>, ProblemHttpResult> (
-                    long snapshotId, string stateCode) =>
-                EndpointConventions.NotImplemented())
+        snapshots.MapGet("/{snapshotId:long}/states/{stateCode}", async Task<Results<Ok<SnapshotBreakdownDto>, ProblemHttpResult>> (
+                    long snapshotId, string stateCode, MeridianDbContext db, CancellationToken ct) =>
+                await SnapshotQueries.BreakdownAsync(db, snapshotId, stateCode.ToUpperInvariant(), ct) is { } breakdown
+                    ? TypedResults.Ok(breakdown)
+                    : NotFound("member state in this snapshot"))
             .WithName("getSnapshotBreakdown")
             .WithSummary("One state's breakdown: every vote with its category and the exact value used.")
             .ProducesProblems(StatusCodes.Status404NotFound)
-            .ForAnalysts().Stub();
+            .ForAnalysts();
 
         snapshots.MapPost("/{snapshotId:long}/publications", Results<Created<PublicationDto>, ProblemHttpResult> (
                     long snapshotId, PublishSnapshotRequest request) =>

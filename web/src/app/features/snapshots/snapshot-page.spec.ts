@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { JobDto, SnapshotDto } from '../../api/model';
+import { JobDto, SnapshotBreakdownDto, SnapshotDto } from '../../api/model';
 import { SnapshotPage } from './snapshot-page';
 
 const job: JobDto = {
@@ -28,13 +28,20 @@ describe('SnapshotPage', () => {
     http = TestBed.inject(HttpTestingController);
   });
 
-  async function open(body: SnapshotDto): Promise<HTMLElement> {
+  async function open(body: SnapshotDto, state?: string): Promise<HTMLElement> {
     const fixture = TestBed.createComponent(SnapshotPage);
     fixture.componentRef.setInput('snapshotId', '42');
+    if (state) fixture.componentRef.setInput('state', state);
     TestBed.tick();
     http.expectOne('/api/snapshots/42').flush(body);
-    await fixture.whenStable();
+    await settle();
     return fixture.nativeElement as HTMLElement;
+  }
+
+  /** Lets responses reach the template; whenStable would wait on requests the test answers later. */
+  async function settle(): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve));
+    TestBed.tick();
   }
 
   it('shows scores to one decimal with their basis, and n/a for nothing countable', async () => {
@@ -58,5 +65,30 @@ describe('SnapshotPage', () => {
 
     expect(page.querySelector('[data-testid="snapshot-job"]')?.textContent).toContain('Failed: MA/2024/041');
     expect(page.querySelector('[data-testid="ranking"]')).toBeNull();
+  });
+
+  it("opens a state's breakdown with each vote's category and the exact value used", async () => {
+    const page = await open(snapshot, 'ARG');
+    http.expectOne('/api/snapshots/42/states/ARG').flush({
+      result: snapshot.results[0],
+      lines: [
+        {
+          vote: { voteId: 1, assemblyVoteId: 'MA/2024/001' }, voteDate: '2024-01-10', title: 'Ocean Treaty',
+          stance: 'yes', weight: 2, ballot: 'y', category: 'match', countryVoteRevisionId: 18,
+        },
+        {
+          vote: { voteId: 2, assemblyVoteId: 'MA/2024/002' }, voteDate: '2024-02-20', title: 'Space Debris',
+          stance: 'no', weight: 1, ballot: null, category: 'no_data', countryVoteRevisionId: null,
+        },
+      ],
+    } satisfies SnapshotBreakdownDto);
+    await settle();
+
+    const rows = [...page.querySelectorAll('[data-testid="breakdown-lines"] tr')].map((r) =>
+      [...r.querySelectorAll('td')].map((c) => c.textContent?.trim()),
+    );
+    expect(rows[1]).toEqual(['MA/2024/001', '2024-01-10', 'Ocean Treaty', 'yes, weight 2', 'Y', 'match', '18']);
+    expect(rows[2]).toEqual(['MA/2024/002', '2024-02-20', 'Space Debris', 'no, weight 1', '–', 'no data', 'none']);
+    expect(page.querySelector('[data-testid="breakdown-result"]')?.textContent).toContain('Score 66.7');
   });
 });

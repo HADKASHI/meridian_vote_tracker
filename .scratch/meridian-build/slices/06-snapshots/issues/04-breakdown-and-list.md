@@ -4,9 +4,9 @@
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The breakdown returns the state's result and one line per snapshot vote, with the details, position and country vote revisions the snapshot stored, not the current ones
-- [ ] An unknown snapshot or a state not in the snapshot answers 404
-- [ ] The list is paged, newest first, with vote count null until calculated and the snapshot's publications
-- [ ] The snapshot page opens a state's breakdown from the ranking; the list page links each snapshot and shows its badge
+- [x] The breakdown returns the state's result and one line per snapshot vote, with the details, position and country vote revisions the snapshot stored, not the current ones
+- [x] An unknown snapshot or a state not in the snapshot answers 404
+- [x] The list is paged, newest first, with vote count null until calculated and the snapshot's publications
+- [x] The snapshot page opens a state's breakdown from the ranking; the list page links each snapshot and shows its badge
