@@ -4,6 +4,7 @@
     <Project Path="src/Meridian.Conflicts/Meridian.Conflicts.csproj" />
     <Project Path="src/Meridian.Data/Meridian.Data.csproj" />
     <Project Path="src/Meridian.Domain/Meridian.Domain.csproj" />
+    <Project Path="src/Meridian.Fixtures/Meridian.Fixtures.csproj" />
     <Project Path="src/Meridian.Imports/Meridian.Imports.csproj" />
     <Project Path="src/Meridian.Platform/Meridian.Platform.csproj" />
     <Project Path="src/Meridian.Positions/Meridian.Positions.csproj" />
