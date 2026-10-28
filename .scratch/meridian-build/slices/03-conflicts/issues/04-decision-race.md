@@ -4,10 +4,10 @@
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A decision on a decided conflict returns 409 `already-decided` whose `decision` is the winner's, and inserts a not-applied attempt with the loser's user and attempted decision (CON-05; stories 57, 58)
-- [ ] The race test releases two decisions on one conflict together with the barrier, 20 rounds, and each round has exactly one 200 and one 409 `already-decided`, one decision record and one not-applied record for the loser
-- [ ] The loser's attempt is listed in the conflict's not-applied attempts
-- [ ] The UI shows the 409 card in place of the Accept / Keep current buttons, with the winner's decision and "your decision was not applied and is on the vote's timeline", and offers Next conflict
-- [ ] Tests: the race test and a sequential 409 test through the API; a Vitest test with `HttpTestingController` that a 409 replaces the buttons with the card
+- [x] A decision on a decided conflict returns 409 `already-decided` whose `decision` is the winner's, and inserts a not-applied attempt with the loser's user and attempted decision (CON-05; stories 57, 58)
+- [x] The race test releases two decisions on one conflict together with the barrier, 20 rounds, and each round has exactly one 200 and one 409 `already-decided`, one decision record and one not-applied record for the loser
+- [x] The loser's attempt is listed in the conflict's not-applied attempts
+- [x] The UI shows the 409 card in place of the Accept / Keep current buttons, with the winner's decision and "your decision was not applied and is on the vote's timeline", and offers Next conflict
+- [x] Tests: the race test and a sequential 409 test through the API; a Vitest test with `HttpTestingController` that a 409 replaces the buttons with the card

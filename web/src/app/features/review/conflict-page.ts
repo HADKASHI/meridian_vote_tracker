@@ -6,9 +6,10 @@ import { MatInputModule } from '@angular/material/input';
 import { Router, RouterLink } from '@angular/router';
 import { getConflictResource } from '../../api/conflicts/conflicts.resource';
 import { ConflictsService } from '../../api/conflicts/conflicts.service';
-import { ConflictDto, ConflictValueDto, Decision } from '../../api/model';
+import { AlreadyDecidedProblem, ConflictDecisionDto, ConflictDto, ConflictValueDto, Decision } from '../../api/model';
+import { ConflictCard } from '../../shared/problem/conflict-card';
 import { ProblemBanner } from '../../shared/problem/problem-banner';
-import { Problem, toProblem } from '../../shared/problem/problem';
+import { isProblem, Problem, ProblemType, toProblem } from '../../shared/problem/problem';
 import { problemToFieldErrors } from '../../shared/problem/to-field-errors';
 import { decisionLabel, originLabel, subjectLabel, valueLabel } from './conflict-values';
 import { ReviewInbox } from './review-inbox';
@@ -21,7 +22,7 @@ type CommentField = 'comment';
 /** The decision pane: both values with their origins, so the analyst decides on evidence. */
 @Component({
   selector: 'app-conflict-page',
-  imports: [DatePipe, RouterLink, MatButtonModule, MatFormFieldModule, MatInputModule, ProblemBanner],
+  imports: [DatePipe, RouterLink, MatButtonModule, MatFormFieldModule, MatInputModule, ProblemBanner, ConflictCard],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <article data-testid="decision-pane">
@@ -57,7 +58,25 @@ type CommentField = 'comment';
             }
           </section>
         }
-        @if (!c.decision) {
+        @if (lost(); as winner) {
+          <app-conflict-card heading="Someone else decided first" [traceId]="lostTraceId()" data-testid="already-decided">
+            <p>
+              <strong>{{ winner.decidedBy }} {{ winner.decision === 'accept' ? 'accepted' : 'rejected' }}</strong>
+              at {{ winner.decidedAt | date: 'yyyy-MM-dd HH:mm:ss' }}:
+              <span class="value">{{ value(c, winner.from) }} → {{ value(c, winner.to) }}</span>
+            </p>
+            @if (winner.comment) {
+              <blockquote>{{ winner.comment }}</blockquote>
+            }
+            <p>Your decision was not applied and is on the vote's timeline.</p>
+            <div cardActions>
+              <button mat-stroked-button type="button" (click)="next()">Next conflict</button>
+              @if (noneLeft()) {
+                <span class="none-left">No more pending conflicts.</span>
+              }
+            </div>
+          </app-conflict-card>
+        } @else if (!c.decision) {
           <form class="decide" (submit)="$event.preventDefault()">
             <mat-form-field appearance="outline" subscriptSizing="dynamic">
               <mat-label>Comment (optional)</mat-label>
@@ -166,6 +185,9 @@ export class ConflictPage {
   protected readonly comment = linkedSignal({ source: this.conflictId, computation: () => '' });
   protected readonly deciding = linkedSignal({ source: this.conflictId, computation: () => false });
   protected readonly problem = linkedSignal<string, Problem | null>({ source: this.conflictId, computation: () => null });
+  /** The winner's decision when this analyst lost a race (409 already-decided). */
+  protected readonly lost = linkedSignal<string, ConflictDecisionDto | null>({ source: this.conflictId, computation: () => null });
+  protected readonly lostTraceId = linkedSignal<string, string | undefined>({ source: this.conflictId, computation: () => undefined });
   protected readonly noneLeft = linkedSignal({ source: this.conflictId, computation: () => false });
   /** Inbox order when this conflict was decided, so "Next conflict" moves on from here. */
   private readonly order = linkedSignal<string, number[] | null>({ source: this.conflictId, computation: () => null });
@@ -184,7 +206,15 @@ export class ConflictPage {
       next: () => this.afterDecision(),
       error: (error: unknown) => {
         this.deciding.set(false);
-        this.problem.set(toProblem(error));
+        const problem = toProblem(error);
+        if (isProblem<AlreadyDecidedProblem>(problem, ProblemType.alreadyDecided)) {
+          // The card replaces the buttons; never a toast, never a retry.
+          this.lost.set(problem.decision);
+          this.lostTraceId.set(problem.traceId);
+          this.inbox.list.reload();
+        } else {
+          this.problem.set(problem);
+        }
       },
     });
   }

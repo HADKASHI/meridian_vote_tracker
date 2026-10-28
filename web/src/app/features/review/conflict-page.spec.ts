@@ -142,4 +142,32 @@ describe('Decision pane', () => {
     expect(text(pane, 'comment-error')).toBe('Keep the comment under 2,000 characters.');
     expect(button(pane, 'Keep current').disabled).toBe(false);
   });
+
+  it('replaces the buttons with the winner\'s decision when someone else decided first', async () => {
+    const pane = await open(conflict(), [listItem({ id: 7 }), listItem({ id: 8 })]);
+
+    button(pane, 'Keep current').click();
+    await settle();
+    http.expectOne({ method: 'POST', url: '/api/conflicts/7/decision' }).flush(
+      {
+        type: 'already-decided', title: 'Already decided', status: 409, traceId: 't2',
+        detail: 'dana decided this conflict first.', decision: accepted,
+      },
+      { status: 409, statusText: 'Conflict' },
+    );
+    TestBed.tick();
+    http.expectOne((r) => r.url === '/api/conflicts').flush(page([listItem({ id: 8 })]));
+    await settle();
+
+    const card = text(pane, 'already-decided');
+    expect(card).toContain('dana accepted');
+    expect(card).toContain('Y → A');
+    expect(card).toContain('Assembly confirmed');
+    expect(card).toContain('Your decision was not applied and is on the vote\'s timeline.');
+    expect([...pane.querySelectorAll('button')].map((b) => b.textContent?.trim())).toEqual(['Next conflict']);
+    expect(pane.querySelector('textarea')).toBeNull();
+
+    button(pane, 'Next conflict').click();
+    await vi.waitFor(() => expect(TestBed.inject(Router).url).toBe('/review/8?state=pending'));
+  });
 });

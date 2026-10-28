@@ -54,6 +54,7 @@ public static class ConflictsModule
                         user.UserId(), request.Comment, ct) switch
                 {
                     DecideConflict.Decided decided => TypedResults.Ok(decided.Decision),
+                    DecideConflict.AlreadyDecided lost => AlreadyDecided(lost.Winner),
                     _ => NotFound(conflictId),
                 })
             .WithName("decideConflict")
@@ -73,6 +74,11 @@ public static class ConflictsModule
         state is null ? ConflictFilter.Pending
         : Enum.GetValues<ConflictFilter>().Cast<ConflictFilter?>()
             .FirstOrDefault(f => SnakeCaseEnumConverter<ConflictFilter>.ToName(f!.Value) == state);
+
+    private static ProblemHttpResult AlreadyDecided(ConflictDecisionDto winner) =>
+        ProblemDetailsSetup.Problem(StatusCodes.Status409Conflict, ProblemTypes.AlreadyDecided, "Already decided",
+            $"{winner.DecidedBy} decided this conflict first. Your decision was not applied and is on the vote's timeline.",
+            new Dictionary<string, object?> { ["decision"] = winner });
 
     private static ProblemHttpResult NotFound(long conflictId) =>
         ProblemDetailsSetup.Problem(StatusCodes.Status404NotFound, ProblemTypes.NotFound, "Conflict not found",
