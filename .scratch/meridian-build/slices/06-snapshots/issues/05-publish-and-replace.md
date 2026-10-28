@@ -4,11 +4,11 @@
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Publishing answers 201 with the publication; a snapshot that is not calculated (job not done) or unknown is refused
-- [ ] A second first-publication for a quarter answers 409 `quarter-published` with the current publication; replacing anything but the quarter's current publication answers 409 too
-- [ ] A replacement without a reason answers 400 `validation` on `reason`; with one, it supersedes and both stay in the chain
-- [ ] The race test runs 20 rounds of two simultaneous publications: exactly one 201 and one 409 `quarter-published` each round
-- [ ] `GET /api/publications` returns each quarter's chain with the current publication and superseded-by links; analysts can read it, only the admin can publish
-- [ ] The snapshot page has Publish (disabled with "Admin only" for analysts) with the 409 card and "Replace it"; `/publications` shows the chains
+- [x] Publishing answers 201 with the publication; a snapshot that is not calculated (job not done) or unknown is refused
+- [x] A second first-publication for a quarter answers 409 `quarter-published` with the current publication; replacing anything but the quarter's current publication answers 409 too
+- [x] A replacement without a reason answers 400 `validation` on `reason`; with one, it supersedes and both stay in the chain
+- [x] The race test runs 20 rounds of two simultaneous publications: exactly one 201 and one 409 `quarter-published` each round
+- [x] `GET /api/publications` returns each quarter's chain with the current publication and superseded-by links; analysts can read it, only the admin can publish
+- [x] The snapshot page has Publish (disabled with "Admin only" for analysts) with the 409 card and "Replace it"; `/publications` shows the chains

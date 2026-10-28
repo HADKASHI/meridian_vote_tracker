@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Meridian.Data;
 using Meridian.Data.Entities;
+using Meridian.Domain;
 using Meridian.Domain.Scoring;
 using Meridian.Platform.Contracts;
 using Meridian.Platform.Http;
@@ -13,6 +14,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 
 namespace Meridian.Snapshots;
 
@@ -110,24 +112,71 @@ public static class SnapshotsModule
             .ProducesProblems(StatusCodes.Status404NotFound)
             .ForAnalysts();
 
-        snapshots.MapPost("/{snapshotId:long}/publications", Results<Created<PublicationDto>, ProblemHttpResult> (
-                    long snapshotId, PublishSnapshotRequest request) =>
-                EndpointConventions.NotImplemented())
+        snapshots.MapPost("/{snapshotId:long}/publications", async Task<Results<Created<PublicationDto>, ProblemHttpResult>> (
+                    long snapshotId, PublishSnapshotRequest request, ClaimsPrincipal user, MeridianDbContext db, CancellationToken ct) =>
+                await PublishAsync(snapshotId, request, user.FindFirstValue(ClaimTypes.NameIdentifier)!, db, ct))
             .WithName("publishSnapshot")
             .WithSummary("Publish for a reporting quarter, or replace its publication with a reason.")
             .ProducesProblems(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound)
             .ProducesProblem<QuarterPublishedProblem>(StatusCodes.Status409Conflict)
-            .ForAdmin().Stub();
+            .ForAdmin();
 
-        api.MapGet("/publications", Results<Ok<IReadOnlyList<QuarterPublicationsDto>>, ProblemHttpResult> () =>
-                EndpointConventions.NotImplemented())
+        api.MapGet("/publications", async Task<Results<Ok<IReadOnlyList<QuarterPublicationsDto>>, ProblemHttpResult>> (
+                    MeridianDbContext db, CancellationToken ct) =>
+                TypedResults.Ok<IReadOnlyList<QuarterPublicationsDto>>(await PublicationQueries.QuartersAsync(db, ct)))
             .WithTags("Snapshots")
             .WithName("listPublications")
             .WithSummary("Each reporting quarter's chain of publications, newest quarter first.")
-            .ForAnalysts().Stub();
+            .ForAnalysts();
 
         return api;
     }
+
+    /// <summary>
+    /// SNP-05: a quarter has one published snapshot. A first publication needs an empty
+    /// quarter; a replacement names the quarter's current publication and gives a reason.
+    /// The partial unique indexes decide a race: the loser gets 409 with the winner.
+    /// </summary>
+    private static async Task<Results<Created<PublicationDto>, ProblemHttpResult>> PublishAsync(
+        long snapshotId, PublishSnapshotRequest request, string userId, MeridianDbContext db, CancellationToken ct)
+    {
+        var state = await db.Jobs.Where(j => j.SnapshotId == snapshotId).Select(j => (JobState?)j.State).SingleOrDefaultAsync(ct);
+        if (state is null) return NotFound("snapshot");
+        if (state != JobState.Done)
+            return ProblemDetailsSetup.Problem(StatusCodes.Status400BadRequest, ProblemTypes.BadRequest,
+                "Not calculated", "Only a calculated snapshot can be published.");
+
+        var quarter = request.Quarter!;
+        var current = await PublicationQueries.CurrentAsync(db, quarter, ct);
+        if (current is not null && current.Id != request.SupersedesPublicationId) return QuarterPublished(current);
+        if (current is null && request.SupersedesPublicationId is not null)
+            return ProblemDetailsSetup.Problem(StatusCodes.Status400BadRequest, ProblemTypes.BadRequest,
+                "Nothing to replace", $"{quarter} has no published snapshot to replace.");
+
+        var publication = new Publication
+        {
+            SnapshotId = snapshotId, Quarter = quarter, PublishedBy = userId,
+            SupersedesPublicationId = request.SupersedesPublicationId, Reason = request.Reason?.Trim(),
+        };
+        db.Publications.Add(publication);
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException error) when (error.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        {
+            return QuarterPublished((await PublicationQueries.CurrentAsync(db, quarter, ct))!);
+        }
+
+        var created = await PublicationQueries.Load(db, db.Publications.Where(p => p.Id == publication.Id)).SingleAsync(ct);
+        return TypedResults.Created($"/api/publications", created);
+    }
+
+    private static ProblemHttpResult QuarterPublished(PublicationDto current) =>
+        ProblemDetailsSetup.Problem(StatusCodes.Status409Conflict, ProblemTypes.QuarterPublished,
+            "The quarter is already published",
+            $"{current.Quarter} is published with {current.SnapshotName}; replace it to publish another snapshot.",
+            new Dictionary<string, object?> { ["publication"] = current });
 
     private static ProblemHttpResult NotFound(string what) =>
         ProblemDetailsSetup.Problem(StatusCodes.Status404NotFound, ProblemTypes.NotFound, $"No such {what}");

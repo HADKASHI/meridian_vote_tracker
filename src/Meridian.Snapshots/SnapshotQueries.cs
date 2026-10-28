@@ -108,6 +108,20 @@ internal static class PublicationQueries
         CancellationToken ct) =>
         await Load(db, db.Publications.Where(p => snapshotIds.Contains(p.SnapshotId))).ToListAsync(ct);
 
+    /// <summary>The quarter's published snapshot now: the end of its chain, the publication nothing supersedes.</summary>
+    public static Task<PublicationDto?> CurrentAsync(MeridianDbContext db, string quarter, CancellationToken ct) =>
+        Load(db, db.Publications.Where(p => p.Quarter == quarter
+                && !db.Publications.Any(n => n.SupersedesPublicationId == p.Id)))
+            .SingleOrDefaultAsync(ct);
+
+    /// <summary>Each quarter's chain, first publication first, newest quarter first.</summary>
+    public static async Task<List<QuarterPublicationsDto>> QuartersAsync(MeridianDbContext db, CancellationToken ct) =>
+        (await Load(db, db.Publications).ToListAsync(ct))
+            .GroupBy(p => p.Quarter)
+            .OrderByDescending(g => g.Key, StringComparer.Ordinal)
+            .Select(g => new QuarterPublicationsDto(g.Key, g.Single(p => p.SupersededByPublicationId is null), g.ToList()))
+            .ToList();
+
     public static IQueryable<PublicationDto> Load(MeridianDbContext db, IQueryable<Publication> publications) =>
         from p in publications
         join s in db.Snapshots on p.SnapshotId equals s.Id

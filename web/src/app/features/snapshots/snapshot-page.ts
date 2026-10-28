@@ -7,12 +7,13 @@ import { getSnapshotResource } from '../../api/snapshots/snapshots.resource';
 import { pollWhile } from '../../shared/http/poll';
 import { JobStateBadge } from '../../shared/ui/job-state-badge';
 import { BreakdownPanel } from './breakdown-panel';
+import { PublishPanel } from './publish-panel';
 import { describeStoredSelection, formatScore } from './selection';
 
 /** SNP-03: one snapshot, followed while its job runs, then its ranking with each score's basis. */
 @Component({
   selector: 'app-snapshot-page',
-  imports: [DatePipe, MatTableModule, RouterLink, JobStateBadge, BreakdownPanel],
+  imports: [DatePipe, MatTableModule, RouterLink, JobStateBadge, BreakdownPanel, PublishPanel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (snapshot.hasValue() && snapshot.value(); as s) {
@@ -37,7 +38,21 @@ import { describeStoredSelection, formatScore } from './selection';
         </section>
       }
 
+      @if (s.publications.length > 0) {
+        <ul class="publications" data-testid="snapshot-publications">
+          @for (p of s.publications; track p.id) {
+            <li>
+              {{ p.supersededByPublicationId ? 'Was published' : 'Published' }} for {{ p.quarter }} by {{ p.publishedBy }}
+              @if (p.supersededByPublicationId) {
+                · superseded by <a routerLink="/publications">publication #{{ p.supersededByPublicationId }}</a>
+              }
+            </li>
+          }
+        </ul>
+      }
+
       @if (s.job.state === 'done') {
+        <app-publish-panel [snapshotId]="s.id" (published)="snapshot.reload()" />
         <h2>Ranking</h2>
         <table mat-table [dataSource]="s.results" data-testid="ranking">
           <ng-container matColumnDef="rank">

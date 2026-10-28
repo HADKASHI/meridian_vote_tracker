@@ -74,3 +74,8 @@ export function publicationBadge(publications: { quarter: string; supersededByPu
   if (current) return `Published ${current.quarter}`;
   return publications.length > 0 ? `Superseded ${publications.map((p) => p.quarter).join(', ')}` : null;
 }
+
+/** The calendar quarter of a date, as a reporting quarter: 2024-Q2. */
+export function quarterOf(date: Date): string {
+  return `${date.getFullYear()}-Q${Math.floor(date.getMonth() / 3) + 1}`;
+}
