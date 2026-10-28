@@ -4,12 +4,12 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The solution builds with warnings as errors; a domain test project and an integration test project (xUnit v3, built-in `Assert`) exist
-- [ ] Migration 1 holds the whole schema and the model has no pending changes
-- [ ] The guard test finds every table from the catalog: each one outside `job`, `vote_current`, `country_vote_current` and the migrations history has the guard trigger, and UPDATE, DELETE and TRUNCATE on it are refused
-- [ ] The seeder loads the committed synthetic `tests/data/member_states.csv` (codes, names, membership periods) through both the sync and async seeding hooks, only when `member_state` is empty
-- [ ] With the file missing, migrating fails with a message naming the file and its folder
-- [ ] `dana`, `omar` (analyst) and `lena` (admin) exist after migrating
-- [ ] Each integration test gets its own database copied from the migrated template
+- [x] The solution builds with warnings as errors; a domain test project and an integration test project (xUnit v3, built-in `Assert`) exist
+- [x] Migration 1 holds the whole schema and the model has no pending changes
+- [x] The guard test finds every table from the catalog: each one outside `job`, `vote_current`, `country_vote_current` and the migrations history has the guard trigger, and UPDATE, DELETE and TRUNCATE on it are refused
+- [x] The seeder loads the committed synthetic `tests/data/member_states.csv` (codes, names, membership periods) through both the sync and async seeding hooks, only when `member_state` is empty
+- [x] With the file missing, migrating fails with a message naming the file and its folder
+- [x] `dana`, `omar` (analyst) and `lena` (admin) exist after migrating
+- [x] Each integration test gets its own database copied from the migrated template

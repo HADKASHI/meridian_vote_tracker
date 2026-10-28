@@ -1,0 +1,13 @@
+country_code,country_name,member_from,member_to
+ARG,Argentina,1990-01-01,
+BRA,Brazil,1990-01-01,
+CIV,Côte d'Ivoire,1990-01-01,
+FRA,France,1990-01-01,
+ISL,Iceland,1990-01-01,2019-12-31
+ISL,Iceland,2022-01-01,
+JPN,Japan,1990-01-01,
+MNE,Montenegro,2006-06-28,
+NZL,New Zealand,1990-01-01,2021-06-30
+SSD,South Sudan,2011-07-14,
+TLS,Timor-Leste,2002-09-27,
+TUR,Türkiye,1990-01-01,
