@@ -1,7 +1,7 @@
 # Shape the Angular app
 
 Type: prototype
-Status: open
+Status: claimed
 Blocked by: 12
 
 ## Question

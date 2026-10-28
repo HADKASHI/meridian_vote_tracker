@@ -1,7 +1,7 @@
 # Set the test strategy
 
 Type: grilling
-Status: open
+Status: claimed
 Blocked by: 12
 
 ## Question
