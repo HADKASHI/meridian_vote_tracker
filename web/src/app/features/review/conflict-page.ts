@@ -60,10 +60,10 @@ type CommentField = 'comment';
               <div class="membership" data-testid="membership">
                 <h3>Membership recalculated for the vote</h3>
                 @if (m.approvedStateCodes.length === 0 && m.noLongerCountedStateCodes.length === 0) {
-                  <p>No ballot changed.</p>
+                  <p>No country vote changed.</p>
                 }
                 @if (m.approvedStateCodes.length > 0) {
-                  <p>Ballots approved by this decision: {{ m.approvedStateCodes.join(', ') }}</p>
+                  <p>Country votes approved by this decision: {{ m.approvedStateCodes.join(', ') }}</p>
                 }
                 @if (m.noLongerCountedStateCodes.length > 0) {
                   <p>No longer counted (outside membership on the new date): {{ m.noLongerCountedStateCodes.join(', ') }}</p>
@@ -83,7 +83,7 @@ type CommentField = 'comment';
         @if (lost(); as winner) {
           <app-conflict-card heading="Someone else decided first" [traceId]="lostTraceId()" data-testid="already-decided">
             <p>
-              <strong>{{ winner.decidedBy }} {{ winner.decision === 'accept' ? 'accepted' : 'rejected' }}</strong>
+              <strong>{{ winner.decidedBy }} {{ decision(winner.decision).toLowerCase() }}</strong>
               at {{ winner.decidedAt | date: 'yyyy-MM-dd HH:mm:ss' }}:
               <span class="value">{{ value(c, winner.from) }} → {{ value(c, winner.to) }}</span>
             </p>

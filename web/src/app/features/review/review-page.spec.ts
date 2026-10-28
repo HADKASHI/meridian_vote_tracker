@@ -47,7 +47,7 @@ describe('Review inbox', () => {
 
     expect(rows(harness)).toEqual([
       'MA/2024/101 Vote details date 2024-01-15 → 2024-01-16 Import #2',
-      'MA/2024/101 Ballot · BRA Y → A Import #2',
+      'MA/2024/101 Country vote · BRA Y → A Import #2',
     ]);
     const link = harness.routeNativeElement!.querySelector<HTMLAnchorElement>('[data-testid="inbox-item"] a');
     expect(link?.getAttribute('href')).toBe('/review/8?state=pending');
@@ -60,7 +60,7 @@ describe('Review inbox', () => {
       .flush(page([listItem({ decision: 'reject' })]));
     await harness.fixture.whenStable();
 
-    expect(rows(harness)).toEqual(['MA/2024/101 Ballot · BRA Y → A Import #2 Rejected']);
+    expect(rows(harness)).toEqual(['MA/2024/101 Country vote · BRA Y → A Import #2 Rejected']);
   });
 
   it('says so when nothing waits for review', async () => {

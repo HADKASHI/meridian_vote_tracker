@@ -62,7 +62,7 @@ describe('Decision pane', () => {
     expect(text(pane, 'incoming')).toContain('A');
     expect(text(pane, 'incoming')).toContain('q1-rev2.csv line 88 · uploaded by omar');
     expect(pane.textContent).toContain('MA/2024/101');
-    expect(pane.textContent).toContain('Ballot · BRA');
+    expect(pane.textContent).toContain('Country vote · BRA');
   });
 
   it('names the decision that approved a current value', async () => {
@@ -185,7 +185,7 @@ describe('Decision pane', () => {
     }));
 
     const membership = text(pane, 'membership');
-    expect(membership).toContain('Ballots approved by this decision: NZL, SSD');
+    expect(membership).toContain('Country votes approved by this decision: NZL, SSD');
     expect(membership).toContain('No longer counted (outside membership on the new date): MNE');
     expect(membership).toContain('Conflicts opened: #12');
     expect(pane.querySelector<HTMLAnchorElement>('[data-testid="membership"] a')?.getAttribute('href')).toBe('/review/12');

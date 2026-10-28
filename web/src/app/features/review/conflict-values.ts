@@ -27,7 +27,7 @@ export function changeLabel(subject: ConflictSubject, current: ConflictValueDto 
 }
 
 export function subjectLabel(item: Pick<ConflictListItemDto, 'subject' | 'stateCode'>): string {
-  return item.subject === ConflictSubject.ballot ? `Ballot · ${item.stateCode}` : 'Vote details';
+  return item.subject === ConflictSubject.ballot ? `Country vote · ${item.stateCode}` : 'Vote details';
 }
 
 export function decisionLabel(decision: Decision): string {
