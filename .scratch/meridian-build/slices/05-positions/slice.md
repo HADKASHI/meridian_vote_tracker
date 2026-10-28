@@ -1,6 +1,6 @@
 # Slice 5: Positions and weights
 
-Status: ready-for-agent
+Status: done
 Blocked by: Slice 0
 Runs in parallel with: slices 1, 2, 3, 4, 6, 7
 PR title: `Slice 5: Positions and weights`
