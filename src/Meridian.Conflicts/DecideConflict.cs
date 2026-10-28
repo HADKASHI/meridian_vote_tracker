@@ -49,13 +49,25 @@ internal static class DecideConflict
             }
         }
 
+        return await NotAppliedAsync(db, conflict, decision, userId, ct);
+    }
+
+    /// <summary>The loser's attempt, written under the vote lock like everything on the vote's timeline.</summary>
+    private static async Task<AlreadyDecided> NotAppliedAsync(MeridianDbContext db, Conflict conflict, Decision decision,
+        string userId, CancellationToken ct)
+    {
         db.ChangeTracker.Clear();
-        db.DecisionAttemptsNotApplied.Add(new DecisionAttemptNotApplied
+        await using (var transaction = await db.Database.BeginTransactionAsync(ct))
         {
-            ConflictId = conflictId, AttemptedBy = userId, Attempted = decision,
-        });
-        await db.SaveChangesAsync(ct);
-        var winner = await db.ConflictDecisions.AsNoTracking().SingleAsync(d => d.ConflictId == conflictId, ct);
+            await LockVoteAsync(db, conflict.VoteId, ct);
+            db.DecisionAttemptsNotApplied.Add(new DecisionAttemptNotApplied
+            {
+                ConflictId = conflict.Id, AttemptedBy = userId, Attempted = decision,
+            });
+            await db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+        }
+        var winner = await db.ConflictDecisions.AsNoTracking().SingleAsync(d => d.ConflictId == conflict.Id, ct);
         return new AlreadyDecided(await ReviewInbox.DecisionAsync(db, conflict, winner, ct));
     }
 
