@@ -1,0 +1,298 @@
+<!doctype html>
+<!--
+  PROTOTYPE, THROWAWAY. Ticket 19 "Shape the Angular app".
+  Not Angular: one static file that mocks the shell and a few screens so the layout and the
+  409 / job / preview behaviour can be judged. Open it in a browser; no build, no server.
+  Screens (hash routes): #/review  #/review?variant=B  #/imports/12  #/snapshots/new  #/jobs
+  Two variants of the Review inbox, switchable with the floating bar or the arrow keys:
+    A = split pane (list left, decision pane right)   B = grouped by vote, decide inline
+  Query flags for screenshots: ?user=omar  ?race=1 (409 state)  ?dialog=1  ?menu=1
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE Meridian Vote Tracker</title>
+<style>
+  :root { --bg:#f7f7fa; --card:#fff; --ink:#1b1b1f; --mute:#5f6070; --line:#dcdce4; --pri:#3949ab; --pri-soft:#e8eaf6;
+          --ok:#2e7d32; --ok-soft:#e8f5e9; --warn:#a15c00; --warn-soft:#fff4e0; --err:#b3261e; --err-soft:#fdecea; }
+  * { box-sizing:border-box }
+  body { margin:0; font:14px/1.45 system-ui, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg) }
+  a { color:var(--pri) }
+  .proto-banner { background:#222; color:#ffd54f; font:12px monospace; padding:3px 12px }
+  header.top { display:flex; align-items:center; gap:16px; height:56px; padding:0 16px; background:var(--pri); color:#fff }
+  header.top .brand { font-weight:600; font-size:16px; margin-right:12px }
+  nav a { color:#fff; opacity:.8; text-decoration:none; padding:18px 10px; border-bottom:3px solid transparent }
+  nav a.on { opacity:1; border-bottom-color:#fff }
+  nav .count { background:#fff; color:var(--pri); border-radius:10px; padding:0 6px; font-size:11px; font-weight:700; margin-left:4px }
+  .spacer { flex:1 }
+  .jobs-ind { display:flex; align-items:center; gap:8px; background:rgba(255,255,255,.15); color:#fff; padding:6px 12px; border-radius:16px; text-decoration:none; font-size:13px }
+  .jobs-ind.idle { opacity:.7 }
+  .spin { width:12px; height:12px; border:2px solid #fff; border-right-color:transparent; border-radius:50%; animation:r 1s linear infinite }
+  @keyframes r { to { transform:rotate(360deg) } }
+  .user { position:relative }
+  .user button { background:#fff; color:var(--ink); border:0; border-radius:16px; padding:6px 12px; cursor:pointer; font:inherit }
+  .role { font-size:11px; padding:1px 6px; border-radius:8px; background:var(--pri-soft); color:var(--pri); margin-left:4px }
+  .role.admin { background:#fce4ec; color:#ad1457 }
+  .menu { position:absolute; right:0; top:40px; background:var(--card); color:var(--ink); border-radius:8px; box-shadow:0 6px 24px rgba(0,0,0,.2); width:260px; z-index:5; padding:6px 0 }
+  .menu .it { padding:8px 14px; cursor:pointer; display:flex; justify-content:space-between }
+  .menu .it:hover, .menu .it.sel { background:var(--pri-soft) }
+  .menu .foot { font-size:12px; color:var(--mute); padding:8px 14px 4px; border-top:1px solid var(--line) }
+  main { padding:20px 24px 90px; max-width:1280px; margin:0 auto }
+  h1 { font-size:22px; font-weight:500; margin:0 0 4px } .sub { color:var(--mute); margin-bottom:16px }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px }
+  .chips { display:flex; gap:8px; flex-wrap:wrap; margin:0 0 12px }
+  .chip { border:1px solid var(--line); background:var(--card); border-radius:16px; padding:4px 12px; font-size:13px; cursor:pointer }
+  .chip.on { background:var(--pri-soft); border-color:var(--pri); color:var(--pri) }
+  table { width:100%; border-collapse:collapse } th, td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--line) }
+  th { font-size:12px; color:var(--mute); font-weight:600 }
+  tr.row { cursor:pointer } tr.row:hover { background:#fafaff } tr.row.sel { background:var(--pri-soft) }
+  .mono { font-family:ui-monospace, monospace }
+  .from { color:var(--mute) } .to { font-weight:700 }
+  .tag { display:inline-block; font-size:11px; padding:1px 7px; border-radius:8px; background:#eee }
+  .tag.ballot { background:#e3f2fd; color:#0d47a1 } .tag.details { background:#f3e5f5; color:#6a1b9a }
+  .split { display:grid; grid-template-columns: 1.25fr 1fr; gap:16px; align-items:start }
+  .pane { padding:16px 18px } .pane h2 { font-size:17px; margin:0 0 4px; font-weight:500 }
+  .sides { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0 }
+  .side { border:1px solid var(--line); border-radius:8px; padding:10px 12px } .side .k { font-size:12px; color:var(--mute) }
+  .side .v { font-size:22px; font-weight:600; margin:2px 0 } .side .o { font-size:12px; color:var(--mute) }
+  textarea, input, select { font:inherit; width:100%; border:1px solid var(--line); border-radius:6px; padding:8px 10px; background:#fff }
+  label.fl { font-size:12px; color:var(--mute); display:block; margin:10px 0 4px }
+  .btns { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap }
+  button.b { font:inherit; border-radius:18px; padding:7px 16px; cursor:pointer; border:1px solid var(--line); background:#fff }
+  button.b.pri { background:var(--pri); color:#fff; border-color:var(--pri) } button.b.danger { color:var(--err); border-color:var(--err) }
+  button.b:disabled { opacity:.45; cursor:not-allowed }
+  .notice { border-radius:8px; padding:12px 14px; margin:12px 0 } .notice.err { background:var(--err-soft); border-left:4px solid var(--err) }
+  .notice.warn { background:var(--warn-soft); border-left:4px solid var(--warn) } .notice.ok { background:var(--ok-soft); border-left:4px solid var(--ok) }
+  .notice.info { background:var(--pri-soft); border-left:4px solid var(--pri) }
+  .notice h3 { margin:0 0 4px; font-size:14px } .small { font-size:12px; color:var(--mute) }
+  .group { margin-bottom:14px } .group .gh { padding:12px 16px; display:flex; gap:12px; align-items:baseline; border-bottom:1px solid var(--line) }
+  .group .gi { display:grid; grid-template-columns: 120px 1fr 200px; gap:12px; align-items:center; padding:10px 16px; border-bottom:1px solid var(--line) }
+  .group .gi:last-child { border-bottom:0 }
+  .bar { height:8px; background:#e6e6ef; border-radius:4px; overflow:hidden } .bar > div { height:100%; background:var(--pri) }
+  .counts { display:grid; grid-template-columns:repeat(6, 1fr); gap:10px; margin:14px 0 }
+  .counts .c { padding:10px 12px } .counts .n { font-size:22px; font-weight:600 } .counts .l { font-size:12px; color:var(--mute) }
+  .scrim { position:fixed; inset:0; background:rgba(0,0,0,.35); display:flex; align-items:center; justify-content:center; z-index:10 }
+  .dialog { background:#fff; border-radius:14px; width:min(680px, 94vw); max-height:88vh; overflow:auto; padding:22px 24px; box-shadow:0 12px 48px rgba(0,0,0,.3) }
+  .dialog h2 { margin:0 0 4px; font-weight:500 }
+  .toast { position:fixed; left:24px; bottom:24px; background:#323232; color:#fff; padding:12px 16px; border-radius:6px; z-index:20 }
+  .toast a { color:#9fa8da; margin-left:12px }
+  .vswitch { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:#111; color:#fff; border-radius:24px; padding:6px 8px;
+             display:flex; gap:8px; align-items:center; box-shadow:0 4px 18px rgba(0,0,0,.35); font:12px monospace; z-index:30 }
+  .vswitch button { background:#333; color:#fff; border:0; border-radius:50%; width:28px; height:28px; cursor:pointer }
+  .disabled-why { font-size:12px; color:var(--mute); margin-top:6px }
+</style>
+</head>
+<body>
+<div class="proto-banner">PROTOTYPE, throwaway (ticket 19). Static mock of the Angular shell; nothing here is wired to an API.</div>
+<header class="top">
+  <span class="brand">Meridian Vote Tracker</span>
+  <nav id="nav"></nav>
+  <span class="spacer"></span>
+  <a id="jobs" class="jobs-ind" href="#/jobs"></a>
+  <div class="user" id="user"></div>
+</header>
+<main id="main"></main>
+<div id="overlay"></div>
+
+<script>
+// ---------- in-memory mock state (no persistence except the per-tab user, which is what is being prototyped) ----------
+const qs = new URLSearchParams(location.search);
+const USERS = [ {id:'dana', name:'Dana', role:'analyst'}, {id:'omar', name:'Omar', role:'analyst'}, {id:'lena', name:'Lena', role:'admin'} ];
+function loadUser() {
+  if (qs.get('user')) return qs.get('user');
+  try { return sessionStorage.getItem('mvt.user') || localStorage.getItem('mvt.lastUser') || 'dana'; } catch { return 'dana'; }
+}
+const S = {
+  user: loadUser(), menu: qs.has('menu'), selected: 3, raced: qs.has('race'), dialog: qs.has('dialog'), removed: false,
+  jobs: [
+    { id: 41, kind:'import', label:'Import #12 meridian_votes_q1_rev2.csv', by:'omar', state:'running', votesDone: 23, votesTotal: 40, rows: 5960 },
+    { id: 42, kind:'snapshot', label:'Snapshot #7 "Q1 2024 draft"', by:'dana', state:'running', votesDone: 0, votesTotal: 40 },
+    { id: 43, kind:'import', label:'Import #13 historic_votes.csv', by:'dana', state:'queued', ahead: 1 },
+    { id: 39, kind:'import', label:'Import #11 meridian_votes_q1.csv', by:'dana', state:'done', finished:'09:12' },
+    { id: 40, kind:'snapshot', label:'Snapshot #6 "Feb check"', by:'lena', state:'failed', error:'MA/2024/041 has no position, added by import #12 after the preview' },
+  ],
+  conflicts: [
+    { id:1, vote:'MA/2024/003', subject:'ballot', who:'BRA', from:'Y', to:'A', imp:12, line:5353, origLine:321 },
+    { id:2, vote:'MA/2024/003', subject:'ballot', who:'IND', from:'Y', to:'N', imp:12, line:5378, origLine:366 },
+    { id:3, vote:'MA/2024/009', subject:'details', who:'title', from:'Biological Diversity in Coastal Zones', to:'Biological Diversity in Coastal Zones: Revised', imp:12, line:45, origLine:1197, rows:149 },
+    { id:4, vote:'MA/2024/010', subject:'ballot', who:'JPN', from:'Y', to:'X', imp:12, line:3745, origLine:1417 },
+    { id:5, vote:'MA/2024/014', subject:'details', who:'date', from:'2024-02-05', to:'2024-02-06', imp:12, line:32, origLine:1943, rows:149 },
+    { id:6, vote:'MA/2024/019', subject:'ballot', who:'ZAF', from:'Y', to:'N', imp:12, line:5426, origLine:2816 },
+    { id:7, vote:'MA/2024/028', subject:'ballot', who:'CAN', from:'Y', to:'N', imp:12, line:2983, origLine:4058 },
+    { id:8, vote:'MA/2024/028', subject:'ballot', who:'MEX', from:'Y', to:'A', imp:12, line:4378, origLine:4120 },
+  ],
+  toast: null,
+};
+const me = () => USERS.find(u => u.id === S.user);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function route() { const h = location.hash || '#/review'; const [p, q] = h.slice(1).split('?'); return { path:p, q:new URLSearchParams(q || '') }; }
+function variant() { return route().q.get('variant') || qs.get('variant') || 'A'; }
+
+// ---------- shell ----------
+function renderShell() {
+  const p = route().path, pending = S.conflicts.length;
+  const links = [['/imports','Imports'],['/review','Review', pending],['/votes','Votes'],['/positions','Positions'],['/snapshots','Snapshots'],['/jobs','Jobs']];
+  document.getElementById('nav').innerHTML = links.map(([h,l,n]) =>
+    `<a href="#${h}" class="${p.startsWith(h) ? 'on':''}">${l}${n ? `<span class="count">${n}</span>`:''}</a>`).join('');
+  const active = S.jobs.filter(j => j.state === 'running' || j.state === 'queued');
+  const running = active.filter(j => j.state === 'running').length, queued = active.length - running;
+  const ji = document.getElementById('jobs');
+  ji.className = 'jobs-ind' + (active.length ? '' : ' idle');
+  ji.innerHTML = active.length ? `<span class="spin"></span>${running} job${running === 1 ? '' : 's'} running${queued ? ` · ${queued} queued` : ''}` : 'No jobs running';
+  const u = me();
+  document.getElementById('user').innerHTML = `
+    <button onclick="S.menu=!S.menu;render()">${u.name} <span class="role ${u.role}">${u.role === 'admin' ? 'Admin' : 'Analyst'}</span> ▾</button>
+    ${S.menu ? `<div class="menu">${USERS.map(x => `<div class="it ${x.id === S.user ? 'sel':''}" onclick="switchUser('${x.id}')">
+        <span>${x.name}</span><span class="role ${x.role}">${x.role === 'admin' ? 'Admin' : 'Analyst'}</span></div>`).join('')}
+      <div class="foot">Acting as sends <span class="mono">X-User-Id: ${u.id}</span> on every API call. Kept per tab, so two tabs can be Dana and Omar.</div></div>` : ''}`;
+}
+function switchUser(id) {
+  S.user = id; S.menu = false;
+  try { sessionStorage.setItem('mvt.user', id); localStorage.setItem('mvt.lastUser', id); } catch {}
+  render();
+}
+
+// ---------- Review inbox ----------
+function decisionPane(c) {
+  if (!c) return `<div class="card pane small">Select a conflict.</div>`;
+  const side = (k, v, o) => `<div class="side"><div class="k">${k}</div><div class="v ${v.length > 6 ? '' : 'mono'}" style="${v.length > 6 ? 'font-size:15px':''}">${esc(v)}</div><div class="o">${o}</div></div>`;
+  const body = S.raced ? raceCard(c) : `
+    <label class="fl">Comment (optional, shown on the vote's timeline)</label>
+    <textarea rows="2" placeholder="Why?"></textarea>
+    <div class="btns"><button class="b pri" onclick="decide()">Accept incoming</button><button class="b" onclick="decide()">Keep current</button>
+      <button class="b" onclick="S.raced=true;render()" title="prototype only">Simulate: another analyst decided first</button></div>`;
+  return `<div class="card pane">
+    <div class="small">${c.vote} · <span class="tag ${c.subject}">${c.subject === 'ballot' ? 'Ballot' : 'Vote details'}</span></div>
+    <h2>${c.subject === 'ballot' ? `${c.who} in ${c.vote}` : `${c.who} of ${c.vote}`}</h2>
+    <div class="small">Opened by <a href="#/imports/12">import #${c.imp}</a> (rev2, line ${c.line}). ${c.rows ? `${c.rows} rows carry this change; ballots unchanged.` : ''}</div>
+    <div class="sides">${side('Current (approved)', c.from, `from import #11, line ${c.origLine}`)}${side('Incoming', c.to, `import #12, line ${c.line}`)}</div>
+    ${body}
+    <div class="small" style="margin-top:12px"><a href="#/votes">Open vote ${c.vote} and its timeline →</a></div></div>`;
+}
+function raceCard(c) {
+  const other = S.user === 'omar' ? 'Dana' : 'Omar';
+  return `<div class="notice warn"><h3>Already decided by ${other}, 14:02:31</h3>
+      ${other} <b>accepted</b> the incoming value: <span class="from mono">${esc(c.from)}</span> → <span class="to mono">${esc(c.to)}</span>.<br>
+      Comment: “Matches the Assembly's corrected record (A/79/PV.12).”<br>
+      <span class="small">Your “Keep current” was not applied. It is recorded on the vote's timeline as an attempt that was not applied.</span></div>
+    <div class="small">The server answered 409 with problem type <span class="mono">already-decided</span> and the current decision in its body; this card is built from that body, then the inbox reloads. No retry is offered: the conflict is closed.</div>
+    <div class="btns"><button class="b pri" onclick="S.raced=false;next()">Next conflict</button><a class="b" style="text-decoration:none;padding:7px 16px;border:1px solid var(--line);border-radius:18px" href="#/votes">See the timeline</a></div>`;
+}
+function decide() { const c = S.conflicts.find(x => x.id === S.selected); S.conflicts = S.conflicts.filter(x => x !== c);
+  S.toast = `Decided ${c.vote} ${c.who}. ${S.conflicts.length} pending.`; next(); }
+function next() { if (S.raced) { S.conflicts = S.conflicts.filter(x => x.id !== S.selected); S.raced = false; } S.selected = S.conflicts[0]?.id; render(); }
+
+function reviewA() {
+  const rows = S.conflicts.map(c => `<tr class="row ${c.id === S.selected ? 'sel':''}" onclick="S.selected=${c.id};S.raced=false;render()">
+      <td class="mono">${c.vote}</td><td><span class="tag ${c.subject}">${c.subject === 'ballot' ? 'Ballot' : 'Details'}</span> ${c.who}</td>
+      <td><span class="from">${esc(c.from.length > 14 ? c.from.slice(0, 14) + '…' : c.from)}</span> → <span class="to">${esc(c.to.length > 18 ? '…' + c.to.slice(-10) : c.to)}</span></td>
+      <td>#${c.imp}</td></tr>`).join('');
+  return `<h1>Review inbox</h1><div class="sub">${S.conflicts.length} pending conflicts. A decision takes the value at decision time; one decision per conflict.</div>
+    <div class="chips"><span class="chip on">All</span><span class="chip">Ballot</span><span class="chip">Vote details</span><span class="chip">Import #12 ▾</span></div>
+    <div class="split"><div class="card"><table><thead><tr><th>Vote</th><th>Subject</th><th>Current → incoming</th><th>Import</th></tr></thead><tbody>${rows}</tbody></table></div>
+    ${decisionPane(S.conflicts.find(c => c.id === S.selected))}</div>`;
+}
+function reviewB() {
+  const byVote = {}; S.conflicts.forEach(c => (byVote[c.vote] ||= []).push(c));
+  return `<h1>Review inbox</h1><div class="sub">${S.conflicts.length} pending conflicts in ${Object.keys(byVote).length} votes. Variant B: grouped by vote, decide inline.</div>
+    ${Object.entries(byVote).map(([v, cs]) => `<div class="card group"><div class="gh"><b class="mono">${v}</b><span class="small">${cs.length} conflict${cs.length > 1 ? 's' : ''} · import #12</span><span class="spacer"></span><a class="small" href="#/votes">Timeline →</a></div>
+      ${cs.map(c => `<div class="gi"><div><span class="tag ${c.subject}">${c.subject === 'ballot' ? 'Ballot' : 'Details'}</span> <b>${c.who}</b></div>
+        <div><span class="from">${esc(c.from)}</span> → <span class="to">${esc(c.to)}</span></div>
+        <div class="btns" style="margin:0"><button class="b pri" onclick="S.selected=${c.id};decide()">Accept</button><button class="b" onclick="S.selected=${c.id};decide()">Keep</button></div></div>`).join('')}
+    </div>`).join('')}`;
+}
+
+// ---------- Import report with live job ----------
+function importPage() {
+  const j = S.jobs.find(x => x.id === 41);
+  if (j.state !== 'done') {
+    const pct = Math.round(100 * j.votesDone / j.votesTotal);
+    return `<h1>Import #12 · meridian_votes_q1_rev2.csv</h1><div class="sub">Uploaded by Omar at 14:01 · SHA-256 9f3c…e1 · 5,960 rows</div>
+      <div class="card pane"><div><b>Job: running</b>, applying votes: ${j.votesDone} of ${j.votesTotal} votes (rows read: ${j.rows.toLocaleString()})</div>
+      <div class="bar" style="margin:10px 0"><div style="width:${pct}%"></div></div>
+      <div class="small">Polled every second while queued or running. The count only shows committed votes. Leaving this page or refreshing loses nothing.</div></div>`;
+  }
+  const n = { new: 372, unchanged: 5284, duplicate: 0, invalid: 0, contradiction: 0, conflict: 304 };
+  return `<h1>Import #12 · meridian_votes_q1_rev2.csv</h1><div class="sub">Uploaded by Omar at 14:01 · <b>Job: done</b> at 14:02</div>
+    <div class="counts">${Object.entries(n).map(([k, v]) => `<div class="card c"><div class="n">${v.toLocaleString()}</div><div class="l">${k}</div></div>`).join('')}</div>
+    <div class="notice info"><b>8 conflicts opened</b> (6 ballot, 2 vote details) from 304 rows. <a href="#/review">Review them →</a></div>
+    <div class="notice warn">Incomplete vote: <span class="mono">MA/2024/041</span>, 3 member states with no approved ballot yet.</div>
+    <div class="card"><table><thead><tr><th>Line</th><th>Outcome</th><th>Raw text</th><th>Reason / link</th></tr></thead><tbody>
+      <tr><td>32</td><td><span class="tag details">conflict</span></td><td class="mono small">MA/2024/014,78,2024-02-06,…,ARG,Y</td><td><a href="#/review">Vote details conflict</a></td></tr>
+      <tr><td>45</td><td><span class="tag details">conflict</span></td><td class="mono small">MA/2024/009,78,2024-01-24,"Biological Diversity…: Revised",…</td><td><a href="#/review">Vote details conflict</a></td></tr>
+      <tr><td>952</td><td><span class="tag">new</span></td><td class="mono small">MA/2024/020,…,ARG,A</td><td>Value approved (was invalid in #11)</td></tr>
+    </tbody></table></div>`;
+}
+
+// ---------- Snapshot create + preview dialog ----------
+function snapshotPage() {
+  return `<h1>New snapshot</h1><div class="sub">Choose votes, preview, then calculate. Calculation runs as a job.</div>
+    <div class="card pane" style="max-width:640px">
+      <label class="fl">Name</label><input value="Q1 2024 index">
+      <label class="fl">Select votes by</label>
+      <div class="chips"><span class="chip on">Date range</span><span class="chip">Sessions</span><span class="chip">List</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><label class="fl">From</label><input value="2024-01-01"></div><div><label class="fl">To</label><input value="2024-03-31"></div></div>
+      <label class="fl">Note (optional)</label><textarea rows="2"></textarea>
+      <div class="btns"><button class="b pri" onclick="S.dialog=true;render()">Preview…</button></div></div>`;
+}
+function previewDialog() {
+  const blocked = !S.removed;
+  return `<div class="scrim"><div class="dialog">
+    <h2>Preview: Q1 2024 index</h2>
+    <div class="small">${S.removed ? '2024-01-01 → 2024-03-31, minus MA/2024/007, MA/2024/041 · <b>38 votes</b>' : '2024-01-01 → 2024-03-31 · <b>40 votes</b>'}</div>
+    ${blocked ? `<div class="notice err"><h3>2 votes have no position, so this snapshot can't be calculated</h3>
+      <div class="mono">MA/2024/007 · Maritime Boundaries Arbitration</div><div class="mono">MA/2024/041 · Protection of Cultural Heritage and Regional Cooperation</div>
+      <div class="small" style="margin:6px 0">Ask the admin to set positions (<a href="#/positions">Positions</a>), or remove them from this selection. Removal is recorded with the selection.</div>
+      <div class="btns"><button class="b danger" onclick="S.removed=true;render()">Remove these votes</button><button class="b">Check again</button></div></div>`
+      : `<div class="notice ok">Every selected vote has a position.</div>`}
+    <div class="notice warn"><h3>Warnings (kept on the snapshot, never block)</h3>
+      • 8 pending conflicts in 6 selected votes; approved values are used. <a href="#/review">Review</a><br>
+      • 1 incomplete vote (MA/2024/041)${S.removed ? ' (removed)' : ''}<br>
+      • Import #12 is applying (23 of 40 votes); the snapshot sees what is committed when it starts.</div>
+    <div class="btns" style="justify-content:flex-end"><button class="b" onclick="S.dialog=false;S.removed=false;render()">Back</button>
+      <button class="b pri" ${blocked ? 'disabled' : ''} onclick="S.dialog=false;S.toast='Snapshot #8 queued.';location.hash='#/jobs'">Calculate</button></div>
+    ${blocked ? '<div class="disabled-why" style="text-align:right">Calculate is disabled while votes without a position are selected.</div>' : ''}
+  </div></div>`;
+}
+
+// ---------- Jobs list ----------
+function jobsPage() {
+  const st = j => j.state === 'running' ? (j.kind === 'import' ? `${j.votesDone} of ${j.votesTotal} votes` : 'calculating')
+    : j.state === 'queued' ? `${j.ahead} import ahead` : j.state === 'failed' ? `<span style="color:var(--err)">${esc(j.error)}</span>` : `finished ${j.finished}`;
+  return `<h1>Jobs</h1><div class="sub">Imports run one at a time in upload order; snapshots run alongside them.</div>
+    <div class="card"><table><thead><tr><th>Job</th><th>Kind</th><th>For</th><th>By</th><th>State</th><th>Progress</th></tr></thead><tbody>
+    ${S.jobs.map(j => `<tr><td>#${j.id}</td><td>${j.kind}</td><td><a href="#/imports/12">${esc(j.label)}</a></td><td>${j.by}${j.by === S.user ? ' (you)' : ''}</td>
+      <td><span class="tag">${j.state}</span></td><td>${st(j)}</td></tr>`).join('')}</tbody></table></div>`;
+}
+
+function placeholder(t) { return `<h1>${t}</h1><div class="sub">Not mocked in this prototype.</div>`; }
+
+// ---------- render + fake polling ----------
+function render() {
+  renderShell();
+  const { path } = route();
+  const m = document.getElementById('main');
+  m.innerHTML = path.startsWith('/review') ? (variant() === 'B' ? reviewB() : reviewA())
+    : path.startsWith('/imports') ? importPage() : path.startsWith('/snapshots') ? snapshotPage()
+    : path.startsWith('/jobs') ? jobsPage() : placeholder(path.slice(1));
+  document.getElementById('overlay').innerHTML =
+    (S.dialog && path.startsWith('/snapshots') ? previewDialog() : '') +
+    (S.toast ? `<div class="toast">${esc(S.toast)}<a href="#/jobs" onclick="S.toast=null">View</a></div>` : '') +
+    (path.startsWith('/review') ? `<div class="vswitch"><button onclick="cycle(-1)">←</button>Review variant ${variant()} (${variant() === 'B' ? 'grouped by vote' : 'split pane'})<button onclick="cycle(1)">→</button></div>` : '');
+}
+function cycle(d) { const v = ['A','B'], i = (v.indexOf(variant()) + d + v.length) % v.length; location.hash = '#/review?variant=' + v[i]; }
+addEventListener('keydown', e => { if (/INPUT|TEXTAREA/.test(document.activeElement.tagName)) return;
+  if (route().path.startsWith('/review') && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) cycle(e.key === 'ArrowLeft' ? -1 : 1); });
+addEventListener('hashchange', render);
+// Fake 1 s poll of the header indicator and the running import.
+if (!qs.has('freeze')) setInterval(() => {
+  const j = S.jobs.find(x => x.id === 41);
+  if (j.state === 'running') { j.votesDone++; j.rows = Math.min(5960, j.rows); if (j.votesDone >= j.votesTotal) { j.state = 'done'; j.finished = 'now';
+    S.toast = 'Import #12 done: 372 new, 304 conflict rows (8 conflicts).'; const q = S.jobs.find(x => x.id === 43); q.state = 'running'; q.votesDone = 0; q.votesTotal = 6480; } }
+  if (!S.dialog && !S.menu) render(); else renderShell();
+}, 1000);
+render();
+</script>
+</body>
+</html>
