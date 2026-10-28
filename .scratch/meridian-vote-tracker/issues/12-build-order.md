@@ -51,3 +51,4 @@ Decided with the user in one grilling round. The user dropped the time budget (Q
 - Every slice ships its screen. There is no backend-first phase.
 - One branch and PR per slice, merged into `main`, so the history shows the build order. Each PR lists the requirement IDs it covers.
 - Later slices add no schema migrations unless something was missed.
+- From [Outline DECISIONS.md](22-decisions-outline.md): the first build step moves today's DECISIONS.md text into six ADRs in `docs/adr/` and `research/16-schema.md` into `docs/schema.md`; later slices add reasoning to ADRs, not to DECISIONS.md. The four-developer plan uses a skeleton that stubs the **whole** contract with 501s, so each slice is a story that replaces stubs. The user's own build can do the same in its skeleton ("just like we would do it here").
