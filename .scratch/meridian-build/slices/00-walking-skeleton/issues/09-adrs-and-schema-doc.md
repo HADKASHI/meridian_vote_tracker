@@ -4,8 +4,8 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Six ADRs exist in `docs/adr/` in the repo's ADR format
-- [ ] `docs/schema.md` holds the locked schema
-- [ ] No ADR or the schema document links into `.scratch/`
+- [x] Six ADRs exist in `docs/adr/` in the repo's ADR format
+- [x] `docs/schema.md` holds the locked schema
+- [x] No ADR or the schema document links into `.scratch/`
