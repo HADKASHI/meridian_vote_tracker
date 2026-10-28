@@ -136,3 +136,15 @@ The snapshot job writes votes, lines, results and warnings in its single final t
 - A database limit on running imports: a claim-time setting (10).
 - The running app as a non-owner role: a before-production item (15).
 - Vote id format: not validated beyond "not empty". Every real id would pass, and the brief fixes no format (17).
+
+## Why this shape (for DECISIONS.md)
+
+- **Three layers and a ledger**: evidence (files, which never change), verdicts (row records, conflicts and decisions, frozen at the moment they were made) and approved data (revisions only ever added, with moving pointers). Only `job` and the two pointer tables ever change.
+- **Revisions plus pointers**: no previous value is ever lost (HIS-02). A snapshot stores revision ids, so it reproduces exactly a year later (SNP-04). The race-sensitive code is one locked pointer move.
+- **Guard trigger**: "history never changes" is a property of the database, proven by a test, not a team habit.
+- **Exactly one origin** per revision (an import row or a decision), so every value can be explained (HIS-01).
+- **Unique indexes do the hard concurrency**: one decision per conflict (CON-05, the loser gets 409). One conflict per (compared revision, incoming value) (ING-12): re-imports never reopen, and a rejected value only returns once the approved value has changed.
+- **One `history_seq`** orders the timeline across all tables (HIS-04). Per vote this is exact, because of the per-vote lock.
+- **Snapshots store categories and revision ids**, so neither later data nor later scoring code can change an old breakdown. Publications form an insert-only chain of replacements, each with a reason.
+- **Rule of thumb**: if breaking a rule would make a published number wrong or unexplainable, the database enforces it. Presentation and policy (reason codes, warning kinds, how many imports run at once, membership overlap) live in C#.
+- **Worked example (Brazil, vote 101)**: r1 = Y from import #1; snapshot "2024-Q1" records r1. Rev2 opens conflict #7 against r1. Dana's accept wins and Omar's attempt is recorded as not applied. r2 = A (origin: decision #7) and the pointer moves. A rev2 re-upload is unchanged. "2024-Q1" still shows r1 = Y.
