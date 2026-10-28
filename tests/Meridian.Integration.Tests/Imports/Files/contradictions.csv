@@ -1,0 +1,7 @@
+assembly_vote_id,session,vote_date,resolution_title,country_code,ballot,country_name,published_at
+MA/2024/012,79,2024-01-10,Oceans,FRA,Y,France,2024-04-02T09:00:00Z
+MA/2024/012,79,2024-01-10,Oceans,BRA,Y,Brazil,2024-04-02T09:00:00Z
+MA/2024/012,79,2024-01-10,Oceans,FRA,N,France,2024-04-02T09:00:00Z
+MA/2024/025,79,2024-02-21,Seas,BRA,Y,Brazil,2024-04-02T09:00:00Z
+MA/2024/025,79,2024-02-12,Seas,FRA,N,France,2024-04-02T09:00:00Z
+MA/2024/025,79,2024-02-21,Seas,JPN,A,Japan,2024-04-02T09:00:00Z

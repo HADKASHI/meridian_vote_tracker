@@ -4,9 +4,9 @@
 
 **Blocked by:** 04
 
-**Status:** ready-for-agent
+**Status:** done
 
 Requirements: ING-08, ING-10 (stories 30, 31, 32)
 
-- [ ] Named domain tests for rule 3's order and for rule 4
-- [ ] Through the API, a contradictions fixture and a duplicates fixture give the expected outcomes, and nothing is approved for a held-back vote
+- [x] Named domain tests for rule 3's order and for rule 4
+- [x] Through the API, a contradictions fixture and a duplicates fixture give the expected outcomes, and nothing is approved for a held-back vote

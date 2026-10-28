@@ -155,4 +155,93 @@ public sealed class ClassifierTests
         Assert.Equal(["country_code: upper-cased", "ballot: upper-cased", "vote_date: 10/01/2024 read as 2024-01-10"], verdict.Normalisations);
         Assert.Equal(new DateOnly(2024, 1, 10), verdict.Values!.VoteDate);
     }
+
+    private static Outcome[] Outcomes(VoteVerdict verdict) => verdict.Rows.Select(r => r.Outcome).ToArray();
+
+    [Fact]
+    public void Rule3_rows_giving_one_state_different_ballots_are_all_contradictions()
+    {
+        var verdict = Classify([Row("FRA", "Y"), Row("BRA", "Y"), Row("FRA", "Y"), Row("FRA", "N")]);
+
+        Assert.Equal([Outcome.Contradiction, Outcome.New, Outcome.Contradiction, Outcome.Contradiction], Outcomes(verdict));
+        Assert.All(verdict.Rows.Where(r => r.Outcome == Outcome.Contradiction), r =>
+        {
+            Assert.Equal(ReasonCode.BallotContradiction, r.Reason);
+            Assert.Equal(LinkKind.None, r.Ballot.Kind);
+        });
+        Assert.Contains("FRA", verdict.Rows[0].Message);
+    }
+
+    [Fact]
+    public void Rule3_an_exact_repeat_is_a_duplicate_and_the_first_copy_is_classified_normally()
+    {
+        var first = Row("JPN", "Y");
+        var verdict = Classify([first, Row("BRA", "N"), Row("JPN", "Y")]);
+
+        Assert.Equal([Outcome.New, Outcome.New, Outcome.Duplicate], Outcomes(verdict));
+        Assert.Equal(ReasonCode.Duplicate, verdict.Rows[2].Reason);
+        Assert.Equal($"Identical to line {first.LineNo}.", verdict.Rows[2].Message);
+        Assert.Equal(LinkKind.None, verdict.Rows[2].Ballot.Kind);
+    }
+
+    [Fact]
+    public void Rule3_a_duplicate_ignores_country_name_published_at_and_formatting()
+    {
+        var verdict = Classify([Row("JPN", "Y", name: "Japan"), Row(" jpn", "y", name: "Nippon", title: "OCEANS and the  law of the sea")]);
+
+        Assert.Equal([Outcome.New, Outcome.Duplicate], Outcomes(verdict));
+    }
+
+    [Fact]
+    public void Rule3_an_invalid_row_never_contradicts_or_duplicates_a_valid_one()
+    {
+        var verdict = Classify([Row("FRA", "Y"), Row("FRA", "Yes"), Row("FRA", "")]);
+
+        Assert.Equal([Outcome.New, Outcome.Invalid, Outcome.Invalid], Outcomes(verdict));
+    }
+
+    [Fact]
+    public void Rule3_invalid_comes_before_contradiction_and_contradiction_before_duplicate()
+    {
+        var verdict = Classify([Row("FRA", "Y"), Row("FRA", "Y"), Row("FRA", "N"), Row("FRN", "N")]);
+
+        Assert.Equal([Outcome.Contradiction, Outcome.Contradiction, Outcome.Contradiction, Outcome.Invalid], Outcomes(verdict));
+    }
+
+    [Theory]
+    [InlineData("80", "2024-01-10", "Oceans and the Law of the Sea")]
+    [InlineData("79", "2024-01-11", "Oceans and the Law of the Sea")]
+    [InlineData("79", "2024-01-10", "Oceans and the Law of the Seas")]
+    public void Rule4_rows_disagreeing_on_session_date_or_title_hold_back_the_whole_vote(string session, string date, string title)
+    {
+        var verdict = Classify([Row("BRA", "Y"), Row("IND", "N"), Row("JPN", "A", session: session, date: date, title: title), Row("FRN", "Y")]);
+
+        Assert.Equal([Outcome.Contradiction, Outcome.Contradiction, Outcome.Contradiction, Outcome.Invalid], Outcomes(verdict));
+        Assert.All(verdict.Rows.Take(3), r =>
+        {
+            Assert.Equal(ReasonCode.DetailsContradiction, r.Reason);
+            Assert.Equal((LinkKind.None, LinkKind.None), (r.Ballot.Kind, r.Details.Kind));
+        });
+        Assert.Null(verdict.NewDetails);
+    }
+
+    [Fact]
+    public void Rule4_the_reason_is_given_once_and_the_other_rows_point_to_it()
+    {
+        var first = Row("BRA", "Y");
+        var verdict = Classify([first, Row("IND", "N", date: "2024-01-11"), Row("JPN", "A")]);
+
+        Assert.Contains("vote_date", verdict.Rows[0].Message);
+        Assert.Equal($"Held back with its vote: see line {first.LineNo}.", verdict.Rows[1].Message);
+        Assert.Equal($"Held back with its vote: see line {first.LineNo}.", verdict.Rows[2].Message);
+    }
+
+    [Fact]
+    public void Rule4_titles_differing_only_in_case_spacing_quotes_or_dashes_agree()
+    {
+        var verdict = Classify([Row("BRA", "Y", title: "States’ Duties — Review"), Row("IND", "N", title: "states'  duties - review")]);
+
+        Assert.Equal([Outcome.New, Outcome.New], Outcomes(verdict));
+        Assert.Equal("States’ Duties — Review", verdict.NewDetails!.Title);
+    }
 }

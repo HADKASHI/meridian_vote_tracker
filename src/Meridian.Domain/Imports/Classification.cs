@@ -12,6 +12,9 @@ public enum ReasonCode
     InvalidDate,
     InvalidSession,
     NotMemberOnDate,
+    BallotContradiction,
+    DetailsContradiction,
+    Duplicate,
 }
 
 /// <summary>A vote's session, date and title.</summary>
