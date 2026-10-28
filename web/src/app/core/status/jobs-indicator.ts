@@ -11,6 +11,7 @@ import { ShellStatus } from './shell-status';
   styles: `
     a {
       color: inherit;
+      font: var(--mat-sys-label-large);
     }
   `,
 })
