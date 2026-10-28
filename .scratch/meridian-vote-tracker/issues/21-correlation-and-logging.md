@@ -1,7 +1,7 @@
 # Decide correlation IDs and logging
 
 Type: grilling
-Status: open
+Status: claimed
 Blocked by: 12
 
 ## Question
