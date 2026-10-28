@@ -4,10 +4,10 @@
 
 **Blocked by:** 04, 06
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `docker compose up --build` with the synthetic member states starts all six services; `migrate` exits 0 and `api` is healthy
-- [ ] Without `member_states.csv`, `migrate` exits non-zero with a message naming the file, and `api` and `worker` don't start
-- [ ] `http://localhost:8080/` serves the app and `/api/users` answers through nginx
-- [ ] A no-op job queued in the running stack is claimed by the `worker` container
-- [ ] `data_candidate/`, `.env`, `.git` and `.scratch` never reach a build context
+- [x] `docker compose up --build` with the synthetic member states starts all six services; `migrate` exits 0 and `api` is healthy
+- [x] Without `member_states.csv`, `migrate` exits non-zero with a message naming the file, and `api` and `worker` don't start
+- [x] `http://localhost:8080/` serves the app and `/api/users` answers through nginx
+- [x] A no-op job queued in the running stack is claimed by the `worker` container
+- [x] `data_candidate/`, `.env`, `.git` and `.scratch` never reach a build context
