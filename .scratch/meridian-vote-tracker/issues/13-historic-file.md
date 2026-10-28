@@ -1,7 +1,7 @@
 # Bring in the historic file
 
 Type: task
-Status: open
+Status: claimed
 
 ## Question
 
