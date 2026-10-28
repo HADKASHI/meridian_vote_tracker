@@ -16,7 +16,7 @@ public sealed record StateResult(string StateCode, int MatchedWeight, int Counte
 
 /// <param name="Lines">One per fact, in the order given.</param>
 /// <param name="Results">Ranked states by rank then code, then the n/a states by code.</param>
-public sealed record ScoringOutcome(IReadOnlyList<ScoredLine> Lines, IReadOnlyList<StateResult> Results);
+public sealed record ScoredSnapshot(IReadOnlyList<ScoredLine> Lines, IReadOnlyList<StateResult> Results);
 
 /// <summary>
 /// The Alignment Index (docs/adr/0006-scoring-rules.md): score = 100 × matched weight ÷
@@ -27,7 +27,7 @@ public static class AlignmentScoring
     /// <summary>Recorded on every snapshot; change it whenever a rule changes.</summary>
     public const string RulesVersion = "alignment-2026.1";
 
-    public static ScoringOutcome Score(IEnumerable<ScoringFact> facts)
+    public static ScoredSnapshot Score(IEnumerable<ScoringFact> facts)
     {
         var lines = new List<ScoredLine>();
         var totals = new Dictionary<string, (int Matched, int Counted, int Countable)>(StringComparer.Ordinal);
@@ -44,7 +44,7 @@ public static class AlignmentScoring
             };
         }
 
-        return new ScoringOutcome(lines, Rank(totals));
+        return new ScoredSnapshot(lines, Rank(totals));
     }
 
     /// <summary>

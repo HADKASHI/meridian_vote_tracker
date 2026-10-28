@@ -44,7 +44,7 @@ public sealed class SnapshotJobHandler(MeridianDbContext db, ILogger<SnapshotJob
 
         var warnings = await SnapshotSelection.WarningsAsync(db, selected, calculating: true, cancellationToken);
         var (facts, revisions) = await ReadFactsAsync(selected, votes, cancellationToken);
-        var outcome = AlignmentScoring.Score(facts);
+        var scored = AlignmentScoring.Score(facts);
 
         db.ChangeTracker.AutoDetectChangesEnabled = false;
         db.SnapshotVotes.AddRange(votes.Select(v => new SnapshotVote
@@ -52,12 +52,12 @@ public sealed class SnapshotJobHandler(MeridianDbContext db, ILogger<SnapshotJob
             SnapshotId = snapshotId, VoteId = v.VoteId,
             DetailsRevisionId = v.DetailsRevisionId, PositionRevisionId = v.PositionRevisionId!.Value,
         }));
-        db.SnapshotLines.AddRange(outcome.Lines.Select(l => new SnapshotLine
+        db.SnapshotLines.AddRange(scored.Lines.Select(l => new SnapshotLine
         {
             SnapshotId = snapshotId, VoteId = l.VoteId, StateCode = l.StateCode, Category = l.Category,
             CountryVoteRevisionId = revisions.TryGetValue((l.VoteId, l.StateCode), out var revisionId) ? revisionId : null,
         }));
-        db.SnapshotResults.AddRange(outcome.Results.Select(r => new SnapshotResult
+        db.SnapshotResults.AddRange(scored.Results.Select(r => new SnapshotResult
         {
             SnapshotId = snapshotId, StateCode = r.StateCode, MatchedWeight = r.MatchedWeight,
             CountedWeight = r.CountedWeight, Rank = r.Rank,
@@ -72,7 +72,7 @@ public sealed class SnapshotJobHandler(MeridianDbContext db, ILogger<SnapshotJob
 
         await context.ReportAsync(votesDone: votes.Count, cancellationToken: cancellationToken);
         logger.LogInformation("Snapshot {SnapshotId} calculated over {VoteCount} votes, {LineCount} lines, {WarningCount} warnings",
-            snapshotId, votes.Count, outcome.Lines.Count, warnings.Count);
+            snapshotId, votes.Count, scored.Lines.Count, warnings.Count);
     }
 
     /// <summary>POS-04 again, inside the transaction: an import may have added a vote after the preview.</summary>

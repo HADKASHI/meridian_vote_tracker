@@ -1,6 +1,7 @@
 using Meridian.Data;
 using Meridian.Data.Entities;
 using Meridian.Domain;
+using Meridian.Domain.Scoring;
 using Meridian.Platform.Contracts;
 using Meridian.Platform.Jobs;
 using Microsoft.EntityFrameworkCore;
@@ -96,7 +97,7 @@ internal static class SnapshotQueries
         return rows
             .OrderBy(r => r.Rank is null).ThenBy(r => r.Rank).ThenBy(r => r.StateCode, StringComparer.Ordinal)
             .Select(r => new SnapshotResultDto(r.StateCode, r.Name, r.MatchedWeight, r.CountedWeight, r.Countable,
-                r.CountedWeight == 0 ? null : 100.0 * r.MatchedWeight / r.CountedWeight, r.Rank))
+                new StateResult(r.StateCode, r.MatchedWeight, r.CountedWeight, r.Countable, r.Rank).Score, r.Rank))
             .ToList();
     }
 }
