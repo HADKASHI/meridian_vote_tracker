@@ -44,8 +44,11 @@ public static class PositionChanges
             return new PositionSaveResult.Stale(await CurrentAsync(db, voteId, ct));
         }
 
+        // Read under the lock: after commit another save could already have replaced it.
+        var saved = await db.PositionRevisions.AsNoTracking().Where(p => p.Id == revision.Id)
+            .Select(p => new PositionDto(p.Id, p.Stance, p.Weight, p.SetBy, p.RecordedAt)).SingleAsync(ct);
         await transaction.CommitAsync(ct);
-        return new PositionSaveResult.Saved((await CurrentAsync(db, voteId, ct))!);
+        return new PositionSaveResult.Saved(saved);
     }
 
     private static Task<PositionDto?> CurrentAsync(MeridianDbContext db, long voteId, CancellationToken ct) =>

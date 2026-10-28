@@ -140,7 +140,15 @@ public sealed class SetPositionTests(PostgresFixture postgres, AzuriteFixture az
 
             var statuses = responses.Select(r => (int)r.StatusCode).Order().ToArray();
             Assert.True(statuses is [200, 409], $"Round {round}: {string.Join(", ", statuses)}");
-            await responses.Single(r => r.StatusCode == HttpStatusCode.Conflict).AssertProblemAsync(409, "stale-position");
+            var winner = await responses.Single(r => r.StatusCode == HttpStatusCode.OK).Content
+                .ReadFromJsonAsync<JsonElement>(Ct);
+            var loser = await responses.Single(r => r.StatusCode == HttpStatusCode.Conflict)
+                .AssertProblemAsync(409, "stale-position");
+            Assert.Equal(winner.GetProperty("revisionId").GetInt64(),
+                loser.GetProperty("current").GetProperty("revisionId").GetInt64());
         }
     }
 }
+        await using var db = new MeridianDbContext(MeridianDb.Options(api.ConnectionString));
+        // One revision per round from the winner, plus the seen ones arranged in even rounds.
+        Assert.Equal(20 + 10, await db.VoteTimeline.CountAsync(e => e.Kind == "position_revision", Ct));
