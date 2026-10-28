@@ -4,11 +4,11 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Votes without a position come before votes with one; within each group, ordering is stable (vote date, then assembly vote id)
-- [ ] `noPosition=true` returns only votes without a position, and the total counts only those
-- [ ] Paging returns the requested page with the full total; page and page size outside their limits get a 400 validation problem
-- [ ] Each item carries the vote reference, session, date, title and its position (revision id, stance, weight, who set it, when) or null
-- [ ] Analysts and the admin can both read it
-- [ ] `/positions` lists the worklist with a "No position" filter kept in the query params, and pages through it
+- [x] Votes without a position come before votes with one; within each group, ordering is stable (vote date, then assembly vote id)
+- [x] `noPosition=true` returns only votes without a position, and the total counts only those
+- [x] Paging returns the requested page with the full total; page and page size outside their limits are clamped, as the Jobs list does
+- [x] Each item carries the vote reference, session, date, title and its position (revision id, stance, weight, who set it, when) or null
+- [x] Analysts and the admin can both read it
+- [x] `/positions` lists the worklist with a "No position" filter kept in the query params, and pages through it

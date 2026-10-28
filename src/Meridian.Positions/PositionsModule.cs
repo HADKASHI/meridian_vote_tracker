@@ -1,3 +1,4 @@
+using Meridian.Data;
 using Meridian.Platform.Contracts;
 using Meridian.Platform.Http;
 using Microsoft.AspNetCore.Builder;
@@ -15,13 +16,13 @@ public static class PositionsModule
 
     public static IEndpointRouteBuilder MapPositionsModule(this IEndpointRouteBuilder api)
     {
-        api.MapGet("/positions", Results<Ok<PageDto<PositionWorklistItemDto>>, ProblemHttpResult> (
-                    bool noPosition = false, int page = 1, int pageSize = 50) =>
-                EndpointConventions.NotImplemented())
+        api.MapGet("/positions", async Task<Results<Ok<PageDto<PositionWorklistItemDto>>, ProblemHttpResult>> (
+                    MeridianDbContext db, CancellationToken ct, bool noPosition = false, int page = 1, int pageSize = 50) =>
+                TypedResults.Ok(await PositionWorklist.PageAsync(db, noPosition, page, pageSize, ct)))
             .WithTags("Positions")
             .WithName("listPositions")
             .WithSummary("Votes with their stance and weight, votes without a position first.")
-            .ForAnalysts().Stub();
+            .ForAnalysts();
 
         api.MapPut("/votes/{voteId:long}/position", Results<Ok<PositionDto>, ProblemHttpResult> (
                     long voteId, SetPositionRequest request) =>
