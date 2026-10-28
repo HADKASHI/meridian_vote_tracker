@@ -53,6 +53,19 @@ describe('VotePage', () => {
     expect(page.querySelector('a[href="/review/30"]')).not.toBeNull();
   });
 
+  it('opens on the timeline when the URL asks for it', async () => {
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])] });
+    const fixture = TestBed.createComponent(VotePage);
+    fixture.componentRef.setInput('voteId', '12');
+    fixture.componentRef.setInput('tab', 'timeline');
+    fixture.detectChanges();
+    const http = TestBed.inject(HttpTestingController);
+    http.expectOne('/api/votes/12').flush(vote);
+
+    // The Timeline tab renders lazily, so its first page is requested only once it is the selected tab.
+    await vi.waitFor(() => http.expectOne((r) => r.url === '/api/votes/12/timeline'));
+  });
+
   it('says so when the vote does not exist', async () => {
     const page = await render('99', (http) =>
       http.expectOne('/api/votes/99').flush({ type: 'not-found' }, { status: 404, statusText: 'Not Found' }),

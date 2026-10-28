@@ -86,6 +86,7 @@ import { ballotLabel, positionLabel } from './vote-labels';
       </mat-tab-group>
     } @else {
       <h1>Vote</h1>
+      <p>Loading vote #{{ voteId() }}…</p>
     }
   `,
   styles: `
