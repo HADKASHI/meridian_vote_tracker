@@ -35,13 +35,15 @@ public static class VotesModule
             .ProducesProblems(StatusCodes.Status404NotFound)
             .ForAnalysts();
 
-        votes.MapGet("/{voteId:long}/timeline", Results<Ok<TimelinePageDto>, ProblemHttpResult> (
-                    long voteId, long? before, int pageSize = 50) =>
-                EndpointConventions.NotImplemented())
+        votes.MapGet("/{voteId:long}/timeline", async Task<Results<Ok<TimelinePageDto>, ProblemHttpResult>> (
+                    long voteId, MeridianDbContext db, CancellationToken ct, long? before, int pageSize = 50) =>
+                await VoteTimeline.LoadAsync(db, voteId, before, pageSize, ct) is { } page
+                    ? TypedResults.Ok(page)
+                    : VoteNotFound(voteId))
             .WithName("getVoteTimeline")
             .WithSummary("The vote's timeline, newest first, paged by history id.")
             .ProducesProblems(StatusCodes.Status404NotFound)
-            .ForAnalysts().Stub();
+            .ForAnalysts();
 
         return api;
     }

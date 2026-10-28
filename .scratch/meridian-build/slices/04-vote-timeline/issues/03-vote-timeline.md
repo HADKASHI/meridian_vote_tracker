@@ -4,10 +4,10 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The timeline returns every event kind of map ticket 04 rule 8, each with its actor, time and own fields (import with file and counts; revision with origin; conflict with subject and incoming value; decision with accept or reject and comment; not-applied attempt; snapshot with name; publication with quarter, reason and what it supersedes)
-- [ ] Events are ordered by history id, newest first; `before` and `pageSize` page through them and `nextBefore` is null on the last page
-- [ ] An unknown vote is a 404 ProblemDetails
-- [ ] The timeline tab renders each event kind in glossary words and loads older pages on demand
-- [ ] An integration test arranges a vote with every event kind using the fixture builders and reads it back in order across pages
+- [x] The timeline returns every event kind of map ticket 04 rule 8, each with its actor, time and own fields (import with file and counts; revision with origin; conflict with subject and incoming value; decision with accept or reject and comment; not-applied attempt; snapshot with name; publication with quarter, reason and what it supersedes)
+- [x] Events are ordered by history id, newest first; `before` and `pageSize` page through them and `nextBefore` is null on the last page
+- [x] An unknown vote is a 404 ProblemDetails
+- [x] The timeline tab renders each event kind in glossary words and loads older pages on demand
+- [x] An integration test arranges a vote with every event kind using the fixture builders and reads it back in order across pages
