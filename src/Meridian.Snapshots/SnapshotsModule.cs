@@ -6,6 +6,7 @@ using Meridian.Domain.Scoring;
 using Meridian.Platform.Contracts;
 using Meridian.Platform.Http;
 using Meridian.Platform.Hosting;
+using Meridian.Platform.Identity;
 using Meridian.Platform.Jobs;
 using Meridian.Platform.Problems;
 using Microsoft.AspNetCore.Builder;
@@ -64,7 +65,7 @@ public static class SnapshotsModule
                 {
                     Name = request.Name!.Trim(), Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim(),
                     Selection = SnapshotJson.WriteSelection(selection), ScoringRulesVersion = AlignmentScoring.RulesVersion,
-                    CreatedBy = user.FindFirstValue(ClaimTypes.NameIdentifier)!,
+                    CreatedBy = user.UserId(),
                 };
                 db.Snapshots.Add(snapshot);
                 await db.SaveChangesAsync(ct);
@@ -114,7 +115,7 @@ public static class SnapshotsModule
 
         snapshots.MapPost("/{snapshotId:long}/publications", async Task<Results<Created<PublicationDto>, ProblemHttpResult>> (
                     long snapshotId, PublishSnapshotRequest request, ClaimsPrincipal user, MeridianDbContext db, CancellationToken ct) =>
-                await PublishAsync(snapshotId, request, user.FindFirstValue(ClaimTypes.NameIdentifier)!, db, ct))
+                await PublishAsync(snapshotId, request, user.UserId(), db, ct))
             .WithName("publishSnapshot")
             .WithSummary("Publish for a reporting quarter, or replace its publication with a reason.")
             .ProducesProblems(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound)
