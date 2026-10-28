@@ -30,6 +30,11 @@ public sealed class SnapshotJobHandler(MeridianDbContext db, ILogger<SnapshotJob
         }
 
         var snapshot = await db.Snapshots.AsNoTracking().SingleAsync(s => s.Id == snapshotId, cancellationToken);
+        // The header is insert-only and names the rules; never score it under others.
+        if (snapshot.ScoringRulesVersion != AlignmentScoring.RulesVersion)
+            throw new JobFailedException(
+                $"The snapshot was created under scoring rules {snapshot.ScoringRulesVersion}, but this worker scores " +
+                $"with {AlignmentScoring.RulesVersion}. Create the snapshot again.");
         var selected = SnapshotSelection.Resolve(db, SnapshotJson.ReadSelection(snapshot.Selection));
         var votes = await selected.OrderBy(v => v.VoteId).ToListAsync(cancellationToken);
         if (votes.Count == 0)

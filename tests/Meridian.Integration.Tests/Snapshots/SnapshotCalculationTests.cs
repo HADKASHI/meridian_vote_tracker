@@ -175,6 +175,32 @@ public sealed class SnapshotCalculationTests(PostgresFixture postgres, AzuriteFi
     }
 
     [Fact]
+    public async Task The_job_refuses_a_snapshot_created_under_other_scoring_rules()
+    {
+        await using var api = await ApiFactory.CreateAsync(postgres, azurite);
+        await using var fx = Meridian.Fixtures.Fixtures.For(api.ConnectionString);
+        var (first, _) = await ArrangeQ1Async(fx);
+        await using (var db = new MeridianDbContext(MeridianDb.Options(api.ConnectionString)))
+        {
+            // As if the header was written before a deploy that changed the rules.
+            var snapshot = new Data.Entities.Snapshot
+            {
+                Name = "Old rules", Selection = $$"""{"voteIds":[{{first.Id}}]}""", ScoringRulesVersion = "alignment-2025.9",
+                CreatedBy = "dana",
+            };
+            db.Snapshots.Add(snapshot);
+            await db.SaveChangesAsync(Ct);
+            db.Jobs.Add(JobQueue.ForSnapshot(snapshot.Id));
+            await db.SaveChangesAsync(Ct);
+            await RunJobsAsync(api.ConnectionString);
+
+            var job = (await GetAsync(api, snapshot.Id)).GetProperty("job");
+            Assert.Equal("failed", job.GetProperty("state").GetString());
+            Assert.Contains("alignment-2025.9", job.GetProperty("lastError").GetString());
+        }
+    }
+
+    [Fact]
     public async Task An_unknown_snapshot_is_not_found()
     {
         await using var api = await ApiFactory.CreateAsync(postgres, azurite);
