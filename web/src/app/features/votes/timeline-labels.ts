@@ -30,17 +30,24 @@ function subjectLabel(event: TimelineEventDto): string {
   return event.subject === 'ballot' ? `the ${event.stateCode} country vote` : 'the vote details';
 }
 
+/** "approved: A (abstain)" for the first value of a subject, "changed: N (no) → A (abstain)" after it. */
+function changeLabel(event: TimelineEventDto): string {
+  return event.from ? `changed: ${valueLabel(event.from)} → ${valueLabel(event.to)}` : `approved: ${valueLabel(event.to)}`;
+}
+
 /** One line per timeline event, in the glossary's words. */
 export function describeEvent(event: TimelineEventDto): string {
   switch (event.kind) {
     case 'import':
       return `Import #${event.importId} (${event.fileName}): ${countsLabel(event.counts)}`;
     case 'details_revision':
-      return `Vote details approved: ${valueLabel(event.to)}`;
+      return `Vote details ${changeLabel(event)}`;
     case 'country_vote_revision':
-      return `${event.stateCode} country vote approved: ${valueLabel(event.to)}`;
+      return `${event.stateCode} country vote ${changeLabel(event)}`;
     case 'position_revision':
-      return `Position set: ${valueLabel(event.to)}`;
+      return event.from
+        ? `Position changed: ${valueLabel(event.from)} → ${valueLabel(event.to)}`
+        : `Position set: ${valueLabel(event.to)}`;
     case 'conflict_opened':
       return `Conflict #${event.conflictId} opened on ${subjectLabel(event)} by import #${event.importId} (${event.fileName}): incoming ${valueLabel(event.to)}`;
     case 'conflict_decided':

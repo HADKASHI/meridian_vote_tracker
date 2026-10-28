@@ -132,6 +132,44 @@ public sealed class VoteTimelineTests(PostgresFixture postgres, AzuriteFixture a
     }
 
     [Fact]
+    public async Task Each_approved_value_change_reads_from_to_even_across_pages()
+    {
+        await using var api = await ApiFactory.CreateAsync(postgres, azurite);
+        await using var fx = Meridian.Fixtures.Fixtures.For(api.ConnectionString);
+        var vote = await fx.VoteAsync("MA/2024/004", new DateOnly(2024, 3, 1), session: 79, title: "Ocean Treaty");
+        await fx.CountryVotesAsync(vote, ("FRA", Y), ("BRA", N));
+        await fx.PositionAsync(vote, Stance.Yes, 2);
+        await fx.DecideAsync(await fx.BallotConflictAsync(vote, "BRA", A), Decision.Accept);
+        await fx.DecideAsync(await fx.DetailsConflictAsync(vote, voteDate: new DateOnly(2024, 3, 4)), Decision.Accept);
+        await fx.PositionAsync(vote, Stance.No, 5);
+        // Another vote's revisions never pair with this one's.
+        var other = await fx.VoteAsync("MA/2024/005", new DateOnly(2024, 3, 2));
+        await fx.CountryVotesAsync(other, ("BRA", Y));
+
+        // One event per page, so every earlier revision sits on an older page.
+        var events = await ReadAllAsync(api.ClientAs("dana"), vote.Id, pageSize: 1);
+
+        string? Value(JsonElement e, string side, string field) =>
+            e.GetProperty(side).ValueKind == JsonValueKind.Null ? null
+            : e.GetProperty(side).GetProperty(field) is { ValueKind: JsonValueKind.Number } n ? n.GetInt32().ToString()
+            : e.GetProperty(side).GetProperty(field).GetString();
+        List<JsonElement> Of(string kind) => events.Where(e => e.GetProperty("kind").GetString() == kind).ToList();
+
+        var ballots = Of("country_vote_revision")
+            .Select(e => (e.GetProperty("stateCode").GetString(), Value(e, "from", "ballot"), Value(e, "to", "ballot")));
+        Assert.Equal([("BRA", "n", "a"), ("BRA", null, "n"), ("FRA", null, "y")], ballots);
+
+        var details = Of("details_revision").Select(e => (Value(e, "from", "voteDate"), Value(e, "to", "voteDate"))).ToList();
+        Assert.Equal([("2024-03-01", "2024-03-04"), (null, "2024-03-01")], details);
+        var newest = Of("details_revision")[0];
+        Assert.Equal(("79", "Ocean Treaty"), (Value(newest, "from", "session"), Value(newest, "from", "title")));
+
+        var positions = Of("position_revision")
+            .Select(e => (Value(e, "from", "stance"), Value(e, "from", "weight"), Value(e, "to", "stance"), Value(e, "to", "weight")));
+        Assert.Equal([("yes", "2", "no", "5"), (null, null, "yes", "2")], positions);
+    }
+
+    [Fact]
     public async Task A_page_size_is_clamped_and_the_last_page_has_no_next()
     {
         await using var api = await ApiFactory.CreateAsync(postgres, azurite);

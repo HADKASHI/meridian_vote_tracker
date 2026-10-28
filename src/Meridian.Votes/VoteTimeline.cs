@@ -2,6 +2,7 @@ using System.Text.Json;
 using Meridian.Data;
 using Meridian.Data.Entities;
 using Meridian.Domain;
+using Meridian.Domain.History;
 using Meridian.Platform.Contracts;
 using Microsoft.EntityFrameworkCore;
 
@@ -27,7 +28,7 @@ public static class VoteTimeline
         if (more) rows.RemoveAt(pageSize);
 
         var parsed = rows.Select(r => (Row: r, Detail: JsonDocument.Parse(r.Detail).RootElement)).ToList();
-        var lookups = await Lookups.LoadAsync(db, parsed, ct);
+        var lookups = await Lookups.LoadAsync(db, voteId, parsed, ct);
         var items = parsed.Select(p => ToDto(p.Row, p.Detail, lookups)).ToList();
         return new TimelinePageDto(items, more ? items[^1].HistoryId : null);
     }
@@ -48,6 +49,7 @@ public static class VoteTimeline
             case TimelineEventKind.DetailsRevision:
                 return e with
                 {
+                    From = lookups.Previous.GetValueOrDefault(row.HistoryId),
                     To = new TimelineValueDto(null, d.GetProperty("session").GetInt32(), DateOf(d, "voteDate"),
                         d.GetProperty("title").GetString(), null, null),
                     Origin = lookups.Origins.Of(LongOf(d, "originImportRowId"), LongOf(d, "originDecisionId")),
@@ -56,12 +58,14 @@ public static class VoteTimeline
                 return e with
                 {
                     StateCode = d.GetProperty("stateCode").GetString(),
+                    From = lookups.Previous.GetValueOrDefault(row.HistoryId),
                     To = new TimelineValueDto(BallotOf(d, "ballot"), null, null, null, null, null),
                     Origin = lookups.Origins.Of(LongOf(d, "originImportRowId"), LongOf(d, "originDecisionId")),
                 };
             case TimelineEventKind.PositionRevision:
                 return e with
                 {
+                    From = lookups.Previous.GetValueOrDefault(row.HistoryId),
                     To = new TimelineValueDto(null, null, null, null,
                         Vocabulary<Stance>(d.GetProperty("stance").GetString()!), d.GetProperty("weight").GetInt16()),
                 };
@@ -132,11 +136,12 @@ public static class VoteTimeline
     }
 
     /// <summary>What a page's events point at, loaded once per page.</summary>
+    /// <param name="Previous">For each revision on the page, the value it replaced; absent for the first of its subject.</param>
     private sealed record Lookups(
         Origins Origins, Dictionary<long, string> FileNames, Dictionary<long, string?> ConflictStates,
-        Dictionary<long, string> SnapshotNames)
+        Dictionary<long, string> SnapshotNames, Dictionary<long, TimelineValueDto> Previous)
     {
-        public static async Task<Lookups> LoadAsync(MeridianDbContext db,
+        public static async Task<Lookups> LoadAsync(MeridianDbContext db, long voteId,
             List<(VoteTimelineEvent Row, JsonElement Detail)> events, CancellationToken ct)
         {
             List<long> Ids(string kind, string property) => events.Where(e => e.Row.Kind == kind)
@@ -152,7 +157,52 @@ public static class VoteTimeline
                 await Origins.LoadAsync(db, revisions, ct),
                 await db.Imports.Where(i => importIds.Contains(i.Id)).ToDictionaryAsync(i => i.Id, i => i.FileName, ct),
                 await db.Conflicts.Where(c => conflictIds.Contains(c.Id)).ToDictionaryAsync(c => c.Id, c => c.StateCode, ct),
-                await db.Snapshots.Where(s => snapshotIds.Contains(s.Id)).ToDictionaryAsync(s => s.Id, s => s.Name, ct));
+                await db.Snapshots.Where(s => snapshotIds.Contains(s.Id)).ToDictionaryAsync(s => s.Id, s => s.Name, ct),
+                await PreviousAsync(db, voteId, events, ct));
+        }
+
+        /// <summary>
+        /// Pairs each revision on the page with the earlier revision of its subject, which may sit
+        /// on an older page, so only the vote's revisions up to the page's newest are read.
+        /// </summary>
+        private static async Task<Dictionary<long, TimelineValueDto>> PreviousAsync(MeridianDbContext db, long voteId,
+            List<(VoteTimelineEvent Row, JsonElement Detail)> events, CancellationToken ct)
+        {
+            var values = new Dictionary<long, TimelineValueDto>();
+            var pairs = new Dictionary<long, long?>();
+            List<VoteTimelineEvent> Of(string kind) => events.Select(e => e.Row).Where(r => r.Kind == kind).ToList();
+
+            if (Of("country_vote_revision") is { Count: > 0 } ballots)
+            {
+                var upTo = ballots.Max(r => r.HistoryId);
+                var states = events.Where(e => e.Row.Kind == "country_vote_revision")
+                    .Select(e => e.Detail.GetProperty("stateCode").GetString()!).Distinct().ToList();
+                var history = await db.CountryVoteRevisions.AsNoTracking()
+                    .Where(r => r.VoteId == voteId && r.Id <= upTo && states.Contains(r.StateCode))
+                    .Select(r => new { r.Id, r.StateCode, r.Ballot }).ToListAsync(ct);
+                history.ForEach(r => values[r.Id] = new TimelineValueDto(r.Ballot, null, null, null, null, null));
+                pairs = pairs.Concat(RevisionPairs.PreviousOf(history.Select(r => (r.Id, r.StateCode)))).ToDictionary();
+            }
+            if (Of("details_revision") is { Count: > 0 } details)
+            {
+                var upTo = details.Max(r => r.HistoryId);
+                var history = await db.VoteDetailsRevisions.AsNoTracking()
+                    .Where(r => r.VoteId == voteId && r.Id <= upTo)
+                    .Select(r => new { r.Id, r.Session, r.VoteDate, r.Title }).ToListAsync(ct);
+                history.ForEach(r => values[r.Id] = new TimelineValueDto(null, r.Session, r.VoteDate, r.Title, null, null));
+                pairs = pairs.Concat(RevisionPairs.PreviousOf(history.Select(r => (r.Id, voteId)))).ToDictionary();
+            }
+            if (Of("position_revision") is { Count: > 0 } positions)
+            {
+                var upTo = positions.Max(r => r.HistoryId);
+                var history = await db.PositionRevisions.AsNoTracking()
+                    .Where(r => r.VoteId == voteId && r.Id <= upTo)
+                    .Select(r => new { r.Id, r.Stance, r.Weight }).ToListAsync(ct);
+                history.ForEach(r => values[r.Id] = new TimelineValueDto(null, null, null, null, r.Stance, r.Weight));
+                pairs = pairs.Concat(RevisionPairs.PreviousOf(history.Select(r => (r.Id, voteId)))).ToDictionary();
+            }
+
+            return pairs.Where(p => p.Value is not null).ToDictionary(p => p.Key, p => values[p.Value!.Value]);
         }
     }
 }

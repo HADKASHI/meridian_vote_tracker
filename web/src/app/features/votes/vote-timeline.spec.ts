@@ -46,6 +46,28 @@ const value = {
 };
 
 describe('describeEvent', () => {
+  it('shows each approved value change as from → to', () => {
+    expect(
+      describeEvent(
+        event(1, { kind: 'country_vote_revision', stateCode: 'BRA', from: { ...value, ballot: 'n' }, to: { ...value, ballot: 'a' } }),
+      ),
+    ).toBe('BRA country vote changed: N (no) → A (abstain)');
+    expect(
+      describeEvent(
+        event(2, {
+          kind: 'details_revision',
+          from: { ...value, session: 79, voteDate: '2024-03-01', title: 'Ocean Treaty' },
+          to: { ...value, session: 79, voteDate: '2024-03-04', title: 'Ocean Treaty' },
+        }),
+      ),
+    ).toBe('Vote details changed: session 79, 2024-03-01, “Ocean Treaty” → session 79, 2024-03-04, “Ocean Treaty”');
+    expect(
+      describeEvent(
+        event(3, { kind: 'position_revision', from: { ...value, stance: 'yes', weight: 2 }, to: { ...value, stance: 'no', weight: 5 } }),
+      ),
+    ).toBe('Position changed: Yes · weight 2 → No · weight 5');
+  });
+
   it('describes every event kind in the glossary words', () => {
     expect(
       describeEvent(

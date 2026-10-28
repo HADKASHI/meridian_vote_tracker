@@ -4,10 +4,10 @@
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The pairing function gives each revision the previous revision of the same subject, and none to the first
-- [ ] Country vote pairs never cross member states; details and position pairs never cross votes
-- [ ] A revision whose previous revision is on an older page still carries its "from"
-- [ ] The timeline tab shows "from → to" for country votes, vote details and positions
-- [ ] Unit tests cover the pairing rules; an integration test checks pairs on a vote with an accepted ballot conflict, an accepted details conflict and a position change, across pages
+- [x] The pairing function gives each revision the previous revision of the same subject, and none to the first
+- [x] Country vote pairs never cross member states; details and position pairs never cross votes
+- [x] A revision whose previous revision is on an older page still carries its "from"
+- [x] The timeline tab shows "from → to" for country votes, vote details and positions
+- [x] Unit tests cover the pairing rules; an integration test checks pairs on a vote with an accepted ballot conflict, an accepted details conflict and a position change, across pages
