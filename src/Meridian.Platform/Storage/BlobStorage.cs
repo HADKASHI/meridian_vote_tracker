@@ -23,19 +23,19 @@ public static class BlobStorage
     }
 
     /// <summary>Creates the container on startup if it is missing.</summary>
-    private sealed class BlobContainerInitializer(BlobContainerClient container, ILogger<BlobContainerInitializer> logger)
+    private sealed class BlobContainerInitializer(IServiceProvider services, ILogger<BlobContainerInitializer> logger)
         : IHostedService
     {
         public async Task StartAsync(CancellationToken cancellationToken)
         {
             try
             {
-                await container.CreateIfNotExistsAsync(cancellationToken: cancellationToken);
+                await services.GetRequiredService<BlobContainerClient>().CreateIfNotExistsAsync(cancellationToken: cancellationToken);
             }
             catch (Exception error) when (error is not OperationCanceledException)
             {
                 // Readiness reports it; the process stays up so it recovers when storage does.
-                logger.LogError(error, "Could not create blob container {Container}", container.Name);
+                logger.LogError(error, "Could not create the blob container");
             }
         }
 

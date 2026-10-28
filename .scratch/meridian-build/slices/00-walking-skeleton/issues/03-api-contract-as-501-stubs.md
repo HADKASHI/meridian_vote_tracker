@@ -4,11 +4,11 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Every ING, CON, HIS, POS and SNP endpoint (and the comparison extra) is in the OpenAPI document with typed request, response and problem bodies (`validation`, `no-votes-match`, `no-position`, `already-decided`, `stale-position`, `quarter-published`, `unknown-user`, `forbidden`, `not-implemented`)
-- [ ] Each stub returns 501 ProblemDetails with `traceId` to a caller with the right role
-- [ ] Building the API rewrites `contracts/openapi.json`; the committed copy matches
-- [ ] JSON number handling is strict, so numbers are never `number | string` in the client
-- [ ] The role-matrix test enumerates every endpoint from metadata: every endpoint as nobody gets 401, every admin endpoint as an analyst gets 403, and an endpoint without a policy fails the test
-- [ ] Validation error keys are camelCase JSON paths (tested on one stubbed request body)
+- [x] Every ING, CON, HIS, POS and SNP endpoint (and the comparison extra) is in the OpenAPI document with typed request, response and problem bodies (`validation`, `no-votes-match`, `no-position`, `already-decided`, `stale-position`, `quarter-published`, `unknown-user`, `forbidden`, `not-implemented`)
+- [x] Each stub returns 501 ProblemDetails with `traceId` to a caller with the right role
+- [x] Building the API rewrites `contracts/openapi.json`; the committed copy matches
+- [x] JSON number handling is strict, so numbers are never `number | string` in the client
+- [x] The role-matrix test enumerates every endpoint from metadata: every endpoint as nobody gets 401, every admin endpoint as an analyst gets 403, and an endpoint without a policy fails the test
+- [x] Validation error keys are camelCase JSON paths (tested on one stubbed request body)

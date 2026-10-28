@@ -1,0 +1,132 @@
+using System.ComponentModel.DataAnnotations;
+using Meridian.Domain;
+using Meridian.Platform.Contracts;
+using Meridian.Platform.Jobs;
+
+namespace Meridian.Snapshots;
+
+/// <summary>
+/// Which votes a snapshot covers: an inclusive date range on approved dates, one or more
+/// sessions, or an explicit list, minus any votes removed in the preview.
+/// </summary>
+public sealed class SnapshotSelectionDto : IValidatableObject
+{
+    public DateOnly? From { get; init; }
+    public DateOnly? To { get; init; }
+    public IReadOnlyList<int>? Sessions { get; init; }
+    public IReadOnlyList<long>? VoteIds { get; init; }
+
+    /// <summary>Votes removed with "Remove these votes", recorded as "range minus these votes".</summary>
+    public IReadOnlyList<long>? ExcludedVoteIds { get; init; }
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        var byRange = From is not null || To is not null;
+        var criteria = (byRange ? 1 : 0) + (Sessions is not null ? 1 : 0) + (VoteIds is not null ? 1 : 0);
+        if (criteria != 1)
+        {
+            yield return new ValidationResult("Choose one of a date range, sessions or a list of votes.");
+            yield break;
+        }
+
+        if (byRange)
+        {
+            if (From is null) yield return new ValidationResult("Enter the first date.", [nameof(From)]);
+            if (To is null) yield return new ValidationResult("Enter the last date.", [nameof(To)]);
+            if (From > To) yield return new ValidationResult("The last date is before the first.", [nameof(To)]);
+        }
+
+        if (Sessions is { Count: 0 }) yield return new ValidationResult("Choose at least one session.", [nameof(Sessions)]);
+        for (var i = 0; i < (Sessions?.Count ?? 0); i++)
+            if (Sessions![i] <= 0) yield return new ValidationResult("A session is a positive number.", [$"{nameof(Sessions)}[{i}]"]);
+
+        if (VoteIds is { Count: 0 }) yield return new ValidationResult("Choose at least one vote.", [nameof(VoteIds)]);
+    }
+}
+
+public sealed class CreateSnapshotRequest
+{
+    [Required(AllowEmptyStrings = false), MaxLength(200)] public string? Name { get; init; }
+    [MaxLength(2000)] public string? Note { get; init; }
+    [Required] public SnapshotSelectionDto? Selection { get; init; }
+}
+
+public enum SnapshotWarningKind { PendingConflicts, IncompleteVote, ImportRunning }
+
+/// <param name="ImportId">For <c>import_running</c>: the import that was applying, and how far it was.</param>
+public sealed record SnapshotWarningDto(
+    SnapshotWarningKind Kind, string Message, VoteRefDto? Vote,
+    int? PendingConflicts, IReadOnlyList<string>? MissingStateCodes,
+    long? ImportId, int? VotesDone, int? VotesTotal);
+
+/// <param name="NoPosition">Votes without a position: they block the snapshot until set or removed.</param>
+public sealed record SnapshotPreviewDto(int VoteCount, IReadOnlyList<VoteRefDto> NoPosition, IReadOnlyList<SnapshotWarningDto> Warnings);
+
+public sealed record SnapshotCreatedDto(long SnapshotId, long JobId);
+
+/// <summary>One state's result. Score is 100 × matched ÷ counted, null (n/a) when nothing was countable.</summary>
+public sealed record SnapshotResultDto(
+    string StateCode, string StateName, int MatchedWeight, int CountedWeight, int CountableVotes, double? Score, int? Rank);
+
+public sealed record PublicationDto(
+    long Id, long SnapshotId, string SnapshotName, string Quarter, string PublishedBy, DateTimeOffset PublishedAt,
+    string? Reason, long? SupersedesPublicationId, long? SupersededByPublicationId);
+
+public sealed record SnapshotSummaryDto(
+    long Id, string Name, string CreatedBy, DateTimeOffset CreatedAt, int? VoteCount, JobDto Job,
+    IReadOnlyList<PublicationDto> Publications);
+
+public sealed record SnapshotDto(
+    long Id, string Name, string? Note, SnapshotSelectionDto Selection, string ScoringRulesVersion,
+    string CreatedBy, DateTimeOffset CreatedAt, JobDto Job, int VoteCount,
+    IReadOnlyList<SnapshotResultDto> Results, IReadOnlyList<SnapshotWarningDto> Warnings,
+    IReadOnlyList<PublicationDto> Publications);
+
+/// <summary>One vote in a state's breakdown: the exact value used and how it was treated.</summary>
+public sealed record SnapshotLineDto(
+    VoteRefDto Vote, DateOnly VoteDate, string Title, Stance Stance, short Weight,
+    Ballot? Ballot, LineCategory Category, long? CountryVoteRevisionId);
+
+public sealed record SnapshotBreakdownDto(SnapshotResultDto Result, IReadOnlyList<SnapshotLineDto> Lines);
+
+public sealed record SnapshotRefDto(long Id, string Name, DateTimeOffset CreatedAt);
+
+public sealed record StateMovementDto(
+    string StateCode, string StateName, double? ScoreA, int? RankA, double? ScoreB, int? RankB,
+    double? ScoreChange, int? RankChange);
+
+public sealed record SnapshotComparisonDto(SnapshotRefDto A, SnapshotRefDto B, IReadOnlyList<StateMovementDto> States);
+
+public sealed class PublishSnapshotRequest : IValidatableObject
+{
+    [Required, RegularExpression("^[0-9]{4}-Q[1-4]$", ErrorMessage = "A reporting quarter looks like 2024-Q1.")]
+    public string? Quarter { get; init; }
+
+    /// <summary>The quarter's current publication, when replacing it.</summary>
+    public long? SupersedesPublicationId { get; init; }
+
+    [MaxLength(2000)] public string? Reason { get; init; }
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (SupersedesPublicationId is not null && string.IsNullOrWhiteSpace(Reason))
+            yield return new ValidationResult("Give a reason for replacing the published snapshot.", [nameof(Reason)]);
+        if (SupersedesPublicationId is null && Reason is not null)
+            yield return new ValidationResult("A reason is only given when replacing a publication.", [nameof(Reason)]);
+    }
+}
+
+/// <summary>The chain of one reporting quarter: the first publication, then each replacement.</summary>
+public sealed record QuarterPublicationsDto(string Quarter, PublicationDto Current, IReadOnlyList<PublicationDto> Chain);
+
+/// <summary><c>quarter-published</c> (409): the quarter already has this publication.</summary>
+public sealed class QuarterPublishedProblem : Problem
+{
+    public required PublicationDto Publication { get; init; }
+}
+
+/// <summary><c>no-position</c> (400): these votes have no position and block the snapshot.</summary>
+public sealed class NoPositionProblem : Problem
+{
+    public required IReadOnlyList<VoteRefDto> Votes { get; init; }
+}

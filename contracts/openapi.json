@@ -1,0 +1,3996 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "Meridian.Api | v1",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/users": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "operationId": "listUsers",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/me": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "operationId": "getCurrentUser",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/imports": {
+      "post": {
+        "tags": [
+          "Imports"
+        ],
+        "summary": "Upload an export file; its import runs as a job.",
+        "operationId": "uploadImport",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "required": [
+                  "file"
+                ],
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "$ref": "#/components/schemas/IFormFile"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportCreatedDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Imports"
+        ],
+        "operationId": "listImports",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageDtoOfImportSummaryDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/imports/{importId}": {
+      "get": {
+        "tags": [
+          "Imports"
+        ],
+        "operationId": "getImport",
+        "parameters": [
+          {
+            "name": "importId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/imports/{importId}/rows": {
+      "get": {
+        "tags": [
+          "Imports"
+        ],
+        "operationId": "listImportRows",
+        "parameters": [
+          {
+            "name": "importId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "outcome",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/Outcome"
+            }
+          },
+          {
+            "name": "voteId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageDtoOfImportRowDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/imports/{importId}/votes": {
+      "get": {
+        "tags": [
+          "Imports"
+        ],
+        "summary": "Counts per outcome for each vote the import touched.",
+        "operationId": "listImportVoteCounts",
+        "parameters": [
+          {
+            "name": "importId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ImportVoteCountsDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/conflicts": {
+      "get": {
+        "tags": [
+          "Conflicts"
+        ],
+        "summary": "The Review inbox: conflicts ordered by vote, then subject.",
+        "operationId": "listConflicts",
+        "parameters": [
+          {
+            "name": "state",
+            "in": "query",
+            "schema": {
+              "default": "pending",
+              "$ref": "#/components/schemas/ConflictFilter"
+            }
+          },
+          {
+            "name": "voteId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "importId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageDtoOfConflictListItemDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/conflicts/{conflictId}": {
+      "get": {
+        "tags": [
+          "Conflicts"
+        ],
+        "operationId": "getConflict",
+        "parameters": [
+          {
+            "name": "conflictId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/conflicts/{conflictId}/decision": {
+      "post": {
+        "tags": [
+          "Conflicts"
+        ],
+        "summary": "Accept or reject a conflict. Exactly one of two simultaneous decisions applies.",
+        "operationId": "decideConflict",
+        "parameters": [
+          {
+            "name": "conflictId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecideConflictRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictDecisionDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlreadyDecidedProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/votes": {
+      "get": {
+        "tags": [
+          "Votes"
+        ],
+        "summary": "Search by assembly vote id or title, session, date range, or votes with no position.",
+        "operationId": "searchVotes",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "session",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "noPosition",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageDtoOfVoteSummaryDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/votes/{voteId}": {
+      "get": {
+        "tags": [
+          "Votes"
+        ],
+        "operationId": "getVote",
+        "parameters": [
+          {
+            "name": "voteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoteDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/votes/{voteId}/timeline": {
+      "get": {
+        "tags": [
+          "Votes"
+        ],
+        "summary": "The vote's timeline, newest first, paged by history id.",
+        "operationId": "getVoteTimeline",
+        "parameters": [
+          {
+            "name": "voteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimelinePageDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/positions": {
+      "get": {
+        "tags": [
+          "Positions"
+        ],
+        "summary": "Votes with their stance and weight, votes without a position first.",
+        "operationId": "listPositions",
+        "parameters": [
+          {
+            "name": "noPosition",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageDtoOfPositionWorklistItemDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/votes/{voteId}/position": {
+      "put": {
+        "tags": [
+          "Positions"
+        ],
+        "operationId": "setPosition",
+        "parameters": [
+          {
+            "name": "voteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPositionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PositionDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StalePositionProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/publications": {
+      "get": {
+        "tags": [
+          "Snapshots"
+        ],
+        "summary": "Each reporting quarter's chain of publications, newest quarter first.",
+        "operationId": "listPublications",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/QuarterPublicationsDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/snapshots/preview": {
+      "post": {
+        "tags": [
+          "Snapshots"
+        ],
+        "summary": "Resolve a selection: vote count, votes without a position, and warnings. Runs no job.",
+        "operationId": "previewSnapshot",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SnapshotSelectionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SnapshotPreviewDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/snapshots": {
+      "post": {
+        "tags": [
+          "Snapshots"
+        ],
+        "summary": "Create a snapshot; it is calculated as a job. Refused when no vote matches or a vote has no position.",
+        "operationId": "createSnapshot",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSnapshotRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SnapshotCreatedDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoPositionProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Snapshots"
+        ],
+        "operationId": "listSnapshots",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageDtoOfSnapshotSummaryDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/snapshots/compare": {
+      "get": {
+        "tags": [
+          "Snapshots"
+        ],
+        "summary": "Each state's rank and score movement between two snapshots (slice 7).",
+        "operationId": "compareSnapshots",
+        "parameters": [
+          {
+            "name": "a",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "b",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SnapshotComparisonDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/snapshots/{snapshotId}": {
+      "get": {
+        "tags": [
+          "Snapshots"
+        ],
+        "operationId": "getSnapshot",
+        "parameters": [
+          {
+            "name": "snapshotId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SnapshotDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/snapshots/{snapshotId}/states/{stateCode}": {
+      "get": {
+        "tags": [
+          "Snapshots"
+        ],
+        "summary": "One state's breakdown: every vote with its category and the exact value used.",
+        "operationId": "getSnapshotBreakdown",
+        "parameters": [
+          {
+            "name": "snapshotId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "stateCode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SnapshotBreakdownDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/snapshots/{snapshotId}/publications": {
+      "post": {
+        "tags": [
+          "Snapshots"
+        ],
+        "summary": "Publish for a reporting quarter, or replace its publication with a reason.",
+        "operationId": "publishSnapshot",
+        "parameters": [
+          {
+            "name": "snapshotId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishSnapshotRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuarterPublishedProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AlreadyDecidedProblem": {
+        "required": [
+          "decision",
+          "type",
+          "title",
+          "status",
+          "traceId"
+        ],
+        "type": "object",
+        "properties": {
+          "decision": {
+            "$ref": "#/components/schemas/ConflictDecisionDto"
+          },
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "traceId": {
+            "type": "string"
+          }
+        }
+      },
+      "Ballot": {
+        "enum": [
+          "y",
+          "n",
+          "a",
+          "x",
+          null
+        ]
+      },
+      "ConflictDecisionDto": {
+        "required": [
+          "id",
+          "conflictId",
+          "decision",
+          "decidedBy",
+          "decidedAt",
+          "comment",
+          "from",
+          "to"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "conflictId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "decision": {
+            "$ref": "#/components/schemas/Decision"
+          },
+          "decidedBy": {
+            "type": "string"
+          },
+          "decidedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "comment": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "from": {
+            "$ref": "#/components/schemas/ConflictValueDto"
+          },
+          "to": {
+            "$ref": "#/components/schemas/ConflictValueDto"
+          }
+        }
+      },
+      "ConflictDto": {
+        "required": [
+          "id",
+          "vote",
+          "subject",
+          "stateCode",
+          "current",
+          "incoming",
+          "comparedRevisionId",
+          "decision",
+          "notApplied"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "vote": {
+            "$ref": "#/components/schemas/VoteRefDto"
+          },
+          "subject": {
+            "$ref": "#/components/schemas/ConflictSubject"
+          },
+          "stateCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "current": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ConflictSideDto"
+              }
+            ]
+          },
+          "incoming": {
+            "$ref": "#/components/schemas/ConflictSideDto"
+          },
+          "comparedRevisionId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "decision": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ConflictDecisionDto"
+              }
+            ]
+          },
+          "notApplied": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotAppliedAttemptDto"
+            }
+          }
+        }
+      },
+      "ConflictFilter": {
+        "enum": [
+          "pending",
+          "decided",
+          "all"
+        ]
+      },
+      "ConflictListItemDto": {
+        "required": [
+          "kind",
+          "id",
+          "vote",
+          "subject",
+          "stateCode",
+          "current",
+          "incoming",
+          "importId",
+          "openedAt",
+          "decision"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/InboxItemKind"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "vote": {
+            "$ref": "#/components/schemas/VoteRefDto"
+          },
+          "subject": {
+            "$ref": "#/components/schemas/ConflictSubject"
+          },
+          "stateCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "current": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ConflictValueDto"
+              }
+            ]
+          },
+          "incoming": {
+            "$ref": "#/components/schemas/ConflictValueDto"
+          },
+          "importId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "openedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "decision": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Decision"
+              }
+            ]
+          }
+        }
+      },
+      "ConflictSideDto": {
+        "required": [
+          "value",
+          "revisionId",
+          "origin"
+        ],
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/ConflictValueDto"
+          },
+          "revisionId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/OriginDto"
+          }
+        }
+      },
+      "ConflictSubject": {
+        "enum": [
+          "ballot",
+          "details"
+        ]
+      },
+      "ConflictValueDto": {
+        "required": [
+          "ballot",
+          "session",
+          "voteDate",
+          "title"
+        ],
+        "type": "object",
+        "properties": {
+          "ballot": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Ballot"
+              }
+            ]
+          },
+          "session": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "voteDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "CountryVoteDto": {
+        "required": [
+          "stateCode",
+          "stateName",
+          "ballot",
+          "revisionId",
+          "origin",
+          "memberOnVoteDate"
+        ],
+        "type": "object",
+        "properties": {
+          "stateCode": {
+            "type": "string"
+          },
+          "stateName": {
+            "type": "string"
+          },
+          "ballot": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Ballot"
+              }
+            ]
+          },
+          "revisionId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "origin": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/OriginDto"
+              }
+            ]
+          },
+          "memberOnVoteDate": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CreateSnapshotRequest": {
+        "required": [
+          "name",
+          "selection"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "maxLength": 200,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "note": {
+            "maxLength": 2000,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "selection": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/SnapshotSelectionDto"
+              }
+            ]
+          }
+        }
+      },
+      "DecideConflictRequest": {
+        "required": [
+          "decision"
+        ],
+        "type": "object",
+        "properties": {
+          "decision": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Decision"
+              }
+            ]
+          },
+          "comment": {
+            "maxLength": 2000,
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "Decision": {
+        "enum": [
+          "accept",
+          "reject",
+          null
+        ]
+      },
+      "IFormFile": {
+        "type": "string",
+        "format": "binary"
+      },
+      "ImportConflictDto": {
+        "required": [
+          "conflictId",
+          "vote",
+          "subject",
+          "stateCode",
+          "rows"
+        ],
+        "type": "object",
+        "properties": {
+          "conflictId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "vote": {
+            "$ref": "#/components/schemas/VoteRefDto"
+          },
+          "subject": {
+            "$ref": "#/components/schemas/ConflictSubject"
+          },
+          "stateCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "rows": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "ImportCreatedDto": {
+        "required": [
+          "importId",
+          "jobId"
+        ],
+        "type": "object",
+        "properties": {
+          "importId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "jobId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ImportDto": {
+        "required": [
+          "id",
+          "fileName",
+          "sha256",
+          "sizeBytes",
+          "uploadedBy",
+          "uploadedAt",
+          "job",
+          "parse",
+          "counts",
+          "warnings",
+          "conflictsOpened"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "uploadedBy": {
+            "type": "string"
+          },
+          "uploadedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "job": {
+            "$ref": "#/components/schemas/JobDto"
+          },
+          "parse": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ImportParseDto"
+              }
+            ]
+          },
+          "counts": {
+            "$ref": "#/components/schemas/OutcomeCountsDto"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportWarningDto"
+            }
+          },
+          "conflictsOpened": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportConflictDto"
+            }
+          }
+        }
+      },
+      "ImportParseDto": {
+        "required": [
+          "header",
+          "hasBom",
+          "lineEndings",
+          "dataRows",
+          "maxPublishedAt",
+          "rejectedReason"
+        ],
+        "type": "object",
+        "properties": {
+          "header": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "hasBom": {
+            "type": "boolean"
+          },
+          "lineEndings": {
+            "$ref": "#/components/schemas/LineEndings"
+          },
+          "dataRows": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "maxPublishedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "rejectedReason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ImportRowDto": {
+        "required": [
+          "id",
+          "lineNo",
+          "rawText",
+          "outcome",
+          "reasonCode",
+          "reasonMessage",
+          "normalisations",
+          "vote",
+          "stateCode",
+          "countryVoteRevisionId",
+          "detailsRevisionId",
+          "conflictIds"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "lineNo": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "rawText": {
+            "type": "string"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/Outcome"
+          },
+          "reasonCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "reasonMessage": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "normalisations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "vote": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/VoteRefDto"
+              }
+            ]
+          },
+          "stateCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "countryVoteRevisionId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "detailsRevisionId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "conflictIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        }
+      },
+      "ImportSummaryDto": {
+        "required": [
+          "id",
+          "fileName",
+          "uploadedBy",
+          "uploadedAt",
+          "sizeBytes",
+          "job",
+          "rejectedReason",
+          "counts"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "uploadedBy": {
+            "type": "string"
+          },
+          "uploadedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "job": {
+            "$ref": "#/components/schemas/JobDto"
+          },
+          "rejectedReason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "counts": {
+            "$ref": "#/components/schemas/OutcomeCountsDto"
+          }
+        }
+      },
+      "ImportVoteCountsDto": {
+        "required": [
+          "vote",
+          "counts"
+        ],
+        "type": "object",
+        "properties": {
+          "vote": {
+            "$ref": "#/components/schemas/VoteRefDto"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/OutcomeCountsDto"
+          }
+        }
+      },
+      "ImportWarningDto": {
+        "required": [
+          "id",
+          "kind",
+          "message",
+          "vote",
+          "identicalToImportId",
+          "columns",
+          "missingStateCodes",
+          "newestPublishedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ImportWarningKind"
+          },
+          "message": {
+            "type": "string"
+          },
+          "vote": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/VoteRefDto"
+              }
+            ]
+          },
+          "identicalToImportId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "columns": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "missingStateCodes": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "newestPublishedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "ImportWarningKind": {
+        "enum": [
+          "extra_columns",
+          "identical_file",
+          "older_published_at",
+          "incomplete_vote"
+        ]
+      },
+      "InboxItemKind": {
+        "enum": [
+          "conflict"
+        ]
+      },
+      "JobDto": {
+        "required": [
+          "id",
+          "kind",
+          "state",
+          "importId",
+          "snapshotId",
+          "placeInQueue",
+          "rowsRead",
+          "votesDone",
+          "votesTotal",
+          "attempts",
+          "lastError",
+          "traceId",
+          "startedBy",
+          "createdAt",
+          "startedAt",
+          "finishedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/JobKind"
+          },
+          "state": {
+            "$ref": "#/components/schemas/JobState"
+          },
+          "importId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "snapshotId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "placeInQueue": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "rowsRead": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "votesDone": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "votesTotal": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "attempts": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lastError": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "traceId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "startedBy": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "startedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "finishedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "JobKind": {
+        "enum": [
+          "import",
+          "snapshot"
+        ]
+      },
+      "JobState": {
+        "enum": [
+          "queued",
+          "running",
+          "done",
+          "failed"
+        ]
+      },
+      "LineCategory": {
+        "enum": [
+          "match",
+          "mismatch",
+          "abstain",
+          "absent",
+          "non_member",
+          "no_data"
+        ]
+      },
+      "LineEndings": {
+        "enum": [
+          "lf",
+          "crlf",
+          "mixed"
+        ]
+      },
+      "NoPositionProblem": {
+        "required": [
+          "votes",
+          "type",
+          "title",
+          "status",
+          "traceId"
+        ],
+        "type": "object",
+        "properties": {
+          "votes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VoteRefDto"
+            }
+          },
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "traceId": {
+            "type": "string"
+          }
+        }
+      },
+      "NotAppliedAttemptDto": {
+        "required": [
+          "id",
+          "attemptedBy",
+          "attempted",
+          "attemptedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "attemptedBy": {
+            "type": "string"
+          },
+          "attempted": {
+            "$ref": "#/components/schemas/Decision"
+          },
+          "attemptedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "OriginDto": {
+        "required": [
+          "kind",
+          "importId",
+          "fileName",
+          "lineNo",
+          "importRowId",
+          "uploadedBy",
+          "uploadedAt",
+          "decisionId",
+          "conflictId",
+          "decidedBy",
+          "decidedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/OriginKind"
+          },
+          "importId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "fileName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "lineNo": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "importRowId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "uploadedBy": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "uploadedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "decisionId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "conflictId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "decidedBy": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "decidedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "OriginKind": {
+        "enum": [
+          "import_row",
+          "decision"
+        ]
+      },
+      "Outcome": {
+        "enum": [
+          "new",
+          "unchanged",
+          "duplicate",
+          "invalid",
+          "contradiction",
+          "conflict"
+        ]
+      },
+      "OutcomeCountsDto": {
+        "required": [
+          "new",
+          "unchanged",
+          "duplicate",
+          "invalid",
+          "contradiction",
+          "conflict"
+        ],
+        "type": "object",
+        "properties": {
+          "new": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unchanged": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "duplicate": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "invalid": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "contradiction": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "conflict": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PageDtoOfConflictListItemDto": {
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConflictListItemDto"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PageDtoOfImportRowDto": {
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportRowDto"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PageDtoOfImportSummaryDto": {
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportSummaryDto"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PageDtoOfPositionWorklistItemDto": {
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PositionWorklistItemDto"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PageDtoOfSnapshotSummaryDto": {
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SnapshotSummaryDto"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PageDtoOfVoteSummaryDto": {
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VoteSummaryDto"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PositionDto": {
+        "required": [
+          "revisionId",
+          "stance",
+          "weight",
+          "setBy",
+          "setAt"
+        ],
+        "type": "object",
+        "properties": {
+          "revisionId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "stance": {
+            "$ref": "#/components/schemas/Stance"
+          },
+          "weight": {
+            "type": "integer",
+            "format": "int16"
+          },
+          "setBy": {
+            "type": "string"
+          },
+          "setAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PositionWorklistItemDto": {
+        "required": [
+          "vote",
+          "session",
+          "voteDate",
+          "title",
+          "position"
+        ],
+        "type": "object",
+        "properties": {
+          "vote": {
+            "$ref": "#/components/schemas/VoteRefDto"
+          },
+          "session": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "voteDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "title": {
+            "type": "string"
+          },
+          "position": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PositionDto"
+              }
+            ]
+          }
+        }
+      },
+      "Problem": {
+        "required": [
+          "type",
+          "title",
+          "status",
+          "traceId"
+        ],
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "traceId": {
+            "type": "string"
+          }
+        }
+      },
+      "PublicationDto": {
+        "required": [
+          "id",
+          "snapshotId",
+          "snapshotName",
+          "quarter",
+          "publishedBy",
+          "publishedAt",
+          "reason",
+          "supersedesPublicationId",
+          "supersededByPublicationId"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "snapshotId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "snapshotName": {
+            "type": "string"
+          },
+          "quarter": {
+            "type": "string"
+          },
+          "publishedBy": {
+            "type": "string"
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "supersedesPublicationId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "supersededByPublicationId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "PublishSnapshotRequest": {
+        "required": [
+          "quarter"
+        ],
+        "type": "object",
+        "properties": {
+          "quarter": {
+            "pattern": "^[0-9]{4}-Q[1-4]$",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "supersedesPublicationId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "reason": {
+            "maxLength": 2000,
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "QuarterPublicationsDto": {
+        "required": [
+          "quarter",
+          "current",
+          "chain"
+        ],
+        "type": "object",
+        "properties": {
+          "quarter": {
+            "type": "string"
+          },
+          "current": {
+            "$ref": "#/components/schemas/PublicationDto"
+          },
+          "chain": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicationDto"
+            }
+          }
+        }
+      },
+      "QuarterPublishedProblem": {
+        "required": [
+          "publication",
+          "type",
+          "title",
+          "status",
+          "traceId"
+        ],
+        "type": "object",
+        "properties": {
+          "publication": {
+            "$ref": "#/components/schemas/PublicationDto"
+          },
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "traceId": {
+            "type": "string"
+          }
+        }
+      },
+      "Role": {
+        "enum": [
+          "analyst",
+          "admin"
+        ]
+      },
+      "SetPositionRequest": {
+        "required": [
+          "stance",
+          "weight"
+        ],
+        "type": "object",
+        "properties": {
+          "stance": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Stance"
+              }
+            ]
+          },
+          "weight": {
+            "maximum": 5,
+            "minimum": 1,
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int16"
+          },
+          "seenRevisionId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "SnapshotBreakdownDto": {
+        "required": [
+          "result",
+          "lines"
+        ],
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/SnapshotResultDto"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SnapshotLineDto"
+            }
+          }
+        }
+      },
+      "SnapshotComparisonDto": {
+        "required": [
+          "a",
+          "b",
+          "states"
+        ],
+        "type": "object",
+        "properties": {
+          "a": {
+            "$ref": "#/components/schemas/SnapshotRefDto"
+          },
+          "b": {
+            "$ref": "#/components/schemas/SnapshotRefDto"
+          },
+          "states": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StateMovementDto"
+            }
+          }
+        }
+      },
+      "SnapshotCreatedDto": {
+        "required": [
+          "snapshotId",
+          "jobId"
+        ],
+        "type": "object",
+        "properties": {
+          "snapshotId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "jobId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "SnapshotDto": {
+        "required": [
+          "id",
+          "name",
+          "note",
+          "selection",
+          "scoringRulesVersion",
+          "createdBy",
+          "createdAt",
+          "job",
+          "voteCount",
+          "results",
+          "warnings",
+          "publications"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "note": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "selection": {
+            "$ref": "#/components/schemas/SnapshotSelectionDto"
+          },
+          "scoringRulesVersion": {
+            "type": "string"
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "job": {
+            "$ref": "#/components/schemas/JobDto"
+          },
+          "voteCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SnapshotResultDto"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SnapshotWarningDto"
+            }
+          },
+          "publications": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicationDto"
+            }
+          }
+        }
+      },
+      "SnapshotLineDto": {
+        "required": [
+          "vote",
+          "voteDate",
+          "title",
+          "stance",
+          "weight",
+          "ballot",
+          "category",
+          "countryVoteRevisionId"
+        ],
+        "type": "object",
+        "properties": {
+          "vote": {
+            "$ref": "#/components/schemas/VoteRefDto"
+          },
+          "voteDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "title": {
+            "type": "string"
+          },
+          "stance": {
+            "$ref": "#/components/schemas/Stance"
+          },
+          "weight": {
+            "type": "integer",
+            "format": "int16"
+          },
+          "ballot": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Ballot"
+              }
+            ]
+          },
+          "category": {
+            "$ref": "#/components/schemas/LineCategory"
+          },
+          "countryVoteRevisionId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "SnapshotPreviewDto": {
+        "required": [
+          "voteCount",
+          "noPosition",
+          "warnings"
+        ],
+        "type": "object",
+        "properties": {
+          "voteCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "noPosition": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VoteRefDto"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SnapshotWarningDto"
+            }
+          }
+        }
+      },
+      "SnapshotRefDto": {
+        "required": [
+          "id",
+          "name",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "SnapshotResultDto": {
+        "required": [
+          "stateCode",
+          "stateName",
+          "matchedWeight",
+          "countedWeight",
+          "countableVotes",
+          "score",
+          "rank"
+        ],
+        "type": "object",
+        "properties": {
+          "stateCode": {
+            "type": "string"
+          },
+          "stateName": {
+            "type": "string"
+          },
+          "matchedWeight": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "countedWeight": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "countableVotes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "score": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "rank": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "SnapshotSelectionDto": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "to": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "sessions": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          "voteIds": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "excludedVoteIds": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        }
+      },
+      "SnapshotSummaryDto": {
+        "required": [
+          "id",
+          "name",
+          "createdBy",
+          "createdAt",
+          "voteCount",
+          "job",
+          "publications"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "voteCount": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "job": {
+            "$ref": "#/components/schemas/JobDto"
+          },
+          "publications": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicationDto"
+            }
+          }
+        }
+      },
+      "SnapshotWarningDto": {
+        "required": [
+          "kind",
+          "message",
+          "vote",
+          "pendingConflicts",
+          "missingStateCodes",
+          "importId",
+          "votesDone",
+          "votesTotal"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/SnapshotWarningKind"
+          },
+          "message": {
+            "type": "string"
+          },
+          "vote": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/VoteRefDto"
+              }
+            ]
+          },
+          "pendingConflicts": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "missingStateCodes": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "importId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "votesDone": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "votesTotal": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "SnapshotWarningKind": {
+        "enum": [
+          "pending_conflicts",
+          "incomplete_vote",
+          "import_running"
+        ]
+      },
+      "StalePositionProblem": {
+        "required": [
+          "current",
+          "type",
+          "title",
+          "status",
+          "traceId"
+        ],
+        "type": "object",
+        "properties": {
+          "current": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PositionDto"
+              }
+            ]
+          },
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "traceId": {
+            "type": "string"
+          }
+        }
+      },
+      "Stance": {
+        "enum": [
+          "yes",
+          "no"
+        ]
+      },
+      "StateMovementDto": {
+        "required": [
+          "stateCode",
+          "stateName",
+          "scoreA",
+          "rankA",
+          "scoreB",
+          "rankB",
+          "scoreChange",
+          "rankChange"
+        ],
+        "type": "object",
+        "properties": {
+          "stateCode": {
+            "type": "string"
+          },
+          "stateName": {
+            "type": "string"
+          },
+          "scoreA": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "rankA": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "scoreB": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "rankB": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "scoreChange": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "rankChange": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "TimelineEventDto": {
+        "required": [
+          "historyId",
+          "kind",
+          "actor",
+          "at",
+          "stateCode",
+          "from",
+          "to",
+          "origin",
+          "importId",
+          "fileName",
+          "counts",
+          "conflictId",
+          "subject",
+          "decision",
+          "comment",
+          "snapshotId",
+          "snapshotName",
+          "publicationId",
+          "quarter",
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "historyId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/TimelineEventKind"
+          },
+          "actor": {
+            "type": "string"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "stateCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "from": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TimelineValueDto"
+              }
+            ]
+          },
+          "to": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TimelineValueDto"
+              }
+            ]
+          },
+          "origin": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/OriginDto"
+              }
+            ]
+          },
+          "importId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "fileName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "counts": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/OutcomeCountsDto"
+              }
+            ]
+          },
+          "conflictId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "subject": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ConflictSubject"
+              }
+            ]
+          },
+          "decision": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Decision"
+              }
+            ]
+          },
+          "comment": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "snapshotId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "snapshotName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "publicationId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "quarter": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "TimelineEventKind": {
+        "enum": [
+          "import",
+          "details_revision",
+          "country_vote_revision",
+          "position_revision",
+          "conflict_opened",
+          "conflict_decided",
+          "decision_not_applied",
+          "snapshot",
+          "publication"
+        ]
+      },
+      "TimelinePageDto": {
+        "required": [
+          "items",
+          "nextBefore"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TimelineEventDto"
+            }
+          },
+          "nextBefore": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "TimelineValueDto": {
+        "required": [
+          "ballot",
+          "session",
+          "voteDate",
+          "title",
+          "stance",
+          "weight"
+        ],
+        "type": "object",
+        "properties": {
+          "ballot": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Ballot"
+              }
+            ]
+          },
+          "session": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "voteDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "stance": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Stance"
+              }
+            ]
+          },
+          "weight": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int16"
+          }
+        }
+      },
+      "UserDto": {
+        "required": [
+          "id",
+          "displayName",
+          "role"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          }
+        }
+      },
+      "ValidationProblem": {
+        "required": [
+          "errors",
+          "type",
+          "title",
+          "status",
+          "traceId"
+        ],
+        "type": "object",
+        "properties": {
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "traceId": {
+            "type": "string"
+          }
+        }
+      },
+      "VoteDetailsDto": {
+        "required": [
+          "revisionId",
+          "session",
+          "voteDate",
+          "title",
+          "origin"
+        ],
+        "type": "object",
+        "properties": {
+          "revisionId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "session": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "voteDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "title": {
+            "type": "string"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/OriginDto"
+          }
+        }
+      },
+      "VoteDto": {
+        "required": [
+          "id",
+          "assemblyVoteId",
+          "details",
+          "position",
+          "countryVotes",
+          "pendingConflicts"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "assemblyVoteId": {
+            "type": "string"
+          },
+          "details": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/VoteDetailsDto"
+              }
+            ]
+          },
+          "position": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PositionDto"
+              }
+            ]
+          },
+          "countryVotes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CountryVoteDto"
+            }
+          },
+          "pendingConflicts": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "VoteRefDto": {
+        "required": [
+          "voteId",
+          "assemblyVoteId"
+        ],
+        "type": "object",
+        "properties": {
+          "voteId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "assemblyVoteId": {
+            "type": "string"
+          }
+        }
+      },
+      "VoteSummaryDto": {
+        "required": [
+          "id",
+          "assemblyVoteId",
+          "session",
+          "voteDate",
+          "title",
+          "position"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "assemblyVoteId": {
+            "type": "string"
+          },
+          "session": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "voteDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "title": {
+            "type": "string"
+          },
+          "position": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PositionDto"
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Users"
+    },
+    {
+      "name": "Imports"
+    },
+    {
+      "name": "Conflicts"
+    },
+    {
+      "name": "Votes"
+    },
+    {
+      "name": "Positions"
+    },
+    {
+      "name": "Snapshots"
+    }
+  ]
+}
