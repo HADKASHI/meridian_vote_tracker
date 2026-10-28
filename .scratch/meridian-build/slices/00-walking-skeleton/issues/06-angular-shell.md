@@ -4,12 +4,12 @@
 
 **Blocked by:** 03, 04
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `npm run build` generates the client and builds; `npm run lint` and `npm test` pass
-- [ ] The interceptor adds `X-User-Id` only to `/api/` calls (tested with `HttpTestingController`)
-- [ ] The switcher keeps a per-tab user across reloads and starts new tabs as the last choice
-- [ ] Every route of the spec resolves to its placeholder page
-- [ ] The jobs indicator and Review badge reflect `GET /api/status`; polling stops when nothing is active and the tab is hidden (tested)
-- [ ] `problemToFieldErrors` maps camelCase JSON-path keys to fields and unknown keys to a form error (tested); 5xx notices show the `traceId`
-- [ ] A feature folder importing another feature folder fails lint
+- [x] `npm run build` generates the client and builds; `npm run lint` and `npm test` pass
+- [x] The interceptor adds `X-User-Id` only to `/api/` calls (tested with `HttpTestingController`)
+- [x] The switcher keeps a per-tab user across reloads and starts new tabs as the last choice
+- [x] Every route of the spec resolves to its placeholder page
+- [x] The jobs indicator and Review badge reflect `GET /api/status`; polling stops when nothing is active and the tab is hidden (tested)
+- [x] `problemToFieldErrors` maps camelCase JSON-path keys to fields and unknown keys to a form error (tested); 5xx notices show the `traceId`
+- [x] A feature folder importing another feature folder fails lint

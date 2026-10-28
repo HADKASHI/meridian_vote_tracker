@@ -1,0 +1,5 @@
+# Generated from ../contracts/openapi.json by `npm run gen:api`
+/src/app/api/
+/dist/
+/.angular/
+/node_modules/

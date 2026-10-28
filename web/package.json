@@ -1,0 +1,40 @@
+{
+  "name": "meridian-web",
+  "version": "0.0.0",
+  "scripts": {
+    "ng": "ng",
+    "gen:api": "orval",
+    "start": "npm run gen:api && ng serve --proxy-config proxy.conf.json",
+    "build": "npm run gen:api && ng build",
+    "test": "npm run gen:api && ng test --watch=false && node --test \"eslint-rules/*.test.js\"",
+    "lint": "npm run gen:api && ng lint"
+  },
+  "private": true,
+  "packageManager": "npm@11.19.1",
+  "dependencies": {
+    "@angular/cdk": "~22.2.4",
+    "@angular/common": "^22.2.0",
+    "@angular/compiler": "^22.2.0",
+    "@angular/core": "^22.2.0",
+    "@angular/forms": "^22.2.0",
+    "@angular/material": "~22.2.4",
+    "@angular/platform-browser": "^22.2.0",
+    "@angular/router": "^22.2.0",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0"
+  },
+  "devDependencies": {
+    "@angular/build": "^22.2.4",
+    "@angular/cli": "^22.2.4",
+    "@angular/compiler-cli": "^22.2.0",
+    "@eslint/js": "^10.0.1",
+    "angular-eslint": "22.6.0",
+    "eslint": "^10.12.0",
+    "jsdom": "^30.0.0",
+    "orval": "~8.45.0",
+    "prettier": "^3.8.1",
+    "typescript": "~6.0.2",
+    "typescript-eslint": "8.71.0",
+    "vitest": "^5.0.0"
+  }
+}

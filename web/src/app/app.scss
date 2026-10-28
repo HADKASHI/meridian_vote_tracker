@@ -1,0 +1,24 @@
+.header {
+  gap: 16px;
+  flex-wrap: wrap;
+  height: auto;
+  min-height: 64px;
+}
+.brand {
+  color: inherit;
+  text-decoration: none;
+  font-weight: 500;
+}
+nav {
+  display: flex;
+  flex-wrap: wrap;
+}
+.active {
+  text-decoration: underline;
+}
+.spacer {
+  flex: 1;
+}
+main {
+  padding: 16px 24px;
+}
