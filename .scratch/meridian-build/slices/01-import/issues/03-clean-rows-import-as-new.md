@@ -4,12 +4,12 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** done
 
 Requirements: ING-05, ING-06, ING-14, ING-15 (stories 11, 24, 34, 47, 48)
 
-- [ ] A clean fixture through the API: every row is `new`, approved values and details match the file with the row as origin, counts add up to the data rows
-- [ ] Rows of one vote that are not contiguous in the file are grouped into one vote
-- [ ] Rows are paged and filtered by outcome and vote; per-vote counts add up to the totals
-- [ ] The job ends `done` with votes done equal to votes total
-- [ ] The report page shows counts as filters, per-vote counts and the paged rows (Vitest)
+- [x] A clean fixture through the API: every row is `new`, approved values and details match the file with the row as origin, counts add up to the data rows
+- [x] Rows of one vote that are not contiguous in the file are grouped into one vote
+- [x] Rows are paged and filtered by outcome and vote; per-vote counts add up to the totals
+- [x] The job ends `done` with votes done equal to votes total
+- [x] The report page shows counts as filters, per-vote counts and the paged rows (Vitest)

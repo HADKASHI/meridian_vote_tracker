@@ -308,6 +308,7 @@
         "tags": [
           "Imports"
         ],
+        "summary": "The row records of an import in line order, filtered by outcome or vote.",
         "operationId": "listImportRows",
         "parameters": [
           {
@@ -370,6 +371,16 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
                 }
               }
             }

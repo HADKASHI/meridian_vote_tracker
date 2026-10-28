@@ -7,6 +7,9 @@ using Meridian.Platform.Storage;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OpenApi;
+using Microsoft.OpenApi;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
@@ -29,7 +32,7 @@ public static class ImportsModule
 
     /// <summary>The worker side: the import job handler goes here (<c>services.AddJobHandler&lt;…&gt;()</c>).</summary>
     public static IServiceCollection AddImportsJobs(this IServiceCollection services) =>
-        services.AddMeridianBlobStorage().AddJobHandler<ImportJobHandler>();
+        services.AddMeridianBlobStorage().AddScoped<ImportWriter>().AddJobHandler<ImportJobHandler>();
 
     public static IEndpointRouteBuilder MapImportsModule(this IEndpointRouteBuilder api)
     {
@@ -57,19 +60,44 @@ public static class ImportsModule
             .ProducesProblems(StatusCodes.Status404NotFound)
             .ForAnalysts();
 
-        imports.MapGet("/{importId:long}/rows", Results<Ok<PageDto<ImportRowDto>>, ProblemHttpResult> (
-                    long importId, Outcome? outcome, long? voteId, int page = 1, int pageSize = 100) =>
-                EndpointConventions.NotImplemented())
+        // The outcome is bound as text, because minimal APIs parse enums case-sensitively and
+        // the client sends the glossary word (`invalid`); the contract still names the enum.
+        imports.MapGet("/{importId:long}/rows", async Task<Results<Ok<PageDto<ImportRowDto>>, NotFound, ProblemHttpResult>> (
+                    long importId, MeridianDbContext db, CancellationToken ct,
+                    [FromQuery] string? outcome, long? voteId, int page = 1, int pageSize = 100) =>
+            {
+                Outcome? filter = null;
+                if (outcome is not null)
+                {
+                    if (!Enum.TryParse<Outcome>(outcome, ignoreCase: true, out var parsed) || !Enum.IsDefined(parsed))
+                        return TypedResults.Problem(new HttpValidationProblemDetails(new Dictionary<string, string[]>
+                            { ["outcome"] = [$"Unknown outcome '{outcome}'."] }) { Status = StatusCodes.Status400BadRequest });
+                    filter = parsed;
+                }
+                return await ImportQueries.RowsAsync(db, importId, filter, voteId, page, pageSize, ct) is { } rows
+                    ? TypedResults.Ok(rows)
+                    : TypedResults.NotFound();
+            })
+            .AddOpenApiOperationTransformer((operation, context, _) =>
+            {
+                var parameter = (OpenApiParameter)operation.Parameters!.Single(p => p.Name == "outcome");
+                parameter.Schema = new OpenApiSchemaReference(nameof(Outcome), context.Document);
+                return Task.CompletedTask;
+            })
             .WithName("listImportRows")
-            .ProducesProblems(StatusCodes.Status404NotFound)
-            .ForAnalysts().Stub();
+            .WithSummary("The row records of an import in line order, filtered by outcome or vote.")
+            .ProducesProblems(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound)
+            .ForAnalysts();
 
-        imports.MapGet("/{importId:long}/votes", Results<Ok<IReadOnlyList<ImportVoteCountsDto>>, ProblemHttpResult> (long importId) =>
-                EndpointConventions.NotImplemented())
+        imports.MapGet("/{importId:long}/votes", async Task<Results<Ok<IReadOnlyList<ImportVoteCountsDto>>, NotFound>> (
+                    long importId, MeridianDbContext db, CancellationToken ct) =>
+                await ImportQueries.VoteCountsAsync(db, importId, ct) is { } counts
+                    ? TypedResults.Ok(counts)
+                    : TypedResults.NotFound())
             .WithName("listImportVoteCounts")
             .WithSummary("Counts per outcome for each vote the import touched.")
             .ProducesProblems(StatusCodes.Status404NotFound)
-            .ForAnalysts().Stub();
+            .ForAnalysts();
 
         return api;
     }

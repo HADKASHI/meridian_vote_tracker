@@ -1,0 +1,6 @@
+assembly_vote_id,session,vote_date,resolution_title,country_code,ballot,country_name,published_at
+MA/2024/001,79,2024-01-10,Oceans and the Law of the Sea,BRA,Y,Brazil,2024-04-02T09:00:00Z
+MA/2024/001,79,2024-01-10,Oceans and the Law of the Sea,FRA,N,France,2024-04-02T09:00:00Z
+MA/2024/002,79,2024-01-12,"Desertification, Including Capacity Building",BRA,A,Brazil,2024-04-02T09:00:00Z
+MA/2024/001,79,2024-01-10,Oceans and the Law of the Sea,JPN,X,Japan,2024-04-02T09:00:00Z
+MA/2024/002,79,2024-01-12,"Desertification, Including Capacity Building",JPN,Y,Japan,2024-04-02T09:00:00Z

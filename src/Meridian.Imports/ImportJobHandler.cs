@@ -14,7 +14,8 @@ namespace Meridian.Imports;
 /// Runs one import: parse the whole file, record the parse facts, then classify and write
 /// it one vote at a time. A retry resumes from what an earlier attempt committed.
 /// </summary>
-internal sealed class ImportJobHandler(MeridianDbContext db, BlobContainerClient blobs, ILogger<ImportJobHandler> logger)
+internal sealed class ImportJobHandler(
+    MeridianDbContext db, BlobContainerClient blobs, ImportWriter writer, ILogger<ImportJobHandler> logger)
     : IJobHandler
 {
     public JobKind Kind => JobKind.Import;
@@ -36,6 +37,24 @@ internal sealed class ImportJobHandler(MeridianDbContext db, BlobContainerClient
             logger.LogInformation("Import {ImportId} rejected: {DataRows} data rows", importId, parsed.DataRows);
             return;
         }
+
+        var members = await MembersAsync(cancellationToken);
+        var votes = parsed.Rows.GroupBy(r => r.Fields!.AssemblyVoteId.Trim()).ToList();
+        await context.ReportAsync(votesDone: 0, votesTotal: votes.Count, cancellationToken: cancellationToken);
+        var done = 0;
+        foreach (var vote in votes)
+        {
+            await writer.WriteVoteAsync(importId, vote.Key, vote.ToList(), members, cancellationToken);
+            await context.ReportAsync(votesDone: ++done, cancellationToken: cancellationToken);
+        }
+        logger.LogInformation("Import {ImportId} applied {Votes} votes from {DataRows} data rows", importId, votes.Count, parsed.DataRows);
+    }
+
+    private async Task<MemberStates> MembersAsync(CancellationToken cancellationToken)
+    {
+        var periods = await db.MembershipPeriods.AsNoTracking().ToListAsync(cancellationToken);
+        return new MemberStates(periods.GroupBy(p => p.StateCode.Trim()).ToDictionary(
+            g => g.Key, g => (IReadOnlyList<MembershipSpan>)g.Select(p => new MembershipSpan(p.MemberFrom, p.MemberTo)).ToList()));
     }
 
     /// <summary>The parse record and the file-level warnings, written once even when the job is retried.</summary>

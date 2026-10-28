@@ -53,6 +53,50 @@ internal static class ImportQueries
             warnings.Select(w => ImportWarningDetail.ToDto(w.Warning, w.Vote)).ToList(), []);
     }
 
+    public static async Task<PageDto<ImportRowDto>?> RowsAsync(MeridianDbContext db, long importId,
+        Outcome? outcome, long? voteId, int page, int pageSize, CancellationToken ct)
+    {
+        if (!await db.Imports.AnyAsync(i => i.Id == importId, ct)) return null;
+        page = Math.Max(page, 1);
+        pageSize = Math.Clamp(pageSize, 1, 500);
+        var rows = db.ImportRows.Where(r => r.ImportId == importId);
+        if (outcome is not null) rows = rows.Where(r => r.Outcome == outcome);
+        if (voteId is not null) rows = rows.Where(r => r.VoteId == voteId);
+
+        var total = await rows.CountAsync(ct);
+        var items = await (
+                from r in rows.OrderBy(r => r.LineNo).Skip((page - 1) * pageSize).Take(pageSize)
+                join v in db.Votes on r.VoteId equals v.Id into votes
+                from v in votes.DefaultIfEmpty()
+                select new { Row = r, Vote = v == null ? null : new VoteRefDto(v.Id, v.AssemblyVoteId) })
+            .AsNoTracking().ToListAsync(ct);
+        var ids = items.Select(i => i.Row.Id).ToList();
+        var conflicts = (await db.ImportRowConflicts.Where(l => ids.Contains(l.ImportRowId)).ToListAsync(ct))
+            .ToLookup(l => l.ImportRowId, l => l.ConflictId);
+
+        return new PageDto<ImportRowDto>(items.Select(i => new ImportRowDto(
+                i.Row.Id, i.Row.LineNo, i.Row.RawText, i.Row.Outcome, i.Row.ReasonCode, i.Row.ReasonMessage,
+                i.Row.Normalisations is null ? [] : JsonSerializer.Deserialize<List<string>>(i.Row.Normalisations)!,
+                i.Vote, i.Row.StateCode, i.Row.CountryVoteRevisionId, i.Row.DetailsRevisionId,
+                conflicts[i.Row.Id].Order().ToList()))
+            .ToList(), total, page, pageSize);
+    }
+
+    /// <summary>Counts per vote, in the order the votes first appear in the file.</summary>
+    public static async Task<IReadOnlyList<ImportVoteCountsDto>?> VoteCountsAsync(MeridianDbContext db, long importId, CancellationToken ct)
+    {
+        if (!await db.Imports.AnyAsync(i => i.Id == importId, ct)) return null;
+        var rows = db.ImportRows.Where(r => r.ImportId == importId && r.VoteId != null);
+        var counts = await CountsAsync(db, rows, r => r.VoteId!.Value, ct);
+        var firstLines = await rows.GroupBy(r => r.VoteId!.Value)
+            .Select(g => new { VoteId = g.Key, FirstLine = g.Min(r => r.LineNo) }).ToListAsync(ct);
+        var ids = firstLines.Select(f => f.VoteId).ToList();
+        var votes = await db.Votes.Where(v => ids.Contains(v.Id)).ToDictionaryAsync(v => v.Id, v => v.AssemblyVoteId, ct);
+        return firstLines.OrderBy(f => f.FirstLine)
+            .Select(f => new ImportVoteCountsDto(new VoteRefDto(f.VoteId, votes[f.VoteId]), counts[f.VoteId]))
+            .ToList();
+    }
+
     public static readonly OutcomeCountsDto NoRows = new(0, 0, 0, 0, 0, 0);
 
     /// <summary>Counts per outcome of <paramref name="rows"/>, grouped by <paramref name="key"/>.</summary>

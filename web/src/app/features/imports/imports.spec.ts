@@ -17,6 +17,13 @@ const importDto = (state: JobDto['state'], extra: Partial<JobDto> = {}): ImportD
   uploadedAt: '2024-01-01T00:00:00Z', job: job(state, extra), parse: null, counts, warnings: [], conflictsOpened: [],
 });
 
+/** Renders after a response without waiting for requests still pending (whenStable would). */
+async function settle(): Promise<void> {
+  TestBed.tick();
+  await new Promise((resolve) => setTimeout(resolve));
+  TestBed.tick();
+}
+
 describe('imports feature', () => {
   let http: HttpTestingController;
 
@@ -131,12 +138,41 @@ describe('imports feature', () => {
       warnings: [{ id: 1, kind: 'extra_columns', message: 'Ignored column not in the export format: region.', vote: null,
         identicalToImportId: null, columns: ['region'], missingStateCodes: null, newestPublishedAt: null }],
     });
-    await harness.fixture.whenStable();
+    await settle();
 
     const text = harness.routeNativeElement!.textContent!;
     expect(text).toContain('1,204 data rows');
     expect(text).toContain('CRLF');
     expect(text).toContain('with BOM');
     expect(text).toContain('Ignored column not in the export format: region.');
+  });
+
+  it('shows counts as filters, the counts per vote and the rows of the chosen outcome', async () => {
+    const harness = await RouterTestingHarness.create('/imports/7?outcome=invalid');
+    http.expectOne('/api/imports/7').flush({ ...importDto('done'), counts: { ...counts, new: 3, invalid: 1 } });
+    await settle();
+    http.expectOne('/api/imports/7/votes').flush([
+      { vote: { voteId: 41, assemblyVoteId: 'MA/2024/001' }, counts: { ...counts, new: 3, invalid: 1 } },
+    ]);
+    const rows = http.expectOne((r) => r.url === '/api/imports/7/rows');
+    expect(rows.request.params.get('outcome')).toBe('invalid');
+    expect(rows.request.params.get('page')).toBe('1');
+    rows.flush({
+      items: [{ id: 90, lineNo: 4, rawText: 'MA/2024/001,79,2024-01-10,A,FRN,X', outcome: 'invalid',
+        reasonCode: 'unknown_country_code', reasonMessage: 'Unknown country code FRN.', normalisations: [],
+        vote: { voteId: 41, assemblyVoteId: 'MA/2024/001' }, stateCode: 'FRN', countryVoteRevisionId: null,
+        detailsRevisionId: null, conflictIds: [] }],
+      total: 1, page: 1, pageSize: 100,
+    });
+    await settle();
+
+    const page = harness.routeNativeElement!;
+    const filters = [...page.querySelectorAll<HTMLAnchorElement>('[data-testid=outcome-filters] a')];
+    expect(filters.map((a) => a.textContent!.trim())).toEqual(['All 4', 'new 3', 'unchanged 0', 'duplicate 0', 'invalid 1', 'contradiction 0', 'conflict 0']);
+    expect(filters.find((a) => a.textContent!.includes('invalid'))!.getAttribute('aria-current')).toBe('true');
+    expect(page.querySelector('[data-testid=vote-counts]')!.textContent).toContain('MA/2024/001');
+    const table = page.querySelector('[data-testid=rows]')!.textContent!;
+    expect(table).toContain('MA/2024/001,79,2024-01-10,A,FRN,X');
+    expect(table).toContain('Unknown country code FRN.');
   });
 });
