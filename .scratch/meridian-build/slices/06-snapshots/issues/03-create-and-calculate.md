@@ -4,11 +4,11 @@
 
 **Blocked by:** 01, 02
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Create answers 400 `no-votes-match` and 400 `no-position` (with the votes) without creating anything, and 202 with the snapshot and job ids otherwise
-- [ ] The job stores votes, lines and results matching the scoring function over the approved data, and the header records the scoring rules version
-- [ ] A vote added to the selection without a position after creation makes the job fail with an error naming the vote
-- [ ] A snapshot reads the same after the data under it changes (a conflict accepted, a position changed, a new vote in its date range)
-- [ ] Warnings seen at calculation time are stored on the snapshot and returned with it
-- [ ] The snapshot page shows progress while the job runs, the ranking with basis and n/a states last when done, and the error when failed
+- [x] Create answers 400 `no-votes-match` and 400 `no-position` (with the votes) without creating anything, and 202 with the snapshot and job ids otherwise
+- [x] The job stores votes, lines and results matching the scoring function over the approved data, and the header records the scoring rules version
+- [x] A vote added to the selection without a position after creation makes the job fail with an error naming the vote
+- [x] A snapshot reads the same after the data under it changes (a conflict accepted, a position changed, a new vote in its date range)
+- [x] Warnings seen at calculation time are stored on the snapshot and returned with it
+- [x] The snapshot page shows progress while the job runs, the ranking with basis and n/a states last when done, and the error when failed

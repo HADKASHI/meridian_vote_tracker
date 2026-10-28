@@ -1,7 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { SnapshotPreviewDto } from '../../api/model';
 import { NewSnapshotPage } from './new-snapshot-page';
 
@@ -87,5 +87,49 @@ describe('NewSnapshotPage', () => {
 
     expect(page.querySelector('app-problem-banner')?.textContent).toContain('The selection matches no votes.');
     expect(page.querySelector('app-problem-banner')?.textContent).toContain('abc123');
+  });
+
+  async function previewReady(page: HTMLElement, fixture: { whenStable(): Promise<unknown> }, name: string): Promise<void> {
+    type(page, 'name', name);
+    type(page, 'from', '2024-01-01');
+    type(page, 'to', '2024-03-31');
+    page.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+    http.expectOne('/api/snapshots/preview').flush(ready);
+    await fixture.whenStable();
+  }
+
+  it('creates the snapshot on Calculate and opens its page', async () => {
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const fixture = TestBed.createComponent(NewSnapshotPage);
+    const page = fixture.nativeElement as HTMLElement;
+    await fixture.whenStable();
+    await previewReady(page, fixture, 'Q1 2024 index');
+
+    button('Calculate').click();
+    const create = http.expectOne('/api/snapshots');
+    expect(create.request.body).toEqual({
+      name: 'Q1 2024 index', note: null,
+      selection: { from: '2024-01-01', to: '2024-03-31', excludedVoteIds: null },
+    });
+    create.flush({ snapshotId: 42, jobId: 9 });
+    await fixture.whenStable();
+
+    expect(navigate).toHaveBeenCalledWith(['/snapshots', 42]);
+  });
+
+  it('puts a missing name on the name field', async () => {
+    const fixture = TestBed.createComponent(NewSnapshotPage);
+    const page = fixture.nativeElement as HTMLElement;
+    await fixture.whenStable();
+    await previewReady(page, fixture, '');
+
+    button('Calculate').click();
+    http.expectOne('/api/snapshots').flush(
+      { type: 'validation', title: 'Invalid', status: 400, traceId: 't', errors: { name: ['Enter a name.'] } },
+      { status: 400, statusText: 'Bad Request' },
+    );
+    await fixture.whenStable();
+
+    expect(page.querySelector('[data-testid="name-error"]')?.textContent).toContain('Enter a name.');
   });
 });

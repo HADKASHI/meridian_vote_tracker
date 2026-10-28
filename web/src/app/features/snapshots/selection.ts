@@ -45,3 +45,20 @@ function numbers(text: string): number[] {
     .filter((part) => part.length > 0)
     .map(Number);
 }
+
+/** A stored selection as the snapshot page shows it; removed votes are counted, their ids are on each vote's timeline. */
+export function describeStoredSelection(selection: SnapshotSelectionDto): string {
+  const base =
+    selection.from || selection.to
+      ? `${selection.from} → ${selection.to}`
+      : selection.sessions
+        ? `Sessions ${selection.sessions.join(', ')}`
+        : `${selection.voteIds?.length ?? 0} chosen votes`;
+  const removed = selection.excludedVoteIds?.length ?? 0;
+  return removed > 0 ? `${base}, minus ${removed} removed ${removed === 1 ? 'vote' : 'votes'}` : base;
+}
+
+/** A score to 1 decimal, or n/a when nothing was countable. */
+export function formatScore(score: number | null): string {
+  return score === null ? 'n/a' : score.toFixed(1);
+}

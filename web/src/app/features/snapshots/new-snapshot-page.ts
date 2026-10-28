@@ -4,10 +4,11 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { SnapshotPreviewDto } from '../../api/model';
+import { Router } from '@angular/router';
+import { NoPositionProblem, SnapshotPreviewDto } from '../../api/model';
 import { SnapshotsService } from '../../api/snapshots/snapshots.service';
 import { ProblemBanner } from '../../shared/problem/problem-banner';
-import { toProblem } from '../../shared/problem/problem';
+import { isProblem, ProblemType, toProblem } from '../../shared/problem/problem';
 import { problemToFieldErrors } from '../../shared/problem/to-field-errors';
 import { PreviewDialog, PreviewDialogData } from './preview-dialog';
 import { describeSelection, SelectionForm, SelectionMode, toSelection } from './selection';
@@ -27,7 +28,7 @@ type Field = 'name' | 'note' | 'from' | 'to' | 'sessions' | 'voteIds';
         <mat-label>Name</mat-label>
         <input matInput name="name" [value]="name()" (input)="name.set(value($event))" />
         @if (error('name'); as message) {
-          <mat-error>{{ message }}</mat-error>
+          <mat-hint class="field-error" data-testid="name-error">{{ message }}</mat-hint>
         }
       </mat-form-field>
 
@@ -89,7 +90,7 @@ type Field = 'name' | 'note' | 'from' | 'to' | 'sessions' | 'voteIds';
         <mat-label>Note (optional)</mat-label>
         <textarea matInput name="note" rows="3" [value]="note()" (input)="note.set(value($event))"></textarea>
         @if (error('note'); as message) {
-          <mat-error>{{ message }}</mat-error>
+          <mat-hint class="field-error">{{ message }}</mat-hint>
         }
       </mat-form-field>
 
@@ -127,6 +128,7 @@ type Field = 'name' | 'note' | 'from' | 'to' | 'sessions' | 'voteIds';
 export class NewSnapshotPage {
   private readonly snapshots = inject(SnapshotsService);
   private readonly dialog = inject(MatDialog);
+  private readonly router = inject(Router);
 
   protected readonly name = signal('');
   protected readonly note = signal('');
@@ -184,9 +186,28 @@ export class NewSnapshotPage {
     this.preview();
   }
 
-  /** Called when the dialog's Calculate is pressed; ticket 03 creates the snapshot here. */
+  /** Creates the snapshot; its job calculates it, and its page follows the job. */
   protected calculate(): void {
-    this.dialogRef?.close();
+    this.busy.set(true);
+    const request = { name: this.name(), note: this.note() || null, selection: toSelection(this.form()) };
+    this.snapshots.createSnapshot(request).subscribe({
+      next: (created) => {
+        this.busy.set(false);
+        this.dialogRef?.close();
+        void this.router.navigate(['/snapshots', created.snapshotId]);
+      },
+      error: (error: unknown) => {
+        const problem = toProblem(error);
+        this.busy.set(false);
+        // A vote lost its place since the preview: show the fresh blocking list in the dialog.
+        if (isProblem<NoPositionProblem>(problem, ProblemType.noPosition) && this.lastPreview()) {
+          this.lastPreview.update((preview) => preview && { ...preview, noPosition: problem.votes });
+          return;
+        }
+        this.dialogRef?.close();
+        this.showProblem(error, 'selection');
+      },
+    });
   }
 
   private openDialog(): void {

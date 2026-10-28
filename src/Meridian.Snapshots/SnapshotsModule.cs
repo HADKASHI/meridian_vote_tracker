@@ -1,6 +1,11 @@
+using System.Security.Claims;
 using Meridian.Data;
+using Meridian.Data.Entities;
+using Meridian.Domain.Scoring;
 using Meridian.Platform.Contracts;
 using Meridian.Platform.Http;
+using Meridian.Platform.Hosting;
+using Meridian.Platform.Jobs;
 using Meridian.Platform.Problems;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -17,7 +22,8 @@ public static class SnapshotsModule
     public static IServiceCollection AddSnapshotsModule(this IServiceCollection services) => services;
 
     /// <summary>The worker side: the snapshot job handler goes here (<c>services.AddJobHandler&lt;…&gt;()</c>).</summary>
-    public static IServiceCollection AddSnapshotsJobs(this IServiceCollection services) => services;
+    public static IServiceCollection AddSnapshotsJobs(this IServiceCollection services) =>
+        services.AddJobHandler<SnapshotJobHandler>();
 
     public static IEndpointRouteBuilder MapSnapshotsModule(this IEndpointRouteBuilder api)
     {
@@ -38,13 +44,39 @@ public static class SnapshotsModule
             .ProducesProblems(StatusCodes.Status400BadRequest)
             .ForAnalysts();
 
-        snapshots.MapPost("", Results<Accepted<SnapshotCreatedDto>, ProblemHttpResult> (CreateSnapshotRequest request) =>
-                EndpointConventions.NotImplemented())
+        snapshots.MapPost("", async Task<Results<Accepted<SnapshotCreatedDto>, ProblemHttpResult>> (
+                    CreateSnapshotRequest request, ClaimsPrincipal user, MeridianDbContext db, CancellationToken ct) =>
+            {
+                var selection = request.Selection!;
+                var votes = SnapshotSelection.Resolve(db, selection);
+                if (!await votes.AnyAsync(ct)) return NoVotesMatch();
+                var noPosition = await SnapshotSelection.NoPositionAsync(votes, ct);
+                if (noPosition.Count > 0)
+                    return ProblemDetailsSetup.Problem(StatusCodes.Status400BadRequest, ProblemTypes.NoPosition,
+                        "Votes without a position",
+                        $"{noPosition.Count} selected {(noPosition.Count == 1 ? "vote has" : "votes have")} no position; set them or remove them.",
+                        new Dictionary<string, object?> { ["votes"] = noPosition });
+
+                await using var transaction = await db.Database.BeginTransactionAsync(ct);
+                var snapshot = new Snapshot
+                {
+                    Name = request.Name!.Trim(), Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim(),
+                    Selection = SnapshotJson.WriteSelection(selection), ScoringRulesVersion = AlignmentScoring.RulesVersion,
+                    CreatedBy = user.FindFirstValue(ClaimTypes.NameIdentifier)!,
+                };
+                db.Snapshots.Add(snapshot);
+                await db.SaveChangesAsync(ct);
+                var job = JobQueue.ForSnapshot(snapshot.Id);
+                db.Jobs.Add(job);
+                await db.SaveChangesAsync(ct);
+                await transaction.CommitAsync(ct);
+                return TypedResults.Accepted($"/api/snapshots/{snapshot.Id}", new SnapshotCreatedDto(snapshot.Id, job.Id));
+            })
             .WithName("createSnapshot")
             .WithSummary("Create a snapshot; it is calculated as a job. Refused when no vote matches or a vote has no position.")
             // 400 is validation, no-votes-match or no-position; the body schema is the widest.
             .ProducesProblem<NoPositionProblem>(StatusCodes.Status400BadRequest)
-            .ForAnalysts().Stub();
+            .ForAnalysts();
 
         snapshots.MapGet("", Results<Ok<PageDto<SnapshotSummaryDto>>, ProblemHttpResult> (int page = 1, int pageSize = 50) =>
                 EndpointConventions.NotImplemented())
@@ -58,11 +90,14 @@ public static class SnapshotsModule
             .ProducesProblems(StatusCodes.Status404NotFound)
             .ForAnalysts().Stub();
 
-        snapshots.MapGet("/{snapshotId:long}", Results<Ok<SnapshotDto>, ProblemHttpResult> (long snapshotId) =>
-                EndpointConventions.NotImplemented())
+        snapshots.MapGet("/{snapshotId:long}", async Task<Results<Ok<SnapshotDto>, ProblemHttpResult>> (
+                    long snapshotId, MeridianDbContext db, CancellationToken ct) =>
+                await SnapshotQueries.GetAsync(db, snapshotId, ct) is { } snapshot
+                    ? TypedResults.Ok(snapshot)
+                    : NotFound("snapshot"))
             .WithName("getSnapshot")
             .ProducesProblems(StatusCodes.Status404NotFound)
-            .ForAnalysts().Stub();
+            .ForAnalysts();
 
         snapshots.MapGet("/{snapshotId:long}/states/{stateCode}", Results<Ok<SnapshotBreakdownDto>, ProblemHttpResult> (
                     long snapshotId, string stateCode) =>
@@ -90,6 +125,9 @@ public static class SnapshotsModule
 
         return api;
     }
+
+    private static ProblemHttpResult NotFound(string what) =>
+        ProblemDetailsSetup.Problem(StatusCodes.Status404NotFound, ProblemTypes.NotFound, $"No such {what}");
 
     private static ProblemHttpResult NoVotesMatch() =>
         ProblemDetailsSetup.Problem(StatusCodes.Status400BadRequest, ProblemTypes.NoVotesMatch,
