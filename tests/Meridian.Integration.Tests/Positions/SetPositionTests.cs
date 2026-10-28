@@ -108,6 +108,8 @@ public sealed class SetPositionTests(PostgresFixture postgres, AzuriteFixture az
             (current.GetProperty("revisionId").GetInt64(), current.GetProperty("stance").GetString(), current.GetProperty("weight").GetInt32()));
         var worklist = await api.ClientAs("lena").GetFromJsonAsync<JsonElement>("/api/positions", Ct);
         Assert.Equal(theirs.Id, worklist.GetProperty("items")[0].GetProperty("position").GetProperty("revisionId").GetInt64());
+        await using var db = new MeridianDbContext(MeridianDb.Options(api.ConnectionString));
+        Assert.Equal(2, await db.VoteTimeline.CountAsync(e => e.VoteId == vote.Id && e.Kind == "position_revision", Ct));
     }
 
     [Fact]
@@ -147,8 +149,8 @@ public sealed class SetPositionTests(PostgresFixture postgres, AzuriteFixture az
             Assert.Equal(winner.GetProperty("revisionId").GetInt64(),
                 loser.GetProperty("current").GetProperty("revisionId").GetInt64());
         }
-    }
-}
         await using var db = new MeridianDbContext(MeridianDb.Options(api.ConnectionString));
         // One revision per round from the winner, plus the seen ones arranged in even rounds.
         Assert.Equal(20 + 10, await db.VoteTimeline.CountAsync(e => e.Kind == "position_revision", Ct));
+    }
+}
