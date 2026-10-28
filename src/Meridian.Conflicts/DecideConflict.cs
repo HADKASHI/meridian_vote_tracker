@@ -105,6 +105,10 @@ internal static class DecideConflict
             pointer.DetailsRevisionId = revision.Id;
             await db.SaveChangesAsync(ct);
         }
+        var voteDate = decision == Decision.Accept
+            ? conflict.IncomingVoteDate!.Value
+            : await db.VoteDetailsRevisions.Where(r => r.Id == pointer.DetailsRevisionId).Select(r => r.VoteDate).SingleAsync(ct);
+        await MembershipRecalculation.RunAsync(db, conflict.VoteId, record.Id, voteDate, ct);
         return record;
     }
 

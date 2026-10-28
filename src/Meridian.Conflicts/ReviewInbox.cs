@@ -102,7 +102,8 @@ internal static class ReviewInbox
             : await db.VoteDetailsRevisions.Where(r => r.Id == decision.ReplacedDetailsRevisionId)
                 .Select(r => ConflictValues.Details(r.Session, r.VoteDate, r.Title)).SingleAsync(ct);
         return new ConflictDecisionDto(decision.Id, conflict.Id, decision.Decision, decision.DecidedBy, decision.RecordedAt,
-            decision.Comment, from, ConflictValues.Incoming(conflict));
+            decision.Comment, from, ConflictValues.Incoming(conflict),
+            conflict.Subject == ConflictSubject.Details ? await MembershipRecalculation.ReadAsync(db, conflict, decision, ct) : null);
     }
 
     private static async Task<ConflictSideDto?> CurrentSideAsync(MeridianDbContext db, Conflict conflict, CancellationToken ct)

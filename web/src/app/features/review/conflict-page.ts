@@ -56,6 +56,28 @@ type CommentField = 'comment';
             @if (d.comment) {
               <blockquote>{{ d.comment }}</blockquote>
             }
+            @if (d.membership; as m) {
+              <div class="membership" data-testid="membership">
+                <h3>Membership recalculated for the vote</h3>
+                @if (m.approvedStateCodes.length === 0 && m.noLongerCountedStateCodes.length === 0) {
+                  <p>No ballot changed.</p>
+                }
+                @if (m.approvedStateCodes.length > 0) {
+                  <p>Ballots approved by this decision: {{ m.approvedStateCodes.join(', ') }}</p>
+                }
+                @if (m.noLongerCountedStateCodes.length > 0) {
+                  <p>No longer counted (outside membership on the new date): {{ m.noLongerCountedStateCodes.join(', ') }}</p>
+                }
+                @if (m.openedConflictIds.length > 0) {
+                  <p>
+                    Conflicts opened:
+                    @for (id of m.openedConflictIds; track id) {
+                      <a [routerLink]="['/review', id]">#{{ id }}</a>{{ $last ? '' : ', ' }}
+                    }
+                  </p>
+                }
+              </div>
+            }
           </section>
         }
         @if (lost(); as winner) {
@@ -158,6 +180,12 @@ type CommentField = 'comment';
     }
     .none-left {
       opacity: 0.75;
+    }
+    .membership {
+      margin-block-start: 12px;
+    }
+    .membership p {
+      margin-block: 2px;
     }
     blockquote {
       margin: 4px 0 0;

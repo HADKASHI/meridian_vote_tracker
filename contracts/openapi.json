@@ -1529,7 +1529,8 @@
           "decidedAt",
           "comment",
           "from",
-          "to"
+          "to",
+          "membership"
         ],
         "type": "object",
         "properties": {
@@ -1562,6 +1563,16 @@
           },
           "to": {
             "$ref": "#/components/schemas/ConflictValueDto"
+          },
+          "membership": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MembershipRecalculationDto"
+              }
+            ]
           }
         }
       },
@@ -2414,6 +2425,35 @@
           "crlf",
           "mixed"
         ]
+      },
+      "MembershipRecalculationDto": {
+        "required": [
+          "approvedStateCodes",
+          "noLongerCountedStateCodes",
+          "openedConflictIds"
+        ],
+        "type": "object",
+        "properties": {
+          "approvedStateCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "noLongerCountedStateCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "openedConflictIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        }
       },
       "NoPositionProblem": {
         "required": [

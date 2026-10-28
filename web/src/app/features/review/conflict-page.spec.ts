@@ -5,7 +5,7 @@ import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { ConflictDecisionDto, ConflictDto } from '../../api/model';
-import { conflict, listItem, page } from './review.testing';
+import { conflict, importRowOrigin, listItem, page } from './review.testing';
 import reviewRoutes from './review.routes';
 
 describe('Decision pane', () => {
@@ -47,7 +47,7 @@ describe('Decision pane', () => {
   const accepted: ConflictDecisionDto = {
     id: 51, conflictId: 7, decision: 'accept', decidedBy: 'dana', decidedAt: '2024-04-03T09:15:00Z',
     comment: 'Assembly confirmed', from: { ballot: 'y', session: null, voteDate: null, title: null },
-    to: { ballot: 'a', session: null, voteDate: null, title: null },
+    to: { ballot: 'a', session: null, voteDate: null, title: null }, membership: null,
   };
 
   function text(pane: HTMLElement, testId: string): string {
@@ -84,7 +84,7 @@ describe('Decision pane', () => {
       decision: {
         id: 51, conflictId: 7, decision: 'accept', decidedBy: 'dana', decidedAt: '2024-04-03T09:15:00Z',
         comment: 'Assembly confirmed', from: { ballot: 'y', session: null, voteDate: null, title: null },
-        to: { ballot: 'a', session: null, voteDate: null, title: null },
+        to: { ballot: 'a', session: null, voteDate: null, title: null }, membership: null,
       },
       notApplied: [{ id: 52, attemptedBy: 'omar', attempted: 'reject', attemptedAt: '2024-04-03T09:15:00Z' }],
     }));
@@ -169,5 +169,25 @@ describe('Decision pane', () => {
 
     button(pane, 'Next conflict').click();
     await vi.waitFor(() => expect(TestBed.inject(Router).url).toBe('/review/8?state=pending'));
+  });
+
+  it('shows what recalculating membership did after a vote-details decision', async () => {
+    const details = (voteDate: string) => ({ ballot: null, session: 79, voteDate, title: 'Ocean Treaty' });
+    const pane = await open(conflict({
+      subject: 'details', stateCode: null,
+      current: { value: details('2021-06-02'), revisionId: 31, origin: importRowOrigin() },
+      incoming: { value: details('2021-06-02'), revisionId: 31, origin: importRowOrigin({ importId: 2 }) },
+      decision: {
+        id: 51, conflictId: 7, decision: 'accept', decidedBy: 'dana', decidedAt: '2024-04-03T09:15:00Z', comment: null,
+        from: details('2021-07-02'), to: details('2021-06-02'),
+        membership: { approvedStateCodes: ['NZL', 'SSD'], noLongerCountedStateCodes: ['MNE'], openedConflictIds: [12] },
+      },
+    }));
+
+    const membership = text(pane, 'membership');
+    expect(membership).toContain('Ballots approved by this decision: NZL, SSD');
+    expect(membership).toContain('No longer counted (outside membership on the new date): MNE');
+    expect(membership).toContain('Conflicts opened: #12');
+    expect(pane.querySelector<HTMLAnchorElement>('[data-testid="membership"] a')?.getAttribute('href')).toBe('/review/12');
   });
 });

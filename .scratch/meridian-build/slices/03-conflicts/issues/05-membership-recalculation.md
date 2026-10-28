@@ -4,12 +4,12 @@
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Accepting a date correction approves the ballot of each row invalid only for membership whose state is a member on the new date, with the decision as origin, unless the state already has an approved ballot
-- [ ] Rows for one state with different ballots: the earliest is approved and each later distinct ballot opens one ballot conflict against that revision, linked to its row
-- [ ] Approved ballots of states not members on the new date stay approved (still the current revision) and are reported as no longer counted
-- [ ] A rejected details decision recalculates too, and with the date unchanged nothing changes
-- [ ] The decision and the decided conflict report the ballots approved and the states no longer counted; the pane shows them
-- [ ] Membership is inclusive at both ends and an empty end date means still a member, with a named test for the boundary day
-- [ ] Tests: API tests for approving, the earliest-wins rule, stopping counting, reject, and the boundary day; a Vitest test for the pane showing the effect
+- [x] Accepting a date correction approves the ballot of each row invalid only for membership whose state is a member on the new date, with the decision as origin, unless the state already has an approved ballot
+- [x] Rows for one state with different ballots: the earliest is approved and each later distinct ballot opens one ballot conflict against that revision, linked to its row
+- [x] Approved ballots of states not members on the new date stay approved (still the current revision) and are reported as no longer counted
+- [x] A rejected details decision recalculates too, and with the date unchanged nothing changes
+- [x] The decision and the decided conflict report the ballots approved and the states no longer counted; the pane shows them
+- [x] Membership is inclusive at both ends and an empty end date means still a member, with a named test for the boundary day
+- [x] Tests: API tests for approving, the earliest-wins rule, stopping counting, reject, and the boundary day; a Vitest test for the pane showing the effect
