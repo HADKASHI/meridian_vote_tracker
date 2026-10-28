@@ -1,9 +1,9 @@
-import { ChangeDetectionStrategy, Component, effect, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { ConflictFilter, ConflictListItemDto } from '../../api/model';
 import { changeLabel, decisionLabel, subjectLabel } from './conflict-values';
-import { ReviewInbox, toFilter } from './review-inbox';
+import { ReviewInbox, toFilter, toScope } from './review-inbox';
 
 /** The Review inbox: the conflict list beside the decision pane (the child route). */
 @Component({
@@ -14,7 +14,14 @@ import { ReviewInbox, toFilter } from './review-inbox';
     <h1>Review</h1>
     <nav class="filters" aria-label="Which conflicts">
       @for (f of filters; track f.value) {
-        <a mat-button [routerLink]="[]" [queryParams]="{ state: f.value }" [class.active]="inbox.filter() === f.value">{{ f.label }}</a>
+        <a mat-button [routerLink]="[]" [queryParams]="{ state: f.value }" queryParamsHandling="merge"
+          [class.active]="inbox.filter() === f.value">{{ f.label }}</a>
+      }
+      @if (inbox.narrowed()) {
+        <span class="narrowed">
+          Only some conflicts are shown.
+          <a [routerLink]="[]" [queryParams]="{ voteIds: null, importId: null }" queryParamsHandling="merge">Show all</a>
+        </span>
       }
     </nav>
     <div class="split">
@@ -26,7 +33,7 @@ import { ReviewInbox, toFilter } from './review-inbox';
           <ul>
             @for (item of inbox.items(); track item.id) {
               <li data-testid="inbox-item">
-                <a [routerLink]="[item.id]" [queryParams]="{ state: inbox.filter() }" routerLinkActive="selected">
+                <a [routerLink]="[item.id]" [queryParams]="inbox.queryParams()" routerLinkActive="selected">
                   <span class="vote">{{ item.vote.assemblyVoteId }}</span>
                   <span class="subject">{{ subject(item) }}</span>
                   <span class="change">{{ change(item) }}</span>
@@ -57,6 +64,11 @@ import { ReviewInbox, toFilter } from './review-inbox';
     .filters {
       display: flex;
       gap: 4px;
+    }
+    .narrowed {
+      align-self: center;
+      margin-inline-start: 12px;
+      opacity: 0.8;
     }
     .filters .active {
       font-weight: 600;
@@ -109,6 +121,9 @@ import { ReviewInbox, toFilter } from './review-inbox';
 export class ReviewPage {
   /** The `?state=` query param: pending (the default), decided or all. */
   readonly state = input<string>();
+  /** `?voteIds=` (repeated) and `?importId=`, as the snapshot preview and the import report link here. */
+  readonly voteIds = input<string | string[]>();
+  readonly importId = input<string>();
   protected readonly inbox = inject(ReviewInbox);
   protected readonly filters = [
     { value: ConflictFilter.pending, label: 'Pending' },
@@ -119,7 +134,10 @@ export class ReviewPage {
   protected readonly decision = decisionLabel;
 
   constructor() {
-    effect(() => this.inbox.filter.set(toFilter(this.state())));
+    this.inbox.bind(
+      computed(() => toFilter(this.state())),
+      computed(() => toScope(this.voteIds(), this.importId())),
+    );
   }
 
   protected change(item: ConflictListItemDto): string {

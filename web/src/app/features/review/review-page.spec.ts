@@ -71,4 +71,18 @@ describe('Review inbox', () => {
 
     expect(harness.routeNativeElement!.textContent).toContain('No conflicts waiting for review.');
   });
+
+  it('narrows to the votes or the import named in the link and keeps that in each item link', async () => {
+    const harness = await open('/review?voteIds=101&voteIds=102&importId=2');
+
+    const request = http.expectOne((r) => r.url === '/api/conflicts');
+    expect(request.request.params.getAll('voteIds')).toEqual(['101', '102']);
+    expect(request.request.params.get('importId')).toBe('2');
+    request.flush(page([listItem()]));
+    await harness.fixture.whenStable();
+
+    expect(harness.routeNativeElement!.textContent).toContain('Only some conflicts are shown.');
+    const link = harness.routeNativeElement!.querySelector<HTMLAnchorElement>('[data-testid="inbox-item"] a');
+    expect(link?.getAttribute('href')).toBe('/review/7?state=pending&voteIds=101&voteIds=102&importId=2');
+  });
 });

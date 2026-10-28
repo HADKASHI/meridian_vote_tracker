@@ -254,7 +254,7 @@ export class ConflictPage {
       this.noneLeft.set(true);
       return;
     }
-    void this.router.navigate(['/review', next.id], { queryParams: { state: this.inbox.filter() } });
+    void this.router.navigate(['/review', next.id], { queryParams: this.inbox.queryParams() });
   }
 
   private afterDecision(): void {
