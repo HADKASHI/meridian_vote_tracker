@@ -4,15 +4,15 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Rule 1: an abstention is labelled abstain and counts in neither matched nor counted weight
-- [ ] Rule 2: an absence is labelled absent and is not counted
-- [ ] Rule 3: a vote held while the state was not a member is labelled non-member and is not counted, whatever ballot is stored
-- [ ] Rule 4: a member with no country vote is labelled no data, kept apart from absent, and is not counted
-- [ ] Rule 5: a state with nothing countable has no score and no rank (n/a), and is listed after every ranked state
-- [ ] Rule 6: matched and counted weight are exact integers; the score is 100 × matched ÷ counted and ranks on the exact value (no rounding before ranking)
-- [ ] Rule 7: exactly equal scores share a rank and the next is skipped (1, 2, 2, 4); within a tie, and among n/a states, states are ordered by code
-- [ ] Rule 8: no minimum threshold; a state with one countable vote is ranked, and every result carries its basis (countable votes and counted weight)
-- [ ] A yes or no ballot matching the stance is a match and adds its weight to both; a differing one is a mismatch and adds it to counted only
-- [ ] The scoring rules version is a fixed value exposed by the function's module
+- [x] Rule 1: an abstention is labelled abstain and counts in neither matched nor counted weight
+- [x] Rule 2: an absence is labelled absent and is not counted
+- [x] Rule 3: a vote held while the state was not a member is labelled non-member and is not counted, whatever ballot is stored
+- [x] Rule 4: a member with no country vote is labelled no data, kept apart from absent, and is not counted
+- [x] Rule 5: a state with nothing countable has no score and no rank (n/a), and is listed after every ranked state
+- [x] Rule 6: matched and counted weight are exact integers; the score is 100 × matched ÷ counted and ranks on the exact value (no rounding before ranking)
+- [x] Rule 7: exactly equal scores share a rank and the next is skipped (1, 2, 2, 4); within a tie, and among n/a states, states are ordered by code
+- [x] Rule 8: no minimum threshold; a state with one countable vote is ranked, and every result carries its basis (countable votes and counted weight)
+- [x] A yes or no ballot matching the stance is a match and adds its weight to both; a differing one is a mismatch and adds it to counted only
+- [x] The scoring rules version is a fixed value exposed by the function's module
