@@ -5,7 +5,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTableModule } from '@angular/material/table';
 import { Router, RouterLink } from '@angular/router';
 import { listPositionsResource } from '../../api/positions/positions.resource';
-import { PositionDto } from '../../api/model';
+import { PositionDto, PositionWorklistItemDto } from '../../api/model';
 import { PositionEditor } from './position-editor';
 import { positionLabel } from './position-label';
 
@@ -20,7 +20,7 @@ import { positionLabel } from './position-label';
       No position only
     </mat-slide-toggle>
     @if (positions.hasValue() && positions.value(); as result) {
-      <table mat-table [dataSource]="result.items" data-testid="positions-table">
+      <table mat-table [dataSource]="result.items" [trackBy]="byVote" data-testid="positions-table">
         <ng-container matColumnDef="vote">
           <th mat-header-cell *matHeaderCellDef>Vote</th>
           <td mat-cell *matCellDef="let item">
@@ -95,6 +95,8 @@ export class PositionsPage {
     pageSize: this.pageSize(),
   }));
   protected readonly positions = listPositionsResource(this.params);
+  /** Rows keep their editor across reloads, so an open edit or 409 card on one row survives another row's save. */
+  protected readonly byVote = (_: number, item: PositionWorklistItemDto) => item.vote.voteId;
 
   protected describe(position: PositionDto): string {
     return positionLabel(position);

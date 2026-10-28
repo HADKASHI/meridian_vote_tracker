@@ -54,6 +54,18 @@ describe('PositionEditor', () => {
     expect(saved).toEqual([position]);
   });
 
+  it('keeps an unsaved edit when the worklist reloads with the same position', () => {
+    const fixture = setUp(true);
+    chooseWeight(fixture.nativeElement, '5');
+    fixture.detectChanges();
+
+    fixture.componentRef.setInput('position', { ...seen });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="weight"]').value).toBe('5');
+    expect(fixture.nativeElement.querySelector('[data-testid="save"]').disabled).toBe(false);
+  });
+
   it('keeps Save disabled until something changed', () => {
     const fixture = setUp(true);
 
@@ -101,6 +113,15 @@ describe('PositionEditor', () => {
       expect(card.textContent).toContain('lena set No · weight 4');
       expect(card.textContent).toContain('while you edited');
       expect(fixture.nativeElement.querySelector('[data-testid="save"]')).toBeNull();
+    });
+
+    it('keeps the card when the worklist reloads with the same position', async () => {
+      const { fixture } = await saveStale();
+
+      fixture.componentRef.setInput('position', { ...seen });
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelector('app-conflict-card')).not.toBeNull();
     });
 
     it('"Use theirs" drops the edit and shows their position', async () => {

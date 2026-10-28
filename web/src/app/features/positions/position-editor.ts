@@ -83,12 +83,14 @@ export class PositionEditor {
   protected readonly canEdit = inject(CurrentUser).isAdmin;
   protected readonly weights = [1, 2, 3, 4, 5];
 
+  /** The input by revision, so a worklist reload with the same position keeps this row's edit. */
+  private readonly seen = computed(() => this.position(), { equal: (a, b) => a?.revisionId === b?.revisionId });
   /** The position the row shows: its input, or theirs once "Use theirs" took it. */
-  private readonly shown = linkedSignal(() => this.position());
+  private readonly shown = linkedSignal(() => this.seen());
   protected readonly stance = linkedSignal<Stance | null>(() => this.shown()?.stance ?? null);
   protected readonly weight = linkedSignal<number | null>(() => this.shown()?.weight ?? null);
   /** The position someone else saved while this row was edited, after a stale save. */
-  protected readonly stale = linkedSignal<PositionDto | null>(() => (this.position(), null));
+  protected readonly stale = linkedSignal<PositionDto | null>(() => (this.seen(), null));
   protected readonly staleTraceId = signal<string | undefined>(undefined);
   protected readonly saving = signal(false);
   protected readonly errors = signal<string[]>([]);
