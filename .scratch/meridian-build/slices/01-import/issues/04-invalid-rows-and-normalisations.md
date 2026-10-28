@@ -4,11 +4,11 @@
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** done
 
 Requirements: ING-04, ING-06, ING-07, ING-13 (stories 25, 26, 27, 28, 29)
 
-- [ ] A named domain test for each normalisation and each invalid reason above
-- [ ] Membership boundaries: the first and last day are members, the day after is not, an open period is
-- [ ] Through the API, an invalid-rows fixture gives one invalid row per reason with its code, and nothing approved for them
-- [ ] A normalisations fixture stores the normalised values and lists each normalisation on its row
+- [x] A named domain test for each normalisation and each invalid reason above
+- [x] Membership boundaries: the first and last day are members, the day after is not, an open period is
+- [x] Through the API, an invalid-rows fixture gives one invalid row per reason with its code, and nothing approved for them
+- [x] A normalisations fixture stores the normalised values and lists each normalisation on its row

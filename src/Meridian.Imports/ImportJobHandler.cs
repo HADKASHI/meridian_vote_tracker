@@ -39,8 +39,12 @@ internal sealed class ImportJobHandler(
         }
 
         var members = await MembersAsync(cancellationToken);
-        var votes = parsed.Rows.GroupBy(r => r.Fields!.AssemblyVoteId.Trim()).ToList();
+        // Rows that can't name a vote (wrong field count, no vote id) are written on their own.
+        var groups = parsed.Rows.GroupBy(RowNormaliser.VoteKey).ToList();
+        var votes = groups.Where(g => g.Key is not null).ToList();
         await context.ReportAsync(votesDone: 0, votesTotal: votes.Count, cancellationToken: cancellationToken);
+        if (groups.SingleOrDefault(g => g.Key is null) is { } unattached)
+            await writer.WriteVoteAsync(importId, null, unattached.ToList(), members, cancellationToken);
         var done = 0;
         foreach (var vote in votes)
         {

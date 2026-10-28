@@ -15,12 +15,13 @@ namespace Meridian.Imports;
 /// </summary>
 internal sealed class ImportWriter(MeridianDbContext db)
 {
-    public async Task WriteVoteAsync(long importId, string assemblyVoteId, IReadOnlyList<ExportRow> rows,
+    /// <param name="assemblyVoteId">Null for the rows that can't name a vote; they are all invalid.</param>
+    public async Task WriteVoteAsync(long importId, string? assemblyVoteId, IReadOnlyList<ExportRow> rows,
         MemberStates members, CancellationToken ct)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
-        var voteId = await LockVoteAsync(importId, assemblyVoteId, ct);
-        var approved = await ApprovedAsync(voteId, ct);
+        long? voteId = assemblyVoteId is null ? null : await LockVoteAsync(importId, assemblyVoteId, ct);
+        var approved = voteId is { } id ? await ApprovedAsync(id, ct) : ApprovedVote.Nothing;
         var verdict = Classifier.Classify(rows, approved, members);
         await WriteAsync(importId, voteId, verdict, approved, ct);
         await transaction.CommitAsync(ct);
@@ -49,7 +50,7 @@ internal sealed class ImportWriter(MeridianDbContext db)
         return new ApprovedVote(details, ballots);
     }
 
-    private async Task WriteAsync(long importId, long voteId, VoteVerdict verdict, ApprovedVote approved, CancellationToken ct)
+    private async Task WriteAsync(long importId, long? voteId, VoteVerdict verdict, ApprovedVote approved, CancellationToken ct)
     {
         var newBallots = verdict.Rows.Count(r => r.Ballot.Kind == LinkKind.NewRevision);
         var ids = new Queue<long>(await ReserveIdsAsync(verdict.Rows.Count + newBallots + (verdict.NewDetails is null ? 0 : 1), ct));
@@ -62,11 +63,11 @@ internal sealed class ImportWriter(MeridianDbContext db)
             var origin = verdict.Rows.Select((r, i) => (r, i)).First(x => x.r.Details.Kind == LinkKind.NewRevision).i;
             db.VoteDetailsRevisions.Add(new VoteDetailsRevision
             {
-                Id = newDetailsId.Value, VoteId = voteId, Session = details.Session, VoteDate = details.VoteDate,
+                Id = newDetailsId.Value, VoteId = voteId!.Value, Session = details.Session, VoteDate = details.VoteDate,
                 Title = details.Title, OriginImportRowId = rowIds[origin],
             });
             if (approved.Details is null)
-                db.VoteCurrents.Add(new VoteCurrent { VoteId = voteId, DetailsRevisionId = newDetailsId.Value });
+                db.VoteCurrents.Add(new VoteCurrent { VoteId = voteId.Value, DetailsRevisionId = newDetailsId.Value });
         }
 
         for (var i = 0; i < verdict.Rows.Count; i++)
@@ -83,10 +84,10 @@ internal sealed class ImportWriter(MeridianDbContext db)
                 var state = row.Values!.StateCode!;
                 db.CountryVoteRevisions.Add(new CountryVoteRevision
                 {
-                    Id = ballotRevisionId!.Value, VoteId = voteId, StateCode = state, Ballot = row.Values.Ballot!.Value,
+                    Id = ballotRevisionId!.Value, VoteId = voteId!.Value, StateCode = state, Ballot = row.Values.Ballot!.Value,
                     OriginImportRowId = rowIds[i],
                 });
-                db.CountryVoteCurrents.Add(new CountryVoteCurrent { VoteId = voteId, StateCode = state, RevisionId = ballotRevisionId.Value });
+                db.CountryVoteCurrents.Add(new CountryVoteCurrent { VoteId = voteId.Value, StateCode = state, RevisionId = ballotRevisionId.Value });
             }
             db.ImportRows.Add(ToRecord(importId, voteId, rowIds[i], row, ballotRevisionId, row.Details.Kind switch
             {

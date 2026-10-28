@@ -1,5 +1,3 @@
-using System.Globalization;
-
 namespace Meridian.Domain.Imports;
 
 /// <summary>
@@ -14,15 +12,16 @@ public static class Classifier
         VoteDetails? newDetails = null;
         foreach (var row in rows)
         {
-            var f = row.Fields!;
-            var details = new VoteDetails(int.Parse(f.Session, CultureInfo.InvariantCulture),
-                DateOnly.ParseExact(f.VoteDate, "yyyy-MM-dd", CultureInfo.InvariantCulture), f.Title);
-            newDetails ??= details;
-            var ballot = Enum.Parse<Ballot>(f.Ballot);
-            var values = new RowValues(f.AssemblyVoteId, f.CountryCode, f.CountryName, f.Ballot, ballot,
-                details.Session, details.VoteDate, details.Title, ExportParser.ParsePublishedAt(f.PublishedAt));
+            var n = RowNormaliser.Normalise(row, members);
+            if (n.Invalid is { } reason)
+            {
+                verdicts.Add(new RowVerdict(row.LineNo, row.RawText, Outcome.Invalid, reason, n.Message!,
+                    n.Normalisations, n.Values, Link.None, Link.None));
+                continue;
+            }
+            newDetails ??= n.Details;
             verdicts.Add(new RowVerdict(row.LineNo, row.RawText, Outcome.New, ReasonCode.NewValue,
-                "New value: nothing was approved for it yet.", [], values, Link.NewRevision, Link.NewRevision));
+                "New value: nothing was approved for it yet.", n.Normalisations, n.Values, Link.NewRevision, Link.NewRevision));
         }
         return new VoteVerdict(verdicts, newDetails);
     }

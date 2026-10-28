@@ -12,7 +12,7 @@ public sealed record ExportFields(
     string? CountryName, string? PublishedAt);
 
 /// <summary>One data line. <see cref="Fields"/> is null when its field count differs from the header's.</summary>
-public sealed record ExportRow(int LineNo, string RawText, int FieldCount, ExportFields? Fields);
+public sealed record ExportRow(int LineNo, string RawText, int FieldCount, int HeaderFieldCount, ExportFields? Fields);
 
 /// <summary>An export file as parsed. It is rejected, with no rows, when <see cref="RejectedReason"/> is set.</summary>
 public sealed record ParsedExport(
@@ -88,12 +88,12 @@ public static class ExportParser
             var f = CsvReader.SplitFields(text);
             if (f.Count != header.Count)
             {
-                rows.Add(new ExportRow(lineNo, text, f.Count, null));
+                rows.Add(new ExportRow(lineNo, text, f.Count, header.Count, null));
                 continue;
             }
             var fields = new ExportFields(f[vote], f[session], f[date], f[title], f[code], f[ballot],
                 name is { } n ? f[n] : null, published is { } p ? f[p] : null);
-            rows.Add(new ExportRow(lineNo, text, f.Count, fields));
+            rows.Add(new ExportRow(lineNo, text, f.Count, header.Count, fields));
             if (ParsePublishedAt(fields.PublishedAt) is { } at && (maxPublished is null || at > maxPublished)) maxPublished = at;
         }
 

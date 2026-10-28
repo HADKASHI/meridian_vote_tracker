@@ -4,6 +4,14 @@ namespace Meridian.Domain.Imports;
 public enum ReasonCode
 {
     NewValue,
+    FieldCount,
+    MissingField,
+    UnknownCountryCode,
+    InvalidBallot,
+    EmptyBallot,
+    InvalidDate,
+    InvalidSession,
+    NotMemberOnDate,
 }
 
 /// <summary>A vote's session, date and title.</summary>
