@@ -6,11 +6,12 @@ import { MatTableModule } from '@angular/material/table';
 import { Router, RouterLink } from '@angular/router';
 import { listPositionsResource } from '../../api/positions/positions.resource';
 import { PositionDto } from '../../api/model';
+import { PositionEditor } from './position-editor';
 
 /** The positions worklist: every vote with its stance and weight, votes without a position first. */
 @Component({
   selector: 'app-positions-page',
-  imports: [MatTableModule, MatPaginatorModule, MatSlideToggleModule, DatePipe, RouterLink],
+  imports: [MatTableModule, MatPaginatorModule, MatSlideToggleModule, DatePipe, RouterLink, PositionEditor],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <h1>Positions</h1>
@@ -48,6 +49,12 @@ import { PositionDto } from '../../api/model';
             }
           </td>
         </ng-container>
+        <ng-container matColumnDef="edit">
+          <th mat-header-cell *matHeaderCellDef>Set stance and weight</th>
+          <td mat-cell *matCellDef="let item">
+            <app-position-editor [voteId]="item.vote.voteId" [position]="item.position" (saved)="positions.reload()" />
+          </td>
+        </ng-container>
         <tr mat-header-row *matHeaderRowDef="columns"></tr>
         <tr mat-row *matRowDef="let row; columns: columns"></tr>
       </table>
@@ -80,7 +87,7 @@ export class PositionsPage {
   readonly pageSize = input(50, { transform: (v: unknown) => numberAttribute(v, 50) });
 
   private readonly router = inject(Router);
-  protected readonly columns = ['vote', 'date', 'session', 'title', 'position'];
+  protected readonly columns = ['vote', 'date', 'session', 'title', 'position', 'edit'];
   protected readonly params = computed(() => ({
     noPosition: this.noPosition() || undefined,
     page: this.page(),

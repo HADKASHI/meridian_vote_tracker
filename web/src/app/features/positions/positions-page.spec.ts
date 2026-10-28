@@ -1,8 +1,10 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { PageDtoOfPositionWorklistItemDto } from '../../api/model';
+import { CurrentUser } from '../../core/identity/current-user';
 import { PositionsPage } from './positions-page';
 
 const worklist: PageDtoOfPositionWorklistItemDto = {
@@ -20,7 +22,12 @@ describe('PositionsPage', () => {
   let http: HttpTestingController;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])] });
+    TestBed.configureTestingModule({ providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        { provide: CurrentUser, useValue: { isAdmin: signal(false) } },
+      ], });
     http = TestBed.inject(HttpTestingController);
   });
 
