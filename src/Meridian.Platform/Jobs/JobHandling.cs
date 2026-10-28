@@ -14,11 +14,18 @@ public interface IJobHandler
     JobKind Kind { get; }
 
     /// <summary>
-    /// Does the job's work. Throwing fails this attempt; the message becomes the job's
-    /// <c>last_error</c>, so it must name ids and counts only, never client data.
+    /// Does the job's work. Throwing fails this attempt. A <see cref="JobFailedException"/>'s
+    /// message becomes the job's <c>last_error</c>; any other exception is recorded by its
+    /// type only, because its message may quote client data.
     /// </summary>
     Task RunAsync(JobContext context, CancellationToken cancellationToken);
 }
+
+/// <summary>
+/// A failure a handler explains in words safe to show users and write to logs: ids and
+/// counts only, never raw rows, titles, ballots or comments.
+/// </summary>
+public sealed class JobFailedException(string message) : Exception(message);
 
 /// <summary>What a handler knows about the job it runs, and how it reports progress.</summary>
 public sealed class JobContext(ClaimedJob job, Func<int?, int?, int?, CancellationToken, Task> report)

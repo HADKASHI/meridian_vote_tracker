@@ -79,7 +79,7 @@ public sealed class JobProcessor(
             if (await reader.ReadAsync(cancellationToken))
                 job = new ClaimedJob(
                     reader.GetInt64(0),
-                    Enum.Parse<JobKind>(reader.GetString(1), ignoreCase: true),
+                    SnakeCaseEnumConverter<JobKind>.FromName(reader.GetString(1)),
                     reader.IsDBNull(2) ? null : reader.GetInt64(2),
                     reader.IsDBNull(3) ? null : reader.GetInt64(3),
                     reader.GetInt32(4),
@@ -167,10 +167,15 @@ public sealed class JobProcessor(
         }
         catch (Exception error)
         {
+            // Only a JobFailedException's message is known to be free of client data.
             var final = job.Attempts >= Options.MaxAttempts;
-            await FinishAsync(job, final ? JobState.Failed : JobState.Queued, error.Message, CancellationToken.None);
-            logger.LogError(error, "Job {JobId} attempt {Attempt} failed; now {State}",
-                job.Id, job.Attempts, final ? JobState.Failed : JobState.Queued);
+            var message = error is JobFailedException
+                ? error.Message
+                : $"Unexpected {error.GetType().Name}; find it in the logs by the job's trace id.";
+            await FinishAsync(job, final ? JobState.Failed : JobState.Queued, message, CancellationToken.None);
+            logger.LogError("Job {JobId} attempt {Attempt} failed with {ErrorType}: {Error}; now {State}\n{StackTrace}",
+                job.Id, job.Attempts, error.GetType().FullName, message,
+                final ? JobState.Failed : JobState.Queued, error.StackTrace);
         }
         finally
         {

@@ -5,9 +5,11 @@ namespace Meridian.Data;
 
 /// <summary>Stores an enum as its snake_case name (<c>NonMember</c> → <c>non_member</c>), the word the glossary and the API use.</summary>
 public sealed partial class SnakeCaseEnumConverter<TEnum>() : ValueConverter<TEnum, string>(
-    value => ToName(value), name => Enum.Parse<TEnum>(name.Replace("_", ""), ignoreCase: true))
+    value => ToName(value), name => FromName(name))
     where TEnum : struct, Enum
 {
+    public static TEnum FromName(string name) => Enum.Parse<TEnum>(name.Replace("_", ""), ignoreCase: true);
+
     public static string ToName(TEnum value) => WordBoundary().Replace(value.ToString(), "$1_$2").ToLowerInvariant();
 
     /// <summary>The SQL list of every stored name, for CHECK constraints.</summary>

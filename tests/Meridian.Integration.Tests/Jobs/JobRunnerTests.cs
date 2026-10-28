@@ -101,7 +101,7 @@ public sealed class JobRunnerTests(PostgresFixture postgres, AzuriteFixture azur
         var calls = 0;
         using var worker = WorkerHost.Build(connectionString, [new TestJobHandler(JobKind.Import, (context, _) =>
             Interlocked.Increment(ref calls) <= 3 && context.JobId == failing
-                ? throw new InvalidOperationException("Row 812 broke the parser.")
+                ? throw new JobFailedException("Vote 812 of 1,204 could not be written.")
                 : Task.CompletedTask)]);
 
         await worker.Processor().RunUntilIdleAsync(Ct);
@@ -109,8 +109,25 @@ public sealed class JobRunnerTests(PostgresFixture postgres, AzuriteFixture azur
         var failed = await JobAsync(connectionString, failing);
         Assert.Equal(JobState.Failed, failed.State);
         Assert.Equal(3, failed.Attempts);
-        Assert.Equal("Row 812 broke the parser.", failed.LastError);
+        Assert.Equal("Vote 812 of 1,204 could not be written.", failed.LastError);
         Assert.Equal(JobState.Done, (await JobAsync(connectionString, next)).State);
+    }
+
+    [Fact]
+    public async Task An_unexpected_error_keeps_its_message_out_of_the_job_because_it_may_quote_client_data()
+    {
+        var connectionString = await postgres.CreateDatabaseAsync();
+        var jobId = await QueueImportJobAsync(connectionString);
+        using var worker = WorkerHost.Build(connectionString, [new TestJobHandler(JobKind.Import, (_, _) =>
+            throw new FormatException("Could not parse 'MA/2024/003,79,Ocean Treaty,FRA,Yes'"))],
+            new Dictionary<string, string?> { ["Jobs:MaxAttempts"] = "1" });
+
+        await worker.Processor().RunUntilIdleAsync(Ct);
+
+        var job = await JobAsync(connectionString, jobId);
+        Assert.Equal(JobState.Failed, job.State);
+        Assert.Contains(nameof(FormatException), job.LastError);
+        Assert.DoesNotContain("Ocean Treaty", job.LastError);
     }
 
     [Fact]
