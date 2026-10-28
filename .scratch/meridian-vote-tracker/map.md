@@ -8,6 +8,8 @@ A locked build plan for the KPMG "Meridian Vote Tracker" home assignment (Senior
 
 ## Notes
 
+- **Build**: the map is complete. The build spec and its tickets live in [`../meridian-build/`](../meridian-build/spec.md).
+
 - **Source of truth**: the assignment brief and its Appendix B (example screens). Requirement IDs (ING-xx, CON-xx, HIS-xx, POS-xx, SNP-xx, PDF-xx) are cited in every ticket they touch. The brief is in Hebrew; all repo artefacts are written in English.
 - **Bar**: correct first, impressive second. Every requirement must be met and traceable; a partial solution with clear reasoning beats a complete shallow one (brief, "Before you start").
 - **Stack (fixed by brief)**: ASP.NET Core (8+), PostgreSQL, Angular, Docker Compose. Azure resources are optional and used only through configuration.

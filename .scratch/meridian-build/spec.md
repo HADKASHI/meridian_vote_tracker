@@ -2,7 +2,7 @@
 
 Status: ready-for-agent
 
-Synthesised from the wayfinder map (`map.md`) and its 23 resolved tickets. Terms follow `GLOSSARY.md`. Requirement IDs (ING, CON, HIS, POS, SNP, PDF) refer to the assignment brief.
+Synthesised from the wayfinder map (`../meridian-vote-tracker/map.md`) and its 23 resolved tickets. "Map ticket NN" means `../meridian-vote-tracker/issues/NN-*.md`; build tickets live in this folder's `issues/`. Terms follow `GLOSSARY.md`. Requirement IDs (ING, CON, HIS, POS, SNP, PDF) refer to the assignment brief.
 
 ## Problem Statement
 
@@ -174,7 +174,7 @@ A web application (ASP.NET Core API, background worker, PostgreSQL, Angular, run
 
 ## Implementation Decisions
 
-Detailed reasoning lives in the resolved tickets; the locked schema is in `research/16-schema.md` (to become the schema document in `docs/` at the start of the build).
+Detailed reasoning lives in the resolved map tickets; the locked schema is in `../meridian-vote-tracker/research/16-schema.md` (to become the schema document in `docs/` at the start of the build).
 
 ### Stack and runtime
 
@@ -200,7 +200,7 @@ Detailed reasoning lives in the resolved tickets; the locked schema is in `resea
 
 - Upload: the API streams the file to Blob (`imports/{importId}/{filename}`) while hashing, then inserts the import and its job in one transaction and returns 202 with the import id. Files are never deleted.
 - Worker: parse the whole file, group rows by vote in memory, classify each vote with the pure classification module, then persist one vote per transaction through the `ImportWriter` seam, taking `SELECT … FOR UPDATE` on the vote row first. Parse-time facts go in a one-per-import parse record; warnings in an insert-only warning table.
-- Classification is a pure function over a vote's parsed rows plus the approved values and pending conflicts for that vote. Rule order: invalid → contradiction → duplicate → conflict / unchanged / new. Normalisation and comparison-key rules exactly as ticket 08 rule 2. Membership is inclusive at both ends; an empty end date means still a member.
+- Classification is a pure function over a vote's parsed rows plus the approved values and pending conflicts for that vote. Rule order: invalid → contradiction → duplicate → conflict / unchanged / new. Normalisation and comparison-key rules exactly as map ticket 08 rule 2. Membership is inclusive at both ends; an empty end date means still a member.
 - Conflicts: one table for both subjects (ballot, details). A conflict stores the incoming value and a link to the revision it was compared against; current is read live. Partial unique indexes on (compared-against revision, incoming value) per subject, so a matching incoming value links to the existing conflict, pending or decided (reason `previously_rejected` when decided as reject). A row links to up to two conflicts.
 - `ImportWriter` is built with EF (`AddRange` + `SaveChanges` per vote, change tracker cleared). Budget: the ~1M-row historic import under 5 minutes. Only if missed do its internals switch to Npgsql binary COPY; classification is untouched. If peak worker memory exceeds about 1 GB, the parser switches to two passes.
 - Crash resume: a retried import skips votes that already have row records for this import.
@@ -209,7 +209,7 @@ Detailed reasoning lives in the resolved tickets; the locked schema is in `resea
 
 - A decision is an insert-only record, unique per conflict; the database rejects a second. The decision module locks the vote, inserts the decision, and on accept inserts the new revision (origin: the decision) and moves the pointer, all in one transaction. A decision records the revision it replaced.
 - The loser of a race gets 409 `already-decided` with the winning decision in the body, and a not-applied attempt record is inserted.
-- Every vote-details decision recalculates membership for that vote (ticket 08 rule 8).
+- Every vote-details decision recalculates membership for that vote (map ticket 08 rule 8).
 
 ### Positions
 
@@ -261,8 +261,8 @@ Cut rule: comparison goes first if time runs short; the finishing pass is never 
 
 ## Testing Decisions
 
-- **What makes a good test**: it exercises external behaviour through a public seam (an HTTP endpoint, a pure function's inputs and outputs, a database constraint) and asserts on outcomes a user or the brief cares about: outcome counts, approved values, status codes and problem types, scores and ranks. It never asserts on EF internals, private methods or markup snapshots. Each numbered rule in tickets 05 and 08 gets a named test.
-- **Seams** (from ticket 20; existing seams, no new ones):
+- **What makes a good test**: it exercises external behaviour through a public seam (an HTTP endpoint, a pure function's inputs and outputs, a database constraint) and asserts on outcomes a user or the brief cares about: outcome counts, approved values, status codes and problem types, scores and ranks. It never asserts on EF internals, private methods or markup snapshots. Each numbered rule in map tickets 05 and 08 gets a named test.
+- **Seams** (from map ticket 20; existing seams, no new ones):
   1. **The HTTP API** through `WebApplicationFactory`, against real PostgreSQL and Azurite in Testcontainers (same versions as compose). This is the main seam: imports, conflicts, timeline, positions, snapshots and publication are tested here end to end. Jobs are run on demand by calling the same job processor ("run queued jobs until none are left").
   2. **Pure domain functions**: parsing, normalisation, classification and scoring, unit-tested with no database, written test-first.
   3. **Use-case modules and the database** directly, only where the API can't reach: the guard (catalog query that every non-allowlisted table has the trigger, then UPDATE, DELETE and TRUNCATE refused), and crash resume through the real `BackgroundService`.
@@ -277,7 +277,7 @@ Cut rule: comparison goes first if time runs short; the finishing pass is never 
 - **Categories run on demand, never in CI**: `RealData` (real Q1 files give the audited counts: original 5,737 new / 3 duplicate / 5 invalid / 151 contradiction; rev2 372 new / 5,284 unchanged / 304 conflict rows / 8 conflicts; rev2 again opens none; historic predicts 962,109 new / 30 duplicate / 32 invalid), skipping itself when `data_candidate/` is missing; `Performance` (deterministic synthetic ~1M-row file shaped like the historic one, fails above 5 minutes, reports time and peak memory), also available as a manual workflow.
 - **Frontend**: Vitest with Material harnesses and `HttpTestingController` for the identity interceptor, ProblemDetails-to-field mapping, the 409 cards and stopping polling. One Playwright smoke test against the compose stack: switch user, upload a small file, see the report, then a decision race in two tabs.
 - **Test data**: committed synthetic fixtures only (one small CSV per import rule, synthetic member states, C# builders). Real data is never committed.
-- **CI on every push**: build with warnings as errors, OpenAPI drift check, pending-model-changes check, domain and integration tests, Angular lint/test/build, compose smoke test. Prior art: none yet in the codebase (it has no code); the audit scripts in `research/07-data-audit-scripts/` and `research/17-historic-audit-scripts/` are the reference for expected counts.
+- **CI on every push**: build with warnings as errors, OpenAPI drift check, pending-model-changes check, domain and integration tests, Angular lint/test/build, compose smoke test. Prior art: none yet in the codebase (it has no code); the audit scripts in `../meridian-vote-tracker/research/07-data-audit-scripts/` and `../meridian-vote-tracker/research/17-historic-audit-scripts/` are the reference for expected counts.
 
 ## Out of Scope
 
@@ -294,8 +294,8 @@ Cut rule: comparison goes first if time runs short; the finishing pass is never 
 
 ## Further Notes
 
-- The brief's ING-04 says `dd-mm-yyyy` while Appendix A and every real file use `yyyy-mm-dd`; both are accepted (day-first for numeric dates), per ticket 08.
-- The real title column is `resolution_title`, not `title` (correction from ticket 17).
+- The brief's ING-04 says `dd-mm-yyyy` while Appendix A and every real file use `yyyy-mm-dd`; both are accepted (day-first for numeric dates), per map ticket 08.
+- The real title column is `resolution_title`, not `title` (correction from map ticket 17).
 - Session numbers are validated as positive integers consistent within a vote, never against the year.
 - The sandbox needs a proxy override for container builds; it lives in a separate compose file passed explicitly with `-f`, never in the committed Dockerfiles or `compose.yaml`, and the README never mentions it.
 - DECISIONS.md must stay within 2 pages (~1,000 words, no code, tables or diagrams), with the full reasoning in six ADRs and a four-developer plan built on the 501-stubbed skeleton (owners: A import and scale, B conflicts and Review inbox, C vote page, timeline, positions, D snapshots and publication).
