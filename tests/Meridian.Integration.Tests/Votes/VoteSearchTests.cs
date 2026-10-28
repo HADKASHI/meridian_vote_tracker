@@ -80,6 +80,15 @@ public sealed class VoteSearchTests(PostgresFixture postgres, AzuriteFixture azu
     }
 
     [Fact]
+    public async Task Pages_keep_the_order_with_and_without_a_position()
+    {
+        var pages = new List<string>();
+        for (var page = 1; page <= 3; page++) pages.AddRange((await SearchAsync($"?page={page}&pageSize=1")).Ids);
+
+        Assert.Equal(["MA/2024/002", "MA/2024/001", "MA/2023/014"], pages);
+    }
+
+    [Fact]
     public async Task A_result_carries_the_vote_details_and_its_position()
     {
         var page = await _api.ClientAs("dana").GetFromJsonAsync<JsonElement>("/api/votes?q=MA/2024/001", Ct);

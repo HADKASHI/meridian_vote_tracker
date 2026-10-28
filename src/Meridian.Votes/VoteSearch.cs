@@ -28,13 +28,15 @@ public static class VoteSearch
         if (filter.NoPosition) votes = votes.Where(v => v.PositionRevisionId == null);
 
         var total = await votes.CountAsync(ct);
+        // Ordered after the join, so the page order holds whatever plan the join gets.
         var items = await (
-                from v in votes.OrderByDescending(v => v.VoteDate).ThenBy(v => v.AssemblyVoteId)
-                    .Skip((page - 1) * pageSize).Take(pageSize)
+                from v in votes
                 join p in db.PositionRevisions on v.PositionRevisionId equals p.Id into positions
                 from p in positions.DefaultIfEmpty()
+                orderby v.VoteDate descending, v.AssemblyVoteId
                 select new VoteSummaryDto(v.VoteId, v.AssemblyVoteId, v.Session, v.VoteDate, v.Title,
                     p == null ? null : new PositionDto(p.Id, p.Stance, p.Weight, p.SetBy, p.RecordedAt)))
+            .Skip((page - 1) * pageSize).Take(pageSize)
             .ToListAsync(ct);
         return new PageDto<VoteSummaryDto>(items, total, page, pageSize);
     }
