@@ -1,6 +1,6 @@
 # Slice 0: Walking skeleton
 
-Status: ready-for-agent
+Status: done
 Blocked by: none
 Runs in parallel with: slices none (the shared base: build and merge it alone, before any other slice)
 PR title: `Slice 0: Walking skeleton`
