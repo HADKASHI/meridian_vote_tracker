@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <!-- dotnet build writes the contract the Angular client is generated from; CI fails if it differs. -->
+    <OpenApiGenerateDocumentsOnBuild>true</OpenApiGenerateDocumentsOnBuild>
+    <OpenApiDocumentsDirectory>$(MSBuildProjectDirectory)/../../contracts</OpenApiDocumentsDirectory>
+    <OpenApiGenerateDocumentsOptions>--file-name openapi</OpenApiGenerateDocumentsOptions>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Meridian.Platform\Meridian.Platform.csproj" />
+    <ProjectReference Include="..\Meridian.Imports\Meridian.Imports.csproj" />
+    <ProjectReference Include="..\Meridian.Conflicts\Meridian.Conflicts.csproj" />
+    <ProjectReference Include="..\Meridian.Votes\Meridian.Votes.csproj" />
+    <ProjectReference Include="..\Meridian.Positions\Meridian.Positions.csproj" />
+    <ProjectReference Include="..\Meridian.Snapshots\Meridian.Snapshots.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.Extensions.ApiDescription.Server" PrivateAssets="all" />
+  </ItemGroup>
+</Project>

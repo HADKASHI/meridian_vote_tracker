@@ -1,0 +1,98 @@
+# docker compose up --build  →  http://localhost:8080
+# Needs data_candidate/member_states.csv (the assignment file); works with no .env.
+name: meridian
+
+x-backend: &backend
+  build:
+    context: .
+    dockerfile: src/Dockerfile
+  image: meridian-backend:local
+  environment: &backend-env
+    DOTNET_ENVIRONMENT: Production
+    ConnectionStrings__Meridian: Host=db;Database=meridian;Username=meridian;Password=${POSTGRES_PASSWORD:-meridian_local}
+    # Azurite's published emulator key, not a secret. Set BLOB_CONNECTION_STRING for real Azure Blob.
+    Blob__ConnectionString: ${BLOB_CONNECTION_STRING:-DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;}
+    Imports__MaxConcurrent: ${IMPORTS_MAX_CONCURRENT:-1}
+    APPLICATIONINSIGHTS_CONNECTION_STRING: ${APPLICATIONINSIGHTS_CONNECTION_STRING:-}
+
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: meridian
+      POSTGRES_USER: meridian
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-meridian_local}
+    volumes: [pgdata:/var/lib/postgresql]
+    ports: ["127.0.0.1:${DB_PORT:-5433}:5432"]
+    healthcheck:
+      # Over TCP: during init the server listens on the socket only.
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "meridian", "-d", "meridian"]
+      interval: 10s
+      start_period: 30s
+      start_interval: 1s
+    restart: unless-stopped
+
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:3.37.0
+    command: ["azurite-blob", "--blobHost", "0.0.0.0", "--location", "/data", "--skipApiVersionCheck"]
+    volumes: [azurite-data:/data]
+    ports: ["127.0.0.1:${AZURITE_PORT:-10000}:10000"]
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "10000"]
+      interval: 10s
+      start_period: 10s
+      start_interval: 1s
+    restart: unless-stopped
+
+  migrate:
+    <<: *backend
+    entrypoint: ["/app/migrate/efbundle"]
+    environment:
+      <<: *backend-env
+      Seed__MemberStatesPath: /data_candidate/member_states.csv
+    # Only migrate reads the assignment data; the exports are uploaded through the UI.
+    volumes: ["${DATA_DIR:-./data_candidate}:/data_candidate:ro"]
+    depends_on:
+      db: { condition: service_healthy }
+    restart: "no"
+
+  api:
+    <<: *backend
+    entrypoint: ["dotnet", "/app/api/Meridian.Api.dll"]
+    ports: ["127.0.0.1:${API_PORT:-5080}:8080"]
+    depends_on: &after-migrate
+      migrate: { condition: service_completed_successfully }
+      azurite: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/health/ready"]
+      interval: 10s
+      start_period: 20s
+      start_interval: 1s
+    restart: unless-stopped
+
+  worker:
+    <<: *backend
+    entrypoint: ["dotnet", "/app/worker/Meridian.Worker.dll"]
+    depends_on: *after-migrate
+    # Its liveness is the job heartbeat; a stop lets it finish the vote it is committing.
+    stop_grace_period: 30s
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    image: meridian-web:local
+    ports: ["127.0.0.1:${WEB_PORT:-8080}:80"]
+    depends_on:
+      api: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
+      interval: 10s
+      start_period: 10s
+      start_interval: 1s
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  azurite-data:

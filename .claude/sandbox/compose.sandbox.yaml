@@ -1,0 +1,22 @@
+# Sandbox only: builds on the host network through the session proxy. After
+# .claude/sandbox/prepare-images.sh, build with bake (Compose v5 builds through bake,
+# which needs host networking allowed explicitly), then start without building:
+#   docker buildx bake -f compose.yaml -f .claude/sandbox/compose.sandbox.yaml --allow=network.host --load
+#   DATA_DIR=./tests/data docker compose up -d --no-build --wait
+# Never rename this to compose.override.yaml, which Compose would load on its own.
+x-sandbox-build: &sandbox-build
+  network: host
+  args:
+    HTTPS_PROXY: ${HTTPS_PROXY:-}
+    https_proxy: ${HTTPS_PROXY:-}
+    NO_PROXY: ${NO_PROXY:-}
+
+services:
+  migrate:
+    build: *sandbox-build
+  api:
+    build: *sandbox-build
+  worker:
+    build: *sandbox-build
+  web:
+    build: *sandbox-build

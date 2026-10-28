@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\Meridian.Data\Meridian.Data.csproj" />
+  </ItemGroup>
+</Project>

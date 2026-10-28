@@ -1,0 +1,13 @@
+# Assignment data and secrets never reach a build context, so they can't be baked into an image.
+data_candidate/
+.env
+.git/
+.scratch/
+.claude/
+**/bin/
+**/obj/
+**/node_modules/
+web/dist/
+web/.angular/
+web/src/app/api/
+tests/
