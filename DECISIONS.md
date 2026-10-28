@@ -73,3 +73,10 @@ Score = 100 × matched weight ÷ counted weight, over the votes where the state 
 - **Then follow the data:** import → import at scale (the ~1M-row file within 5 minutes) → conflicts → vote timeline → positions → snapshots and publication. Nothing can be reviewed before it is imported or scored without positions, so stopping after any step leaves a coherent product, and the riskiest parts (ingestion correctness and scale) are proven first.
 - **Each step is complete:** API, background work, screen and tests together, merged as one PR that lists the requirements it covers. There is no separate testing or UI phase.
 - **Extras stay small:** CI, and a comparison of two snapshots. The PDF bonus comes only after everything else, with a hard limit. When time is short, the bonus goes first, then the extra; the final check on a fresh clone and the documentation are never cut.
+
+## Testing
+
+- **Real PostgreSQL, never a fake.** Use cases and the API are tested against PostgreSQL and Azurite in containers, because EF's in-memory provider runs no triggers, locks or constraints. Each test gets a fresh database copied from a migrated template. The history guard refuses the usual TRUNCATE-based reset, and that is the point.
+- **Guarantees are tested so they can't be forgotten.** The guard test finds every table from the catalog, the role test finds every endpoint from metadata, and race tests run two real connections at once (exactly one wins, the other gets 409). A new table or endpoint can't silently escape.
+- **Rules are written test-first**, one named test per numbered classification or scoring rule. The brief's 7.2 example is the end-to-end integration test, and the real files are checked locally against the audit's predicted counts.
+- **Scale is measured, not assumed:** a seeded synthetic copy of the ~1M-row historic file must import in under 5 minutes, with peak memory reported.
