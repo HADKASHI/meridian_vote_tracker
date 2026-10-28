@@ -53,9 +53,9 @@ public static class ImportApi
     }
 
     /// <summary>Runs every queued job to the end, as the worker would.</summary>
-    public static async Task RunJobsAsync(ApiFactory api)
+    public static async Task RunJobsAsync(ApiFactory api, IDictionary<string, string?>? settings = null)
     {
-        using var worker = Worker(api);
+        using var worker = Worker(api, settings);
         await worker.Processor().RunUntilIdleAsync(TestContext.Current.CancellationToken);
     }
 
@@ -63,13 +63,14 @@ public static class ImportApi
     public static async Task<ImportDto> ImportAsync(ApiFactory api, string fileName, string content, string user = "dana") =>
         await ImportAsync(api, fileName, Encoding.UTF8.GetBytes(content), user);
 
-    public static async Task<ImportDto> ImportAsync(ApiFactory api, string fileName, byte[] content, string user = "dana")
+    public static async Task<ImportDto> ImportAsync(ApiFactory api, string fileName, byte[] content, string user = "dana",
+        IDictionary<string, string?>? workerSettings = null)
     {
         var client = api.ClientAs(user);
         var response = await UploadAsync(client, fileName, content);
         Assert.Equal(202, (int)response.StatusCode);
         var created = (await response.Content.ReadFromJsonAsync<ImportCreatedDto>(Json, TestContext.Current.CancellationToken))!;
-        await RunJobsAsync(api);
+        await RunJobsAsync(api, workerSettings);
         return await GetAsync<ImportDto>(client, $"/api/imports/{created.ImportId}");
     }
 

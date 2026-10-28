@@ -4,9 +4,13 @@
 
 **Blocked by:** 07, 08
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
 Requirements: ING-03 to ING-13
 
-- [ ] The test skips itself with a clear message when `data_candidate/` is missing
+- [x] The test skips itself with a clear message when `data_candidate/` is missing
 - [ ] With the files present, it gives the counts above
+
+## Comments
+
+- The test is written and skips itself here: this session's container has no `data_candidate/`. The last criterion needs a run with the four files in place: `dotnet test --project tests/Meridian.Integration.Tests -- --filter-trait "Category=RealData"`. Set this ticket to done once it passes.
