@@ -1,6 +1,6 @@
 # Slice 6: Snapshots and publication
 
-Status: ready-for-agent
+Status: done
 Blocked by: Slice 0
 Runs in parallel with: slices 1, 2, 3, 4, 5
 PR title: `Slice 6: Snapshots and publication`
