@@ -135,8 +135,13 @@ describe('imports feature', () => {
     http.expectOne('/api/imports/7').flush({
       ...importDto('done'),
       parse: { header: ['a'], hasBom: true, lineEndings: 'crlf', dataRows: 1204, maxPublishedAt: null, rejectedReason: null },
-      warnings: [{ id: 1, kind: 'extra_columns', message: 'Ignored column not in the export format: region.', vote: null,
-        identicalToImportId: null, columns: ['region'], missingStateCodes: null, newestPublishedAt: null }],
+      warnings: [
+        { id: 1, kind: 'extra_columns', message: 'Ignored column not in the export format: region.', vote: null,
+          identicalToImportId: null, columns: ['region'], missingStateCodes: null, newestPublishedAt: null },
+        { id: 2, kind: 'incomplete_vote', message: 'Incomplete vote: 2 members on its date with no approved ballot.',
+          vote: { voteId: 41, assemblyVoteId: 'MA/2024/001' }, identicalToImportId: null, columns: null,
+          missingStateCodes: ['FRA', 'JPN'], newestPublishedAt: null },
+      ],
     });
     await settle();
 
@@ -145,6 +150,7 @@ describe('imports feature', () => {
     expect(text).toContain('CRLF');
     expect(text).toContain('with BOM');
     expect(text).toContain('Ignored column not in the export format: region.');
+    expect(text).toContain('Missing: FRA, JPN');
   });
 
   it('shows counts as filters, the counts per vote and the rows of the chosen outcome', async () => {

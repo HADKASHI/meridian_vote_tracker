@@ -390,4 +390,30 @@ public sealed class ClassifierTests
 
         Assert.Equal(Outcome.Unchanged, One(Row("BRA", "Y"), Approved([pending], ballots: ("BRA", Ballot.Y, 501))).Outcome);
     }
+
+    [Fact]
+    public void Rule11_members_on_the_vote_date_with_no_approved_ballot_after_the_import_are_missing()
+    {
+        var verdict = Classify([Row("BRA", "Y"), Row("FRA", "Yes")]);
+
+        Assert.Equal(["FRA", "IND", "JPN"], Classifier.MissingMembers(verdict, ApprovedVote.Nothing, Members));
+    }
+
+    [Fact]
+    public void Rule11_approved_ballots_count_and_non_members_are_not_missing()
+    {
+        var approved = Approved(ballots: [("IND", Ballot.N, 502), ("JPN", Ballot.A, 503)]);
+
+        var verdict = Classify([Row("BRA", "Y")], approved);
+
+        Assert.Equal(["FRA"], Classifier.MissingMembers(verdict, approved, Members));
+    }
+
+    [Fact]
+    public void Rule11_a_vote_with_no_details_has_no_date_to_be_incomplete_on()
+    {
+        var verdict = Classify([Row("BRA", "Y"), Row("IND", "N", date: "2024-01-11")]);
+
+        Assert.Empty(Classifier.MissingMembers(verdict, ApprovedVote.Nothing, Members));
+    }
 }

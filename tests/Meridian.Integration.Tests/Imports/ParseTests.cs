@@ -42,8 +42,7 @@ public sealed class ParseTests(PostgresFixture postgres, AzuriteFixture azurite)
         Assert.Equal(LineEndings.Crlf, parse.LineEndings);
         Assert.Equal(1, parse.DataRows);
         Assert.Equal(["assembly_vote_id", "session", "vote_date", "resolution_title", "country_code", "ballot", "region"], parse.Header);
-        var warning = Assert.Single(import.Warnings);
-        Assert.Equal(ImportWarningKind.ExtraColumns, warning.Kind);
+        var warning = Assert.Single(import.Warnings, w => w.Kind == ImportWarningKind.ExtraColumns);
         Assert.Equal(["region"], warning.Columns);
         Assert.Equal(1, import.Job.RowsRead);
     }

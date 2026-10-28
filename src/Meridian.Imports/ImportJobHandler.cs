@@ -31,7 +31,7 @@ internal sealed class ImportJobHandler(
                 lines => context.ReportAsync(rowsRead: lines, cancellationToken: cancellationToken), cancellationToken);
         await context.ReportAsync(rowsRead: parsed.DataRows, cancellationToken: cancellationToken);
 
-        await RecordParseAsync(importId, parsed, cancellationToken);
+        await RecordParseAsync(import, parsed, cancellationToken);
         if (parsed.RejectedReason is not null)
         {
             logger.LogInformation("Import {ImportId} rejected: {DataRows} data rows", importId, parsed.DataRows);
@@ -62,9 +62,26 @@ internal sealed class ImportJobHandler(
     }
 
     /// <summary>The parse record and the file-level warnings, written once even when the job is retried.</summary>
-    private async Task RecordParseAsync(long importId, ParsedExport parsed, CancellationToken cancellationToken)
+    private async Task RecordParseAsync(Import import, ParsedExport parsed, CancellationToken cancellationToken)
     {
+        var importId = import.Id;
         if (await db.ImportParses.AnyAsync(p => p.ImportId == importId, cancellationToken)) return;
+
+        // Rule 9: the same file again is imported normally, with a warning.
+        var identical = await db.Imports.Where(i => i.Sha256 == import.Sha256 && i.Id < importId)
+            .OrderBy(i => i.Id).Select(i => (long?)i.Id).FirstOrDefaultAsync(cancellationToken);
+        if (identical is { } earlier)
+            db.ImportWarnings.Add(new ImportWarningDetail($"Identical to import #{earlier}.", IdenticalToImportId: earlier)
+                .ToWarning(importId, ImportWarningKind.IdenticalFile));
+
+        // Rule 10: published_at is never used for ordering, only warned about.
+        var newest = await db.ImportParses.Where(p => p.ImportId < importId)
+            .MaxAsync(p => p.MaxPublishedAt, cancellationToken);
+        if (parsed.MaxPublishedAt < newest)
+            db.ImportWarnings.Add(new ImportWarningDetail(
+                    $"Published {parsed.MaxPublishedAt:yyyy-MM-dd HH:mm} UTC, earlier than the newest file already imported ({newest:yyyy-MM-dd HH:mm} UTC).",
+                    NewestPublishedAt: newest)
+                .ToWarning(importId, ImportWarningKind.OlderPublishedAt));
 
         db.ImportParses.Add(new ImportParse
         {

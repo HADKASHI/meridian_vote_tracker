@@ -4,10 +4,10 @@
 
 **Blocked by:** 06
 
-**Status:** ready-for-agent
+**Status:** done
 
 Requirements: ING-09, ING-12 (stories 43, 44, 45, 46)
 
-- [ ] Re-uploading the same file is warned as identical to the first import and every row is unchanged (or links to its existing conflict); approved data and conflicts are as before
-- [ ] An older `published_at` is warned with the newest one already imported
-- [ ] An incomplete vote is warned with its missing states; a complete one is not
+- [x] Re-uploading the same file is warned as identical to the first import and every row is unchanged (or links to its existing conflict); approved data and conflicts are as before
+- [x] An older `published_at` is warned with the newest one already imported
+- [x] An incomplete vote is warned with its missing states; a complete one is not

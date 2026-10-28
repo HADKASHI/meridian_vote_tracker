@@ -47,6 +47,9 @@ import { ImportRows } from './import-rows';
                 <strong>{{ vote.assemblyVoteId }}:</strong>
               }
               {{ w.message }}
+              @if (w.missingStateCodes?.length) {
+                <span class="missing">Missing: {{ w.missingStateCodes!.join(', ') }}</span>
+              }
             </li>
           }
         </ul>

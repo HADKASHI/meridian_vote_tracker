@@ -37,6 +37,9 @@ public sealed record MemberStates(IReadOnlyDictionary<string, IReadOnlyList<Memb
 
     public bool IsMemberOn(string code, DateOnly date) =>
         Periods.TryGetValue(code, out var spans) && spans.Any(s => s.Covers(date));
+
+    public IEnumerable<string> MembersOn(DateOnly date) =>
+        Periods.Where(p => p.Value.Any(s => s.Covers(date))).Select(p => p.Key);
 }
 
 /// <summary>An approved value with the revision it lives in.</summary>

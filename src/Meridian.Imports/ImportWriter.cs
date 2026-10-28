@@ -23,6 +23,12 @@ internal sealed class ImportWriter(MeridianDbContext db)
         long? voteId = assemblyVoteId is null ? null : await LockVoteAsync(importId, assemblyVoteId, ct);
         var approved = voteId is { } id ? await ApprovedAsync(id, ct) : ApprovedVote.Nothing;
         var verdict = Classifier.Classify(rows, approved, members);
+        // Rule 11, written with the vote so a resumed import never writes it twice.
+        if (voteId is not null && Classifier.MissingMembers(verdict, approved, members) is { Count: > 0 } missing)
+            db.ImportWarnings.Add(new ImportWarningDetail(
+                    $"Incomplete vote: {missing.Count} member{(missing.Count > 1 ? "s" : "")} on its date with no approved ballot.",
+                    MissingStateCodes: missing)
+                .ToWarning(importId, ImportWarningKind.IncompleteVote, voteId));
         await WriteAsync(importId, voteId, verdict, approved, ct);
         await transaction.CommitAsync(ct);
         db.ChangeTracker.Clear();

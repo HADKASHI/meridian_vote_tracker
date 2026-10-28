@@ -51,6 +51,19 @@ public static class Classifier
     }
 
     /// <summary>
+    /// Rule 11: the members on the vote's approved date with no approved country vote once
+    /// this verdict is written, by code. A vote with no approved details has no date yet.
+    /// </summary>
+    public static IReadOnlyList<string> MissingMembers(VoteVerdict verdict, ApprovedVote approved, MemberStates members)
+    {
+        if ((approved.Details?.Value ?? verdict.NewDetails) is not { } details) return [];
+        var voted = approved.Ballots.Keys
+            .Concat(verdict.Rows.Where(r => r.Ballot.Kind == LinkKind.NewRevision).Select(r => r.Values!.StateCode!))
+            .ToHashSet();
+        return members.MembersOn(details.VoteDate).Where(code => !voted.Contains(code)).Order(StringComparer.Ordinal).ToList();
+    }
+
+    /// <summary>
     /// Rule 12, and rule 5's twist: membership is checked on the approved date when the vote
     /// has one, so a row carrying new details is judged against the details that count.
     /// </summary>
