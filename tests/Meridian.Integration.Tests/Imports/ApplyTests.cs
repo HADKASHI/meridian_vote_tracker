@@ -13,7 +13,7 @@ public sealed class ApplyTests(PostgresFixture postgres, AzuriteFixture azurite)
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     [Fact]
-    public async Task Clean_rows_are_new_and_approved_with_their_row_as_origin()
+    public async Task Rule14_rows_are_grouped_by_vote_wherever_they_are_and_approved_with_their_row_as_origin()
     {
         await using var api = await ApiFactory.CreateAsync(postgres, azurite);
 
@@ -43,7 +43,7 @@ public sealed class ApplyTests(PostgresFixture postgres, AzuriteFixture azurite)
     }
 
     [Fact]
-    public async Task Every_line_has_a_row_record_paged_and_filtered_by_outcome_and_vote()
+    public async Task Rule13_every_line_has_a_row_record_paged_and_filtered_by_outcome_and_vote()
     {
         await using var api = await ApiFactory.CreateAsync(postgres, azurite);
         var client = api.ClientAs("dana");
@@ -69,7 +69,7 @@ public sealed class ApplyTests(PostgresFixture postgres, AzuriteFixture azurite)
     }
 
     [Fact]
-    public async Task Counts_per_vote_add_up_to_the_totals()
+    public async Task Rule13_counts_per_outcome_and_per_vote_are_queried_from_the_row_records()
     {
         await using var api = await ApiFactory.CreateAsync(postgres, azurite);
         var client = api.ClientAs("dana");
@@ -79,6 +79,29 @@ public sealed class ApplyTests(PostgresFixture postgres, AzuriteFixture azurite)
 
         Assert.Equal(["MA/2024/001", "MA/2024/002"], perVote.Select(v => v.Vote.AssemblyVoteId));
         Assert.Equal([3, 2], perVote.Select(v => v.Counts.New));
+    }
+
+    [Fact]
+    public async Task Rule6_a_conflict_stores_the_incoming_value_and_the_revision_it_was_compared_against()
+    {
+        await using var api = await ApiFactory.CreateAsync(postgres, azurite);
+        const string header = "assembly_vote_id,session,vote_date,resolution_title,country_code,ballot\n";
+        await ImportApi.ImportAsync(api, "original.csv", header + "MA/2024/001,79,2024-01-10,Oceans,BRA,Y\n");
+
+        var revised = await ImportApi.ImportAsync(api, "revised.csv", header + "MA/2024/001,79,2024-01-10,Oceans and Seas,BRA,A\n");
+
+        await using var db = new MeridianDbContext(MeridianDb.Options(api.ConnectionString));
+        var current = await db.CurrentVotes.SingleAsync(Ct);
+        var approvedBallot = await db.CurrentCountryVotes.SingleAsync(Ct);
+        var conflicts = await db.Conflicts.Where(c => c.OpenedByImportId == revised.Id).OrderBy(c => c.Id).ToListAsync(Ct);
+        Assert.Equal(2, conflicts.Count);
+        var details = conflicts.Single(c => c.Subject == ConflictSubject.Details);
+        Assert.Equal((79, new DateOnly(2024, 1, 10), "Oceans and Seas", "oceans and seas", current.DetailsRevisionId),
+            (details.IncomingSession, details.IncomingVoteDate, details.IncomingTitle, details.IncomingTitleKey, details.ComparedDetailsRevisionId));
+        var ballot = conflicts.Single(c => c.Subject == ConflictSubject.Ballot);
+        Assert.Equal(("BRA", Ballot.A, approvedBallot.RevisionId),
+            (ballot.StateCode!.Trim(), ballot.IncomingBallot, ballot.ComparedCountryVoteRevisionId));
+        Assert.Equal(Ballot.Y, approvedBallot.Ballot);
     }
 
     [Fact]
