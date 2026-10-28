@@ -4,9 +4,9 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A 409 `stale-position` replaces the row's save action with the card showing who set what, and when
-- [ ] "Use theirs" shows the current position and leaves the row out of edit mode
-- [ ] "Save mine over it" resends with the current revision id and the row shows the saved position
-- [ ] Component tests with `HttpTestingController` cover both actions
+- [x] A 409 `stale-position` replaces the row's save action with the card showing who set what, and when
+- [x] "Use theirs" shows the current position and leaves the row out of edit mode
+- [x] "Save mine over it" resends with the current revision id and the row shows the saved position
+- [x] Component tests with `HttpTestingController` cover both actions

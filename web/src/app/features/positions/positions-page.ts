@@ -7,6 +7,7 @@ import { Router, RouterLink } from '@angular/router';
 import { listPositionsResource } from '../../api/positions/positions.resource';
 import { PositionDto } from '../../api/model';
 import { PositionEditor } from './position-editor';
+import { positionLabel } from './position-label';
 
 /** The positions worklist: every vote with its stance and weight, votes without a position first. */
 @Component({
@@ -106,9 +107,4 @@ export class PositionsPage {
   protected navigate(queryParams: Record<string, unknown>): void {
     void this.router.navigate([], { queryParams, queryParamsHandling: 'merge' });
   }
-}
-
-/** "Yes · weight 4": a position in the words the worklist and its 409 card share. */
-export function positionLabel(position: Pick<PositionDto, 'stance' | 'weight'>): string {
-  return `${position.stance === 'yes' ? 'Yes' : 'No'} · weight ${position.weight}`;
 }

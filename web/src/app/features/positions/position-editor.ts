@@ -1,12 +1,15 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, linkedSignal, output, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { DatePipe } from '@angular/common';
 import { PositionsService } from '../../api/positions/positions.service';
-import { PositionDto, Stance } from '../../api/model';
+import { PositionDto, Stance, StalePositionProblem } from '../../api/model';
 import { CurrentUser } from '../../core/identity/current-user';
-import { toProblem } from '../../shared/problem/problem';
+import { ConflictCard } from '../../shared/problem/conflict-card';
+import { isProblem, ProblemType, toProblem } from '../../shared/problem/problem';
 import { ProblemBanner } from '../../shared/problem/problem-banner';
 import { problemToFieldErrors } from '../../shared/problem/to-field-errors';
+import { positionLabel } from './position-label';
 
 /**
  * One vote's stance and weight, edited inline. The save carries the revision the row
@@ -15,7 +18,7 @@ import { problemToFieldErrors } from '../../shared/problem/to-field-errors';
  */
 @Component({
   selector: 'app-position-editor',
-  imports: [MatButtonModule, MatButtonToggleModule, ProblemBanner],
+  imports: [MatButtonModule, MatButtonToggleModule, DatePipe, ConflictCard, ProblemBanner],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="editor">
@@ -41,11 +44,22 @@ import { problemToFieldErrors } from '../../shared/problem/to-field-errors';
           <option [value]="w">{{ w }}</option>
         }
       </select>
-      <button mat-stroked-button type="button" data-testid="save" [disabled]="!canSave()" (click)="save()">Save</button>
+      @if (!stale()) {
+        <button mat-stroked-button type="button" data-testid="save" [disabled]="!canSave()" (click)="save()">Save</button>
+      }
       @if (!canEdit()) {
         <span class="reason">Admin only</span>
       }
     </div>
+    @if (stale(); as theirs) {
+      <app-conflict-card heading="The position changed while you edited" [traceId]="staleTraceId()">
+        <p>{{ theirs.setBy }} set {{ label(theirs) }} at {{ theirs.setAt | date: 'yyyy-MM-dd HH:mm' }} while you edited.</p>
+        <button cardActions mat-stroked-button type="button" [disabled]="saving()" (click)="useTheirs(theirs)">Use theirs</button>
+        <button cardActions mat-flat-button type="button" [disabled]="saving()" (click)="saveOver(theirs)">
+          Save mine over it
+        </button>
+      </app-conflict-card>
+    }
     <app-problem-banner [messages]="errors()" [traceId]="traceId()" />
   `,
   styles: `
@@ -69,14 +83,19 @@ export class PositionEditor {
   protected readonly canEdit = inject(CurrentUser).isAdmin;
   protected readonly weights = [1, 2, 3, 4, 5];
 
-  protected readonly stance = linkedSignal<Stance | null>(() => this.position()?.stance ?? null);
-  protected readonly weight = linkedSignal<number | null>(() => this.position()?.weight ?? null);
+  /** The position the row shows: its input, or theirs once "Use theirs" took it. */
+  private readonly shown = linkedSignal(() => this.position());
+  protected readonly stance = linkedSignal<Stance | null>(() => this.shown()?.stance ?? null);
+  protected readonly weight = linkedSignal<number | null>(() => this.shown()?.weight ?? null);
+  /** The position someone else saved while this row was edited, after a stale save. */
+  protected readonly stale = linkedSignal<PositionDto | null>(() => (this.position(), null));
+  protected readonly staleTraceId = signal<string | undefined>(undefined);
   protected readonly saving = signal(false);
   protected readonly errors = signal<string[]>([]);
   protected readonly traceId = signal<string | undefined>(undefined);
 
   private readonly changed = computed(
-    () => this.stance() !== (this.position()?.stance ?? null) || this.weight() !== (this.position()?.weight ?? null),
+    () => this.stance() !== (this.shown()?.stance ?? null) || this.weight() !== (this.shown()?.weight ?? null),
   );
   protected readonly canSave = computed(
     () => this.canEdit() && !this.saving() && this.changed() && this.stance() !== null && this.weight() !== null,
@@ -87,23 +106,46 @@ export class PositionEditor {
     return value >= 1 && value <= 5 ? value : null;
   }
 
+  protected label(position: PositionDto): string {
+    return positionLabel(position);
+  }
+
   protected save(): void {
+    this.send(this.shown()?.revisionId ?? null);
+  }
+
+  /** Drops the edit and shows the position someone else saved. */
+  protected useTheirs(theirs: PositionDto): void {
+    this.stale.set(null);
+    this.shown.set(theirs);
+    this.saved.emit(theirs);
+  }
+
+  /** Resends this edit, now with their revision as the version it replaces. */
+  protected saveOver(theirs: PositionDto): void {
+    this.send(theirs.revisionId);
+  }
+
+  private send(seenRevisionId: number | null): void {
     this.saving.set(true);
     this.errors.set([]);
     this.service
-      .setPosition(this.voteId(), {
-        stance: this.stance(),
-        weight: this.weight(),
-        seenRevisionId: this.position()?.revisionId ?? null,
-      })
+      .setPosition(this.voteId(), { stance: this.stance(), weight: this.weight(), seenRevisionId })
       .subscribe({
         next: (position) => {
           this.saving.set(false);
+          this.stale.set(null);
+          this.shown.set(position);
           this.saved.emit(position);
         },
         error: (error: unknown) => {
           this.saving.set(false);
           const problem = toProblem(error);
+          if (isProblem<StalePositionProblem>(problem, ProblemType.stalePosition)) {
+            this.stale.set(problem.current);
+            this.staleTraceId.set(problem.traceId);
+            return;
+          }
           this.errors.set(problemToFieldErrors(problem, () => undefined).formErrors);
           this.traceId.set(problem?.traceId);
         },
