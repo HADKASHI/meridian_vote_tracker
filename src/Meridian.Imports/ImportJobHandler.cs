@@ -42,11 +42,25 @@ internal sealed class ImportJobHandler(
         // Rows that can't name a vote (wrong field count, no vote id) are written on their own.
         var groups = parsed.Rows.GroupBy(RowNormaliser.VoteKey).ToList();
         var votes = groups.Where(g => g.Key is not null).ToList();
-        await context.ReportAsync(votesDone: 0, votesTotal: votes.Count, cancellationToken: cancellationToken);
-        if (groups.SingleOrDefault(g => g.Key is null) is { } unattached)
+
+        // Crash resume: a vote is written in one transaction, so one with row records of
+        // this import is complete, and a retry skips it.
+        var committed = (await (from r in db.ImportRows
+                    where r.ImportId == importId && r.VoteId != null
+                    join v in db.Votes on r.VoteId equals v.Id
+                    select v.AssemblyVoteId)
+                .Distinct().ToListAsync(cancellationToken))
+            .ToHashSet();
+        var unattachedDone = await db.ImportRows.AnyAsync(r => r.ImportId == importId && r.VoteId == null, cancellationToken);
+        if (context.Attempt > 1)
+            logger.LogInformation("Import {ImportId} resumes on attempt {Attempt} with {Committed} of {Votes} votes committed",
+                importId, context.Attempt, committed.Count, votes.Count);
+
+        var done = votes.Count(v => committed.Contains(v.Key!));
+        await context.ReportAsync(votesDone: done, votesTotal: votes.Count, cancellationToken: cancellationToken);
+        if (!unattachedDone && groups.SingleOrDefault(g => g.Key is null) is { } unattached)
             await writer.WriteVoteAsync(importId, null, unattached.ToList(), members, cancellationToken);
-        var done = 0;
-        foreach (var vote in votes)
+        foreach (var vote in votes.Where(v => !committed.Contains(v.Key!)))
         {
             await writer.WriteVoteAsync(importId, vote.Key, vote.ToList(), members, cancellationToken);
             await context.ReportAsync(votesDone: ++done, cancellationToken: cancellationToken);

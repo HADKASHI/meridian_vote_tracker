@@ -4,10 +4,10 @@
 
 **Blocked by:** 06
 
-**Status:** ready-for-agent
+**Status:** done
 
 Requirements: ING-02 (stories 14, 15, 16)
 
-- [ ] An import interrupted after some votes, then retried, gives the same row records, approved values, conflicts and warnings as an uninterrupted import of the same file, with no row written twice
-- [ ] Proven through the real `BackgroundService`: a worker stopped mid-import and a new one started finish the import
-- [ ] A failed import's error says how many votes it committed
+- [x] An import interrupted after some votes, then retried, gives the same row records, approved values, conflicts and warnings as an uninterrupted import of the same file, with no row written twice
+- [x] Proven through the real `BackgroundService`: a worker stopped mid-import and a new one started finish the import
+- [x] A failed import's error says how many votes it committed
