@@ -21,6 +21,9 @@ internal static class DecideConflict
     public sealed record Decided(ConflictDecisionDto Decision) : Outcome;
     public sealed record AlreadyDecided(ConflictDecisionDto Winner) : Outcome;
 
+    /// <summary>The unique index allowing one decision per conflict (CON-05); only it means the race was lost.</summary>
+    private const string OneDecisionIndex = "ix_conflict_decision_conflict_id";
+
     public static async Task<Outcome> RunAsync(MeridianDbContext db, long conflictId, Decision decision, string userId,
         string? comment, CancellationToken ct)
     {
@@ -42,7 +45,7 @@ internal static class DecideConflict
                     return new Decided(await ReviewInbox.DecisionAsync(db, conflict, record, ct));
                 }
                 catch (DbUpdateException e) when (e.InnerException is PostgresException
-                                                  { SqlState: PostgresErrorCodes.UniqueViolation })
+                                                  { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: OneDecisionIndex })
                 {
                     await transaction.RollbackAsync(ct);
                 }
