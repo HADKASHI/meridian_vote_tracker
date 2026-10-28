@@ -41,3 +41,5 @@ Decided with the user over four grilling rounds, using the defect catalogue in [
 Invalid 5: line 3139 (field count), `FRN`, `Yes`, empty ballot, NZL. Contradiction 151: FRA in vote 012 (2) and all of vote 025 (149). Vote 027's slash dates are now normalised, so all 149 rows are new.
 
 For [Lock the database schema](16-lock-database-schema.md): the conflict's compared-against revision link, two conflict subjects (ballot, vote details), several conflict links per row record, the decision as origin for membership-recalculated ballots, per-row normalisation records, reason codes, and file-level warnings on the import.
+
+- From [Audit the historic file](17-historic-audit.md): **correction**: the required title column in rule 1 is `resolution_title`, not `title`. Every real file uses `resolution_title`.

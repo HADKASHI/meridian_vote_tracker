@@ -33,6 +33,7 @@ A locked build plan for the KPMG "Meridian Vote Tracker" home assignment (Senior
 - [Design background jobs and live progress](issues/10-background-jobs.md): the PostgreSQL job table is the queue (SKIP LOCKED, checked every second) in a separate `worker` container; imports run one at a time by a setting, not a constraint; heartbeats, retries and resume after a crash; progress polled; files in Azure Blob (Azurite locally); "job" is a glossary term users see.
 - [Design snapshots](issues/11-snapshots.md): a snapshot stores its votes, a categorised line per vote and state with the exact revision used, and results, never recomputed; selection by date range, sessions or list; a vote with no position blocks ("Remove these votes" is the way out); a preview warns about pending conflicts, incomplete votes and a running import; the admin publishes per chosen reporting quarter and may replace it with a reason.
 - [Bring in the historic file](issues/13-historic-file.md): uploaded zipped through chat into gitignored `data_candidate/`; 962,171 rows, checksum recorded; container reclaims wipe `data_candidate/`, so the other data files need re-uploading here.
+- [Audit the historic file](issues/17-historic-audit.md): very clean (62 bad rows in 962,171), no overlap with Q1, so it predicts 962,109 new; 6,480 interleaved votes of about 150 rows; the title column is `resolution_title` (corrects 08); schema flags are handed to the schema ticket.
 
 ## Not yet specified
 
