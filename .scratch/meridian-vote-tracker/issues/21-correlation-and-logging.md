@@ -14,3 +14,7 @@ How does one user action stay traceable from the Angular request through the API
 - what an error shown to the user includes (a ProblemDetails `traceId`)
 
 Needed before the walking skeleton in [Set the build order](12-build-order.md).
+
+## Comments
+
+- From [Design Docker Compose and image builds](18-docker-compose.md): nginx passes `traceparent` through and sets `X-Forwarded-For` and `X-Forwarded-Proto`. Every container logs to stdout, so JSON console logging can be switched on with environment variables in compose.
