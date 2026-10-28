@@ -1,4 +1,4 @@
-import { ConflictListItemDto, ConflictSubject, ConflictValueDto, Decision } from '../../api/model';
+import { ConflictListItemDto, ConflictSubject, ConflictValueDto, Decision, OriginDto, OriginKind } from '../../api/model';
 
 /** A ballot as the Assembly writes it: Y, N, A or X. */
 export function ballotLabel(value: ConflictValueDto | null | undefined): string {
@@ -32,4 +32,11 @@ export function subjectLabel(item: Pick<ConflictListItemDto, 'subject' | 'stateC
 
 export function decisionLabel(decision: Decision): string {
   return decision === Decision.accept ? 'Accepted' : 'Rejected';
+}
+
+/** Where a value came from: the file row that brought it, or the decision that approved it. */
+export function originLabel(origin: OriginDto): string {
+  return origin.kind === OriginKind.import_row
+    ? `${origin.fileName} line ${origin.lineNo} · uploaded by ${origin.uploadedBy}`
+    : `approved by ${origin.decidedBy} deciding conflict #${origin.conflictId}`;
 }

@@ -7,7 +7,8 @@ namespace Meridian.Conflicts;
 /// <summary>A value on either side of a conflict: a ballot, or vote details.</summary>
 public sealed record ConflictValueDto(Ballot? Ballot, int? Session, DateOnly? VoteDate, string? Title);
 
-public sealed record ConflictSideDto(ConflictValueDto Value, long RevisionId, OriginDto Origin);
+/// <param name="RevisionId">The approved revision holding the value; null for an incoming value not yet approved.</param>
+public sealed record ConflictSideDto(ConflictValueDto Value, long? RevisionId, OriginDto Origin);
 
 /// <summary>The kinds of item in the Review inbox; a later PDF extraction item joins here.</summary>
 public enum InboxItemKind { Conflict }

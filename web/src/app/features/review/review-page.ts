@@ -46,7 +46,10 @@ import { ReviewInbox, toFilter } from './review-inbox';
         }
       </section>
       <section class="pane">
-        <router-outlet />
+        <router-outlet #outlet="outlet" />
+        @if (!outlet.isActivated) {
+          <p class="hint">Choose a conflict to see both values and their evidence.</p>
+        }
       </section>
     </div>
   `,
@@ -96,7 +99,8 @@ import { ReviewInbox, toFilter } from './review-inbox';
     }
     .import,
     .decision,
-    .more {
+    .more,
+    .hint {
       opacity: 0.75;
       font-size: 0.9em;
     }

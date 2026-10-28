@@ -1,6 +1,7 @@
 using Meridian.Data;
 using Meridian.Platform.Contracts;
 using Meridian.Platform.Http;
+using Meridian.Platform.Problems;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -34,11 +35,15 @@ public static class ConflictsModule
             .WithEnumQuery<ConflictFilter>("state", "pending")
             .ForAnalysts();
 
-        conflicts.MapGet("/{conflictId:long}", Results<Ok<ConflictDto>, ProblemHttpResult> (long conflictId) =>
-                EndpointConventions.NotImplemented())
+        conflicts.MapGet("/{conflictId:long}", async Task<Results<Ok<ConflictDto>, ProblemHttpResult>> (
+                    long conflictId, MeridianDbContext db, CancellationToken ct) =>
+                await ReviewInbox.GetAsync(db, conflictId, ct) is { } conflict
+                    ? TypedResults.Ok(conflict)
+                    : NotFound(conflictId))
             .WithName("getConflict")
+            .WithSummary("The decision pane: both values with their origins, the decision and losing attempts.")
             .ProducesProblems(StatusCodes.Status404NotFound)
-            .ForAnalysts().Stub();
+            .ForAnalysts();
 
         conflicts.MapPost("/{conflictId:long}/decision", Results<Ok<ConflictDecisionDto>, ProblemHttpResult> (
                     long conflictId, DecideConflictRequest request) =>
@@ -60,6 +65,10 @@ public static class ConflictsModule
         state is null ? ConflictFilter.Pending
         : Enum.GetValues<ConflictFilter>().Cast<ConflictFilter?>()
             .FirstOrDefault(f => SnakeCaseEnumConverter<ConflictFilter>.ToName(f!.Value) == state);
+
+    private static ProblemHttpResult NotFound(long conflictId) =>
+        ProblemDetailsSetup.Problem(StatusCodes.Status404NotFound, ProblemTypes.NotFound, "Conflict not found",
+            $"There is no conflict #{conflictId}.");
 
     private static ValidationProblem InvalidFilter() =>
         TypedResults.ValidationProblem(new Dictionary<string, string[]>

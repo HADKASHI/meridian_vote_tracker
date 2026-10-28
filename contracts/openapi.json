@@ -537,6 +537,7 @@
         "tags": [
           "Conflicts"
         ],
+        "summary": "The decision pane: both values with their origins, the decision and losing attempts.",
         "operationId": "getConflict",
         "parameters": [
           {
@@ -1634,8 +1635,7 @@
           "pending",
           "decided",
           "all"
-        ],
-        "type": "string"
+        ]
       },
       "ConflictListItemDto": {
         "required": [
@@ -1716,7 +1716,10 @@
             "$ref": "#/components/schemas/ConflictValueDto"
           },
           "revisionId": {
-            "type": "integer",
+            "type": [
+              "null",
+              "integer"
+            ],
             "format": "int64"
           },
           "origin": {

@@ -3,22 +3,8 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { ConflictListItemDto, PageDtoOfConflictListItemDto } from '../../api/model';
+import { listItem, page } from './review.testing';
 import reviewRoutes from './review.routes';
-
-export function listItem(overrides: Partial<ConflictListItemDto> = {}): ConflictListItemDto {
-  return {
-    kind: 'conflict', id: 7, vote: { voteId: 101, assemblyVoteId: 'MA/2024/101' }, subject: 'ballot', stateCode: 'BRA',
-    current: { ballot: 'y', session: null, voteDate: null, title: null },
-    incoming: { ballot: 'a', session: null, voteDate: null, title: null },
-    importId: 2, openedAt: '2024-04-02T10:00:00Z', decision: null,
-    ...overrides,
-  };
-}
-
-export function page(items: ConflictListItemDto[]): PageDtoOfConflictListItemDto {
-  return { items, total: items.length, page: 1, pageSize: 50 };
-}
 
 describe('Review inbox', () => {
   let http: HttpTestingController;
