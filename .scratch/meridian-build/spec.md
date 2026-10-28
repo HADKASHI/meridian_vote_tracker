@@ -245,19 +245,55 @@ Detailed reasoning lives in the resolved map tickets; the locked schema is in `.
 
 - W3C trace context started by the server; nginx passes `traceparent` through. A job stores its request's trace parent and runs as a child span. Built-in JSON console logging with scopes (user; job, import or snapshot, vote). Azure Monitor OpenTelemetry only when its connection string is set. No client data in logs.
 
-### Build order
+### Build order and slices
 
-0. Walking skeleton: compose, the whole schema as migration 1 with the guard test, auth and policies, the full OpenAPI contract stubbed with 501s, generated client and Angular shell, CI. The current DECISIONS.md text moves into six ADRs.
-1. Import (with the brief's 7.2 example as the required integration test).
-2. Import at scale (timed 1M-row test; COPY only if needed).
-3. Conflicts and the Review inbox.
-4. Vote page and timeline.
-5. Positions and weights.
-6. Snapshots and publication.
-7. Extra: snapshot comparison.
-8. Finishing pass (protected): clean-clone run, README, DECISIONS.md rewritten to ~1,000 words, AI_USAGE.md, skills trim.
+The build is cut into **slices**: vertical pieces (API, worker, screen and tests together), each delivered as one branch and one PR into `main`. Each slice has a brief at `slices/NN-<slug>/slice.md` beside this spec, and its tickets live under that slice. Slice 0 is the **shared base**: it fixes everything the other slices would otherwise collide on, so that slices 1, 3, 4, 5 and 6 can be built at the same time in separate sessions.
 
-Cut rule: comparison goes first if time runs short; the finishing pass is never cut. One branch and PR per slice, each listing the requirement IDs it covers; tests ship inside their slice; no schema migrations after migration 1 unless something was missed.
+0. **Walking skeleton (shared base)**, built and merged alone:
+   - compose with all six services; the whole locked schema as migration 1, with the guard test; seeded users and member states
+   - the auth handler, `Analyst` and `Admin` policies, `GET /api/users`, and the generated role-matrix test
+   - the **full API contract**: every endpoint of every slice with its final route, request and response DTOs and problem types, returning 501 "not implemented"; the committed OpenAPI file and the orval client generated from it
+   - one **feature module** per area on the backend (imports, conflicts, votes and timeline, positions, snapshots and publication), each with its stubbed endpoints and its own service registration, already wired into startup, so a slice never edits startup or another module
+   - the **generic job runner**: claiming with `SKIP LOCKED`, the `Imports:MaxConcurrent` check, heartbeat, sweeper, retries, timeouts, `trace_parent`, and `GET /api/status`, proven with a no-op job; slices 1 and 6 only plug in their job handler
+   - the **Angular shell**: user switcher and identity interceptor, every route with a placeholder page in its feature folder, the header jobs indicator and Review badge, the Jobs list, the shared ProblemDetails helpers (`problemToFieldErrors`, error notices with `traceId`, the 409 card) and `pollWhile`
+   - the **test base**: both test projects, Testcontainers PostgreSQL and Azurite, the template database per test, the on-demand job processor, the barrier helper for race tests, and **fixture builders** that write approved values (with a fixture import as origin), conflicts, positions and snapshots straight into the database, so any slice can arrange its data without another slice's code; the same builders are reachable from a Development-only `seed-demo` command for checking screens by hand
+   - tracing and JSON logging, CI (three jobs), the six ADRs from today's DECISIONS.md text, the schema document
+1. **Import** (ING): upload, import job handler, classification, `ImportWriter`, crash resume, report screen. The brief's 7.2 example is the required integration test.
+2. **Import at scale**: the timed synthetic ~1M-row test (5 minutes, peak memory); COPY or the two-pass parser only if needed.
+3. **Conflicts** (CON): Review inbox, decisions, membership recalculation, the decision race test.
+4. **Vote page and timeline** (HIS).
+5. **Positions and weights** (POS), with the stale-position race test.
+6. **Snapshots and publication** (SNP): preview, snapshot job handler, breakdown, publish and replace, the publication race test.
+7. **Extra: snapshot comparison.**
+8. **Finishing pass** (protected): clean-clone run, README, DECISIONS.md rewritten to ~1,000 words, AI_USAGE.md, skills trim, and a Playwright smoke test across the merged slices.
+9. **Bonus: PDF extraction**: designed first, then built, with a hard half-day limit.
+
+**Dependencies** (a slice starts once every slice it is blocked by is merged into `main`):
+
+| Slice | Blocked by | Runs in parallel with |
+|---|---|---|
+| 0 Walking skeleton | none | nothing |
+| 1 Import | 0 | 3, 4, 5, 6 |
+| 2 Import at scale | 1 | 3, 4, 5, 6, 7 |
+| 3 Conflicts | 0 | 1, 2, 4, 5, 6, 7 |
+| 4 Vote page and timeline | 0 | 1, 2, 3, 5, 6, 7 |
+| 5 Positions and weights | 0 | 1, 2, 3, 4, 6, 7 |
+| 6 Snapshots and publication | 0 | 1, 2, 3, 4, 5 |
+| 7 Snapshot comparison | 6 | 2, 3, 4, 5 |
+| 8 Finishing pass | 0–7 | nothing |
+| 9 PDF extraction | 8 | nothing |
+
+Slices 3, 4 and 6 arrange their data with slice 0's fixture builders, never with the importer, so they don't wait for slice 1. Once slice 1 is merged, any slice still open rebases and may add one end-to-end test through a real import.
+
+**Cut rule**: if time runs short, the PDF bonus goes first, then the comparison extra. The finishing pass is never cut.
+
+### Delivery
+
+- **One slice, one session, one branch, one PR into `main`.** The PR title is `Slice N: <name>`. Its body is written with the `pr` skill and lists the requirement IDs covered, the tickets closed and the tests that prove them.
+- **Merged by rebase-merge**, so every commit of the slice lands on `main` as written. When several slices are ready together, merge them in build order. A slice branch rebases onto `main` and goes green again before merging.
+- **Commits tell the slice's story**: the slice's tickets first, then roughly one commit per ticket with its tests inside, plus a few small fix-ups at most. Each has an imperative summary of 60 characters or fewer and a short body saying why. A commit that is pushed stays as it is; a fix to it is its own small commit that explains itself.
+- **A slice stays in its lane.** It fills in its own feature module, its own Angular feature folder and its own tests. It changes only its own endpoints in the contract, and regenerates the OpenAPI file (never resolving it by hand) after a rebase. Parallel slices add no migrations; if one is unavoidable, the slice stops and says so in its PR, so that only one migration is ever in flight.
+- **Tests belong to their slice**, and a slice is done when its PR is green in CI with every acceptance criterion of its tickets ticked.
 
 ## Testing Decisions
 
@@ -275,7 +311,7 @@ Cut rule: comparison goes first if time runs short; the finishing pass is never 
   - Validation error keys are camelCase JSON paths.
   - Guard coverage as above.
 - **Categories run on demand, never in CI**: `RealData` (real Q1 files give the audited counts: original 5,737 new / 3 duplicate / 5 invalid / 151 contradiction; rev2 372 new / 5,284 unchanged / 304 conflict rows / 8 conflicts; rev2 again opens none; historic predicts 962,109 new / 30 duplicate / 32 invalid), skipping itself when `data_candidate/` is missing; `Performance` (deterministic synthetic ~1M-row file shaped like the historic one, fails above 5 minutes, reports time and peak memory), also available as a manual workflow.
-- **Frontend**: Vitest with Material harnesses and `HttpTestingController` for the identity interceptor, ProblemDetails-to-field mapping, the 409 cards and stopping polling. One Playwright smoke test against the compose stack: switch user, upload a small file, see the report, then a decision race in two tabs.
+- **Frontend**: Vitest with Material harnesses and `HttpTestingController` for the identity interceptor, ProblemDetails-to-field mapping, the 409 cards and stopping polling. One Playwright smoke test against the compose stack, added in slice 8 once slices 1 and 3 are merged: switch user, upload a small file, see the report, then a decision race in two tabs.
 - **Test data**: committed synthetic fixtures only (one small CSV per import rule, synthetic member states, C# builders). Real data is never committed.
 - **CI on every push**: build with warnings as errors, OpenAPI drift check, pending-model-changes check, domain and integration tests, Angular lint/test/build, compose smoke test. Prior art: none yet in the codebase (it has no code); the audit scripts in `../meridian-vote-tracker/research/07-data-audit-scripts/` and `../meridian-vote-tracker/research/17-historic-audit-scripts/` are the reference for expected counts.
 

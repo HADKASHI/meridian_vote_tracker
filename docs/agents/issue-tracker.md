@@ -10,6 +10,14 @@ Issues and specs for this repo live as markdown files in `.scratch/`.
 - Triage state is recorded as a `Status:` line near the top of each issue file (see `triage-labels.md` for the role strings)
 - Comments and conversation history append to the bottom of the file under a `## Comments` heading
 
+## Sliced features
+
+A feature built in parallel is cut into **slices**: `.scratch/<feature-slug>/slices/<NN>-<slug>/slice.md` is the slice's brief (Status, Blocked by, requirements, lane, done criteria), and its tickets live beside it in `slices/<NN>-<slug>/issues/<NN>-<slug>.md`, numbered from `01` within the slice. `.scratch/meridian-build/` works this way.
+
+- When a skill is given a `slice.md`, that slice's `issues/` folder is where its tickets are published and fetched.
+- A slice is unblocked when every slice in its `Blocked by` line is merged into `main`.
+- A ticket is closed by setting `Status: done` in the same commit that implements it. A slice is closed by setting `Status: done` in its `slice.md` in the slice's last commit.
+
 ## When a skill says "publish to the issue tracker"
 
 Create a new file under `.scratch/<feature-slug>/` (creating the directory if needed).
