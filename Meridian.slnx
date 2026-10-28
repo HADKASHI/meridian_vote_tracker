@@ -1,7 +1,9 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Meridian.Api/Meridian.Api.csproj" />
     <Project Path="src/Meridian.Data/Meridian.Data.csproj" />
     <Project Path="src/Meridian.Domain/Meridian.Domain.csproj" />
+    <Project Path="src/Meridian.Platform/Meridian.Platform.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Meridian.Domain.Tests/Meridian.Domain.Tests.csproj" />
