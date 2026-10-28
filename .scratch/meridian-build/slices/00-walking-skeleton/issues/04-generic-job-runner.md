@@ -4,11 +4,11 @@
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A queued no-op job run through the on-demand processor reaches `done` and shows in `GET /api/status` while queued and after it finishes
-- [ ] With `Imports:MaxConcurrent` at 1, a second import job is not claimed while one is running; a snapshot job is
-- [ ] A running job whose heartbeat is older than `Jobs:StaleAfter` is requeued by the sweeper, and fails with its last error after `Jobs:MaxAttempts`
-- [ ] A handler that throws leaves the job `failed` with `last_error` once attempts run out, and a failed job doesn't block the next one
-- [ ] Killing the real `BackgroundService` mid-job and starting another leaves the job requeued and then `done`
-- [ ] A job stores the `trace_parent` of the request that queued it and runs in that trace
+- [x] A queued no-op job run through the on-demand processor reaches `done` and shows in `GET /api/status` while queued and after it finishes
+- [x] With `Imports:MaxConcurrent` at 1, a second import job is not claimed while one is running; a snapshot job is
+- [x] A running job whose heartbeat is older than `Jobs:StaleAfter` is requeued by the sweeper, and fails with its last error after `Jobs:MaxAttempts`
+- [x] A handler that throws leaves the job `failed` with `last_error` once attempts run out, and a failed job doesn't block the next one
+- [x] Killing the real `BackgroundService` mid-job and starting another leaves the job requeued and then `done`
+- [x] A job stores the `trace_parent` of the request that queued it and runs in that trace

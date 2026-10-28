@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using Meridian.Data;
 using Meridian.Platform.Health;
 using Meridian.Platform.Identity;
+using Meridian.Platform.Jobs;
 using Meridian.Platform.Problems;
 using Meridian.Platform.Storage;
 using Microsoft.AspNetCore.Authentication;
@@ -76,6 +77,7 @@ public static class ApiHosting
     {
         app.MapMeridianHealthChecks();
         app.MapUsers();
+        app.MapGroup("/api").MapJobs();
         return app;
     }
 }

@@ -48,6 +48,95 @@
         }
       }
     },
+    "/api/status": {
+      "get": {
+        "tags": [
+          "Jobs"
+        ],
+        "summary": "Polled by the header: the jobs indicator and the Review badge.",
+        "operationId": "getStatus",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/jobs": {
+      "get": {
+        "tags": [
+          "Jobs"
+        ],
+        "summary": "Every job, newest first, with place in queue, progress and failure reason.",
+        "operationId": "listJobs",
+        "parameters": [
+          {
+            "name": "state",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/JobState"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageDtoOfJobDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/imports": {
       "post": {
         "tags": [
@@ -2599,6 +2688,35 @@
           }
         }
       },
+      "PageDtoOfJobDto": {
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/JobDto"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "PageDtoOfPositionWorklistItemDto": {
         "required": [
           "items",
@@ -3515,6 +3633,39 @@
           }
         }
       },
+      "StatusDto": {
+        "required": [
+          "running",
+          "queued",
+          "recentlyFinished",
+          "pendingConflicts"
+        ],
+        "type": "object",
+        "properties": {
+          "running": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/JobDto"
+            }
+          },
+          "queued": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/JobDto"
+            }
+          },
+          "recentlyFinished": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/JobDto"
+            }
+          },
+          "pendingConflicts": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "TimelineEventDto": {
         "required": [
           "historyId",
@@ -3976,6 +4127,9 @@
   "tags": [
     {
       "name": "Users"
+    },
+    {
+      "name": "Jobs"
     },
     {
       "name": "Imports"

@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+  <ItemGroup>
+    <ProjectReference Include="..\Meridian.Platform\Meridian.Platform.csproj" />
+    <ProjectReference Include="..\Meridian.Imports\Meridian.Imports.csproj" />
+    <ProjectReference Include="..\Meridian.Snapshots\Meridian.Snapshots.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+  </ItemGroup>
+</Project>

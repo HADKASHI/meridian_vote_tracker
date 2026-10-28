@@ -13,6 +13,9 @@ public static class SnapshotsModule
 {
     public static IServiceCollection AddSnapshotsModule(this IServiceCollection services) => services;
 
+    /// <summary>The worker side: the snapshot job handler goes here (<c>services.AddJobHandler&lt;…&gt;()</c>).</summary>
+    public static IServiceCollection AddSnapshotsJobs(this IServiceCollection services) => services;
+
     public static IEndpointRouteBuilder MapSnapshotsModule(this IEndpointRouteBuilder api)
     {
         var snapshots = api.MapGroup("/snapshots").WithTags("Snapshots");

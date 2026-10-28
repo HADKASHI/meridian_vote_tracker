@@ -9,6 +9,7 @@
     <Project Path="src/Meridian.Positions/Meridian.Positions.csproj" />
     <Project Path="src/Meridian.Snapshots/Meridian.Snapshots.csproj" />
     <Project Path="src/Meridian.Votes/Meridian.Votes.csproj" />
+    <Project Path="src/Meridian.Worker/Meridian.Worker.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Meridian.Domain.Tests/Meridian.Domain.Tests.csproj" />

@@ -14,6 +14,9 @@ public static class ImportsModule
 {
     public static IServiceCollection AddImportsModule(this IServiceCollection services) => services;
 
+    /// <summary>The worker side: the import job handler goes here (<c>services.AddJobHandler&lt;…&gt;()</c>).</summary>
+    public static IServiceCollection AddImportsJobs(this IServiceCollection services) => services;
+
     public static IEndpointRouteBuilder MapImportsModule(this IEndpointRouteBuilder api)
     {
         var imports = api.MapGroup("/imports").WithTags("Imports");
