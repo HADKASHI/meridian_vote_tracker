@@ -22,6 +22,13 @@ Read the file at the referenced path. The user will normally pass the path or th
 
 Used by `/wayfinder`. The **map** is a file with one **child** file per ticket.
 
+The tracker is shared through the git branch, and other sessions edit it at the same time. The local checkout may be stale, so:
+
+- **Sync before reading the map**: `git fetch origin <branch>` and fast-forward (`git pull --ff-only origin <branch>`) before loading `map.md` or scanning the frontier.
+- **Claim with a push**: commit the `Status: claimed` change and push it at once, before any other work. A claim only counts once it is pushed.
+- **Rejected push = someone got there first**: fetch, and if the remote already claimed or resolved the ticket, drop your local claim commit (`git reset --hard origin/<branch>` while it's your only unpushed commit) and pick again from the fresh frontier.
+- **Fetch again before pushing a resolution**, and merge if the remote moved.
+
 - **Map**: `.scratch/<effort>/map.md` (the Notes / Decisions-so-far / Fog body).
 - **Child ticket**: `.scratch/<effort>/issues/NN-<slug>.md`, numbered from `01`, with the question in the body. A `Type:` line records the ticket type (`research`/`prototype`/`grilling`/`task`); a `Status:` line records `claimed`/`resolved`.
 - **Blocking**: a `Blocked by: NN, NN` line near the top. A ticket is unblocked when every file it lists is `resolved`.

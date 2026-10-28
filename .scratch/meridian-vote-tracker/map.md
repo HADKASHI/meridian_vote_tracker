@@ -12,6 +12,7 @@ A locked build plan for the KPMG "Meridian Vote Tracker" home assignment (Senior
 - **Bar**: correct first, impressive second. Every requirement must be met and traceable; a partial solution with clear reasoning beats a complete shallow one (brief, "Before you start").
 - **Stack (fixed by brief)**: ASP.NET Core (8+), PostgreSQL, Angular, Docker Compose. Azure resources are optional and used only through configuration.
 - **Data**: the `data_candidate/` files stay out of git and out of git history. They live in a gitignored `data_candidate/` folder at the repo root, mounted read-only by docker compose. Tests use committed synthetic CSVs.
+- **Data is per container**: `data_candidate/` does not survive a new session's container. A ticket that reads real data first checks the files are there (and the historic file's SHA-256 against [Bring in the historic file](issues/13-historic-file.md)); if not, it asks the user to upload them zipped through chat before starting.
 - **Secrets**: never in code or git; local `.env` or user-secrets only.
 - **Skills**: grilling and domain-modeling for every grilling ticket; research for research tickets; prototype where behaviour or UI is the question.
 - **Vocabulary**: use `GLOSSARY.md` terms.
