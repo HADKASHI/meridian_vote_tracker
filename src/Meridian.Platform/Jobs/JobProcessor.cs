@@ -133,8 +133,9 @@ public sealed class JobProcessor(
         var handler = services.ServiceProvider.GetServices<IJobHandler>().FirstOrDefault(h => h.Kind == job.Kind);
         if (handler is null)
         {
-            logger.LogError("No handler is registered for {Kind} jobs", job.Kind);
-            await FinishAsync(job, JobState.Failed, $"No handler is registered for {job.Kind} jobs.", CancellationToken.None);
+            var kind = SnakeCaseEnumConverter<JobKind>.ToName(job.Kind);
+            logger.LogError("No handler is registered for {Kind} jobs", kind);
+            await FinishAsync(job, JobState.Failed, $"No handler is registered for {kind} jobs.", CancellationToken.None);
             return;
         }
 
