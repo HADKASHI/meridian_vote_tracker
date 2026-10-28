@@ -18,6 +18,9 @@ const worklist: PageDtoOfPositionWorklistItemDto = {
   total: 2, page: 1, pageSize: 50,
 };
 
+/** The users resource as CurrentUser exposes it, with Lena loaded. */
+const lena = { hasValue: () => true, value: () => [{ id: 'lena', displayName: 'Lena', role: 'admin' }] };
+
 describe('PositionsPage', () => {
   let http: HttpTestingController;
 
@@ -26,7 +29,7 @@ describe('PositionsPage', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
-        { provide: CurrentUser, useValue: { isAdmin: signal(false) } },
+        { provide: CurrentUser, useValue: { isAdmin: signal(false), users: lena } },
       ], });
     http = TestBed.inject(HttpTestingController);
   });
@@ -46,7 +49,7 @@ describe('PositionsPage', () => {
     const cells = [...fixture.nativeElement.querySelectorAll('[data-testid="position"]')].map((c: Element) => c.textContent?.trim());
     expect(cells[0]).toBe('No position');
     expect(cells[1]).toContain('Yes · weight 4');
-    expect(cells[1]).toContain('lena');
+    expect(cells[1]).toContain('Lena');
   });
 
   it('asks only for votes without a position when the filter is on', async () => {

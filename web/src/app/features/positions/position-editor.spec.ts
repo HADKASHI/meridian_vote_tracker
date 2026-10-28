@@ -10,6 +10,9 @@ import { PositionEditor } from './position-editor';
 
 const seen: PositionDto = { revisionId: 11, stance: 'yes', weight: 2, setBy: 'lena', setAt: '2024-03-01T14:02:00Z' };
 
+/** The users resource as CurrentUser exposes it, with Lena loaded. */
+const lena = { hasValue: () => true, value: () => [{ id: 'lena', displayName: 'Lena', role: 'admin' }] };
+
 describe('PositionEditor', () => {
   let http: HttpTestingController;
 
@@ -18,7 +21,7 @@ describe('PositionEditor', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
-        { provide: CurrentUser, useValue: { isAdmin: signal(isAdmin) } },
+        { provide: CurrentUser, useValue: { isAdmin: signal(isAdmin), users: lena } },
       ],
     });
     http = TestBed.inject(HttpTestingController);
@@ -110,7 +113,7 @@ describe('PositionEditor', () => {
       const { fixture } = await saveStale();
 
       const card = fixture.nativeElement.querySelector('app-conflict-card');
-      expect(card.textContent).toContain('lena set No · weight 4');
+      expect(card.textContent).toContain('Lena set No · weight 4');
       expect(card.textContent).toContain('while you edited');
       expect(fixture.nativeElement.querySelector('[data-testid="save"]')).toBeNull();
     });

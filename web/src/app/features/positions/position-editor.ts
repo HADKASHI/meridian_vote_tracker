@@ -9,7 +9,7 @@ import { ConflictCard } from '../../shared/problem/conflict-card';
 import { isProblem, ProblemType, toProblem } from '../../shared/problem/problem';
 import { ProblemBanner } from '../../shared/problem/problem-banner';
 import { problemToFieldErrors } from '../../shared/problem/to-field-errors';
-import { positionLabel } from './position-label';
+import { positionLabel, setByName } from './position-label';
 
 /**
  * One vote's stance and weight, edited inline. The save carries the revision the row
@@ -53,7 +53,7 @@ import { positionLabel } from './position-label';
     </div>
     @if (stale(); as theirs) {
       <app-conflict-card heading="The position changed while you edited" [traceId]="staleTraceId()">
-        <p>{{ theirs.setBy }} set {{ label(theirs) }} at {{ theirs.setAt | date: 'yyyy-MM-dd HH:mm' }} while you edited.</p>
+        <p>{{ setBy(theirs) }} set {{ label(theirs) }} at {{ theirs.setAt | date: 'yyyy-MM-dd HH:mm' }} while you edited.</p>
         <button cardActions mat-stroked-button type="button" [disabled]="saving()" (click)="useTheirs(theirs)">Use theirs</button>
         <button cardActions mat-flat-button type="button" [disabled]="saving()" (click)="saveOver(theirs)">
           Save mine over it
@@ -80,7 +80,8 @@ export class PositionEditor {
   readonly saved = output<PositionDto>();
 
   private readonly service = inject(PositionsService);
-  protected readonly canEdit = inject(CurrentUser).isAdmin;
+  private readonly currentUser = inject(CurrentUser);
+  protected readonly canEdit = this.currentUser.isAdmin;
   protected readonly weights = [1, 2, 3, 4, 5];
 
   /** The input by revision, so a worklist reload with the same position keeps this row's edit. */
@@ -110,6 +111,11 @@ export class PositionEditor {
 
   protected label(position: PositionDto): string {
     return positionLabel(position);
+  }
+
+  protected setBy(position: PositionDto): string {
+    const users = this.currentUser.users;
+    return setByName(users.hasValue() ? users.value() : [], position);
   }
 
   protected save(): void {

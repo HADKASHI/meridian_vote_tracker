@@ -7,7 +7,8 @@ import { Router, RouterLink } from '@angular/router';
 import { listPositionsResource } from '../../api/positions/positions.resource';
 import { PositionDto, PositionWorklistItemDto } from '../../api/model';
 import { PositionEditor } from './position-editor';
-import { positionLabel } from './position-label';
+import { positionLabel, setByName } from './position-label';
+import { CurrentUser } from '../../core/identity/current-user';
 
 /** The positions worklist: every vote with its stance and weight, votes without a position first. */
 @Component({
@@ -44,7 +45,7 @@ import { positionLabel } from './position-label';
           <td mat-cell *matCellDef="let item" data-testid="position">
             @if (item.position; as position) {
               {{ describe(position) }}
-              <span class="set-by">· {{ position.setBy }}, {{ position.setAt | date: 'yyyy-MM-dd HH:mm' }}</span>
+              <span class="set-by">· {{ setBy(position) }}, {{ position.setAt | date: 'yyyy-MM-dd HH:mm' }}</span>
             } @else {
               <span class="none">No position</span>
             }
@@ -88,6 +89,7 @@ export class PositionsPage {
   readonly pageSize = input(50, { transform: (v: unknown) => numberAttribute(v, 50) });
 
   private readonly router = inject(Router);
+  private readonly users = inject(CurrentUser).users;
   protected readonly columns = ['vote', 'date', 'session', 'title', 'position', 'edit'];
   protected readonly params = computed(() => ({
     noPosition: this.noPosition() || undefined,
@@ -100,6 +102,10 @@ export class PositionsPage {
 
   protected describe(position: PositionDto): string {
     return positionLabel(position);
+  }
+
+  protected setBy(position: PositionDto): string {
+    return setByName(this.users.hasValue() ? this.users.value() : [], position);
   }
 
   protected onPage(event: PageEvent): void {
