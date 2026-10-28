@@ -1,6 +1,7 @@
 using Meridian.Data;
 using Meridian.Platform.Contracts;
 using Meridian.Platform.Http;
+using Meridian.Platform.Problems;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -27,11 +28,12 @@ public static class VotesModule
             .WithSummary("Search by assembly vote id or title, session, date range, or votes with no position.")
             .ForAnalysts();
 
-        votes.MapGet("/{voteId:long}", Results<Ok<VoteDto>, ProblemHttpResult> (long voteId) =>
-                EndpointConventions.NotImplemented())
+        votes.MapGet("/{voteId:long}", async Task<Results<Ok<VoteDto>, ProblemHttpResult>> (
+                    long voteId, MeridianDbContext db, CancellationToken ct) =>
+                await VotePage.LoadAsync(db, voteId, ct) is { } vote ? TypedResults.Ok(vote) : VoteNotFound(voteId))
             .WithName("getVote")
             .ProducesProblems(StatusCodes.Status404NotFound)
-            .ForAnalysts().Stub();
+            .ForAnalysts();
 
         votes.MapGet("/{voteId:long}/timeline", Results<Ok<TimelinePageDto>, ProblemHttpResult> (
                     long voteId, long? before, int pageSize = 50) =>
@@ -43,4 +45,8 @@ public static class VotesModule
 
         return api;
     }
+
+    private static ProblemHttpResult VoteNotFound(long voteId) =>
+        ProblemDetailsSetup.Problem(StatusCodes.Status404NotFound, ProblemTypes.NotFound, "Vote not found",
+            $"There is no vote {voteId}.");
 }

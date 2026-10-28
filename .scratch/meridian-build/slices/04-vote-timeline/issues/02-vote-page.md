@@ -4,11 +4,11 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `GET /api/votes/{voteId}` returns the approved details, position, country votes and pending conflict count; an unknown id is a 404 ProblemDetails
-- [ ] A value brought in by a file names its import, file name, line, row, uploader and upload time
-- [ ] A value approved by an accepted conflict names the decision, its conflict, who decided it and when
-- [ ] Member states with no approved ballot on the vote date are listed with no ballot; a state with a ballot that was not a member on the date is listed as not a member
-- [ ] The vote page shows the details, position and country votes with each origin, and links an import origin to its import
-- [ ] Integration tests through the API cover both origin kinds, membership and the 404
+- [x] `GET /api/votes/{voteId}` returns the approved details, position, country votes and pending conflict count; an unknown id is a 404 ProblemDetails
+- [x] A value brought in by a file names its import, file name, line, row, uploader and upload time
+- [x] A value approved by an accepted conflict names the decision, its conflict, who decided it and when
+- [x] Member states with no approved ballot on the vote date are listed with no ballot; a state with a ballot that was not a member on the date is listed as not a member
+- [x] The vote page shows the details, position and country votes with each origin, and links an import origin to its import
+- [x] Integration tests through the API cover both origin kinds, membership and the 404
