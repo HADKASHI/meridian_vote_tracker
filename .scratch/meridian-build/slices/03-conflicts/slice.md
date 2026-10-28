@@ -1,6 +1,6 @@
 # Slice 3: Conflicts and the Review inbox
 
-Status: ready-for-agent
+Status: done
 Blocked by: Slice 0
 Runs in parallel with: slices 1, 2, 4, 5, 6, 7
 PR title: `Slice 3: Conflicts and the Review inbox`
