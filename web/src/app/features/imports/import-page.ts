@@ -1,89 +1,142 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, numberAttribute } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { getImportResource } from '../../api/imports/imports.resource';
 import { Router, RouterLink } from '@angular/router';
 import { JobState, Outcome } from '../../api/model';
 import { pollWhile } from '../../shared/http/poll';
 import { jobProgress } from '../../shared/ui/job-progress';
+import { ExpandableList } from '../../shared/ui/expandable-list';
 import { JobStateBadge } from '../../shared/ui/job-state-badge';
+import { LoadState } from '../../shared/ui/load-state';
+import { PageHeader } from '../../shared/ui/page-header';
 import { ImportRows } from './import-rows';
 
 /** The import report: the file's evidence and its job, polled while the job is active. */
 @Component({
   selector: 'app-import-page',
-  imports: [DatePipe, DecimalPipe, RouterLink, JobStateBadge, ImportRows],
+  imports: [DatePipe, DecimalPipe, RouterLink, MatProgressBarModule, JobStateBadge, ImportRows, PageHeader, LoadState, ExpandableList],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <h1>Import report</h1>
-    <p>Import #{{ importId() }}</p>
-    @if (report.hasValue() && report.value(); as r) {
-      <dl class="evidence">
-        <dt>File</dt>
-        <dd>{{ r.fileName }} ({{ r.sizeBytes | number }} bytes)</dd>
-        <dt>SHA-256</dt>
-        <dd class="hash">{{ r.sha256 }}</dd>
-        <dt>Uploaded</dt>
-        <dd>{{ r.uploadedBy }}, {{ r.uploadedAt | date: 'yyyy-MM-dd HH:mm:ss' }}</dd>
-        <dt>Job</dt>
-        <dd><app-job-state-badge [state]="r.job.state" /> {{ progress() }}</dd>
-        @if (r.parse; as parse) {
-          <dt>Parsed</dt>
-          @if (parse.rejectedReason) {
-            <dd class="rejected">Rejected: {{ parse.rejectedReason }} Nothing was applied.</dd>
-          } @else {
-            <dd>
-              {{ parse.dataRows | number }} data rows, {{ parse.lineEndings.toUpperCase() }} line endings,
-              {{ parse.hasBom ? 'with BOM' : 'no BOM' }}
-            </dd>
+    @let r = report.hasValue() ? report.value() : undefined;
+    <app-page-header [heading]="r ? 'Import #' + r.id + ' · ' + r.fileName : 'Import #' + importId()"
+                     [back]="{ label: 'Imports', link: '/imports' }">
+      @if (r) {
+        <p pageLead class="lead">
+          Uploaded by {{ r.uploadedBy }} at {{ r.uploadedAt | date: 'yyyy-MM-dd HH:mm:ss' }} · Job
+          <app-job-state-badge [state]="r.job.state" /> {{ progress() }}
+        </p>
+      }
+    </app-page-header>
+    @if (r) {
+      @if (active()) {
+        <mat-progress-bar [mode]="percent() === null ? 'indeterminate' : 'determinate'" [value]="percent() ?? 0"
+                          aria-label="Import progress" class="progress" />
+      }
+      <details class="surface-card evidence-card" open>
+        <summary>File evidence</summary>
+        <dl class="evidence">
+          <dt>File</dt>
+          <dd>{{ r.fileName }} ({{ r.sizeBytes | number }} bytes)</dd>
+          <dt>SHA-256</dt>
+          <dd class="hash">{{ r.sha256 }}</dd>
+          @if (r.parse; as parse) {
+            <dt>Parsed</dt>
+            @if (!parse.rejectedReason) {
+              <dd>
+                {{ parse.dataRows | number }} data rows, {{ parse.lineEndings.toUpperCase() }} line endings,
+                {{ parse.hasBom ? 'with BOM' : 'no BOM' }}
+              </dd>
+            } @else {
+              <dd>Rejected</dd>
+            }
           }
-        }
-      </dl>
-      @if (r.warnings.length > 0) {
-        <h2>Warnings</h2>
-        <ul data-testid="warnings">
-          @for (w of r.warnings; track w.id) {
-            <li>
-              @if (w.vote; as vote) {
-                <strong>{{ vote.assemblyVoteId }}:</strong>
-              }
-              {{ w.message }}
-              @if (w.missingStateCodes?.length) {
-                <span class="missing">Missing: {{ w.missingStateCodes!.join(', ') }}</span>
-              }
-            </li>
-          }
-        </ul>
+        </dl>
+      </details>
+      @if (r.parse?.rejectedReason; as reason) {
+        <p class="notice" data-tone="error" role="alert">Rejected: {{ reason }} Nothing was applied.</p>
       }
       @if (r.conflictsOpened.length > 0) {
-        <h2>Conflicts opened</h2>
-        <ul data-testid="conflicts-opened">
-          @for (c of r.conflictsOpened; track c.conflictId) {
-            <li>
-              <a [routerLink]="['/review', c.conflictId]">Conflict #{{ c.conflictId }}</a>
-              {{ c.vote.assemblyVoteId }} · {{ c.subject === 'details' ? 'vote details' : c.stateCode + ' ballot' }} ·
-              {{ c.rows }} {{ c.rows === 1 ? 'row' : 'rows' }}
-            </li>
-          }
-        </ul>
+        <section class="notice" aria-labelledby="conflicts-heading">
+          <h2 id="conflicts-heading">
+            {{ r.conflictsOpened.length }} {{ r.conflictsOpened.length === 1 ? 'conflict' : 'conflicts' }} opened
+          </h2>
+          <ul data-testid="conflicts-opened">
+            @for (c of r.conflictsOpened; track c.conflictId) {
+              <li>
+                <a [routerLink]="['/review', c.conflictId]">Conflict #{{ c.conflictId }}</a>
+                {{ c.vote.assemblyVoteId }} · {{ c.subject === 'details' ? 'vote details' : c.stateCode + ' ballot' }} ·
+                {{ c.rows }} {{ c.rows === 1 ? 'row' : 'rows' }}
+              </li>
+            }
+          </ul>
+          <a [routerLink]="['/review']" [queryParams]="{ importId: r.id }">Review them →</a>
+        </section>
+      }
+      @if (r.warnings.length > 0) {
+        <section class="notice" data-tone="warning" aria-labelledby="warnings-heading">
+          <h2 id="warnings-heading">Warnings</h2>
+          <ul data-testid="warnings">
+            @for (w of r.warnings; track w.id) {
+              <li>
+                @if (w.vote; as vote) {
+                  <a [routerLink]="['/votes', vote.voteId]"><strong>{{ vote.assemblyVoteId }}</strong></a>:
+                }
+                {{ w.message }}
+                @if (w.missingStateCodes?.length) {
+                  <span class="missing">Missing: <app-expandable-list [items]="w.missingStateCodes!" noun="missing states" /></span>
+                }
+              </li>
+            }
+          </ul>
+        </section>
       }
       @if (finished() && !r.parse?.rejectedReason) {
         <app-import-rows [importId]="r.id" [counts]="r.counts" [outcome]="outcome()" [voteId]="voteId()"
                          [page]="page() ?? 1" [pageChange]="goToPage" />
       }
+    } @else if (report.error()) {
+      <app-load-state kind="error" message="This import could not be loaded." />
+    } @else {
+      <app-load-state kind="loading" message="Loading the import" />
     }
   `,
   styles: `
+    .lead {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 4px 6px;
+    }
+    .progress {
+      margin-block-end: 16px;
+    }
+    summary {
+      cursor: pointer;
+      font: var(--mat-sys-title-small);
+    }
     .evidence {
       display: grid;
-      grid-template-columns: max-content 1fr;
+      grid-template-columns: max-content minmax(0, 1fr);
       gap: 4px 16px;
+      margin-block: 12px 0;
     }
-    .rejected {
-      color: var(--mat-sys-error);
+    .evidence dt {
+      color: var(--mat-sys-on-surface-variant);
+    }
+    .evidence dd {
+      margin: 0;
+      overflow-wrap: anywhere;
     }
     .hash {
-      font-family: monospace;
-      overflow-wrap: anywhere;
+      font-family: var(--app-mono);
+    }
+    .notice h2 {
+      font: var(--mat-sys-title-small);
+      margin: 0 0 4px;
+    }
+    .missing {
+      display: block;
     }
   `,
 })
@@ -100,7 +153,12 @@ export class ImportPage {
     const job = this.job();
     return job ? jobProgress(job) : '';
   });
-  private readonly active = computed(() => {
+  /** How far the job is, in percent, once it knows how many votes it has. */
+  protected readonly percent = computed(() => {
+    const job = this.job();
+    return job?.votesTotal ? (100 * job.votesDone) / job.votesTotal : null;
+  });
+  protected readonly active = computed(() => {
     const state = this.job()?.state;
     return state === JobState.queued || state === JobState.running;
   });

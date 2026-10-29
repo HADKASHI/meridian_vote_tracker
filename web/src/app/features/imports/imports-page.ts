@@ -10,52 +10,79 @@ import { pollWhile } from '../../shared/http/poll';
 import { Problem, toProblem } from '../../shared/problem/problem';
 import { ProblemBanner } from '../../shared/problem/problem-banner';
 import { JobStateBadge } from '../../shared/ui/job-state-badge';
+import { LoadState } from '../../shared/ui/load-state';
+import { PageHeader } from '../../shared/ui/page-header';
 import { countsSummary } from './import-counts';
 
 /** Every import, newest first, and the upload that starts a new one. */
 @Component({
   selector: 'app-imports-page',
-  imports: [MatTableModule, MatButtonModule, DatePipe, RouterLink, JobStateBadge, ProblemBanner],
+  imports: [MatTableModule, MatButtonModule, DatePipe, RouterLink, JobStateBadge, ProblemBanner, PageHeader, LoadState],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <h1>Imports</h1>
-    <input #picker type="file" accept=".csv,text/csv" hidden (change)="upload(picker)" />
-    <button mat-flat-button type="button" [disabled]="uploading()" (click)="picker.click()">
-      {{ uploading() ? 'Uploading…' : 'Upload a file' }}
-    </button>
+    <app-page-header heading="Imports">
+      <p pageLead>Each upload runs as a job and gives every row one outcome, kept with the original file.</p>
+      <div pageActions>
+        <input #picker type="file" accept=".csv,text/csv" hidden (change)="upload(picker)" />
+        <button mat-flat-button type="button" [disabled]="uploading()" (click)="picker.click()">
+          {{ uploading() ? 'Uploading…' : 'Upload a file' }}
+        </button>
+      </div>
+    </app-page-header>
     @if (problem(); as p) {
       <app-problem-banner [messages]="[p.detail ?? p.title]" [traceId]="p.traceId" />
     }
     @if (imports.hasValue() && imports.value(); as page) {
-      <table mat-table [dataSource]="page.items" data-testid="imports-table">
-        <ng-container matColumnDef="file">
-          <th mat-header-cell *matHeaderCellDef>File</th>
-          <td mat-cell *matCellDef="let i">
-            <a [routerLink]="['/imports', i.id]">#{{ i.id }} {{ i.fileName }}</a>
-          </td>
-        </ng-container>
-        <ng-container matColumnDef="uploadedBy">
-          <th mat-header-cell *matHeaderCellDef>Uploaded by</th>
-          <td mat-cell *matCellDef="let i">{{ i.uploadedBy }}</td>
-        </ng-container>
-        <ng-container matColumnDef="uploadedAt">
-          <th mat-header-cell *matHeaderCellDef>Uploaded at</th>
-          <td mat-cell *matCellDef="let i">{{ i.uploadedAt | date: 'yyyy-MM-dd HH:mm:ss' }}</td>
-        </ng-container>
-        <ng-container matColumnDef="state">
-          <th mat-header-cell *matHeaderCellDef>Job</th>
-          <td mat-cell *matCellDef="let i"><app-job-state-badge [state]="i.job.state" /></td>
-        </ng-container>
-        <ng-container matColumnDef="outcomes">
-          <th mat-header-cell *matHeaderCellDef>Outcomes</th>
-          <td mat-cell *matCellDef="let i">{{ i.rejectedReason ? 'Rejected: ' + i.rejectedReason : summary(i.counts) }}</td>
-        </ng-container>
-        <tr mat-header-row *matHeaderRowDef="columns"></tr>
-        <tr mat-row *matRowDef="let row; columns: columns"></tr>
-      </table>
       @if (page.items.length === 0) {
-        <p>No imports yet.</p>
+        <app-load-state kind="empty" message="No imports yet. Upload an Assembly export to start." />
+      } @else {
+        <div class="table-scroll">
+          <table mat-table [dataSource]="page.items" data-testid="imports-table">
+            <ng-container matColumnDef="file">
+              <th mat-header-cell *matHeaderCellDef>File</th>
+              <td mat-cell *matCellDef="let i" class="file">
+                <a [routerLink]="['/imports', i.id]">#{{ i.id }} {{ i.fileName }}</a>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="uploadedBy">
+              <th mat-header-cell *matHeaderCellDef>Uploaded by</th>
+              <td mat-cell *matCellDef="let i">{{ i.uploadedBy }}</td>
+            </ng-container>
+            <ng-container matColumnDef="uploadedAt">
+              <th mat-header-cell *matHeaderCellDef>Uploaded at</th>
+              <td mat-cell *matCellDef="let i" class="nowrap">{{ i.uploadedAt | date: 'yyyy-MM-dd HH:mm:ss' }}</td>
+            </ng-container>
+            <ng-container matColumnDef="state">
+              <th mat-header-cell *matHeaderCellDef>Job</th>
+              <td mat-cell *matCellDef="let i"><app-job-state-badge [state]="i.job.state" /></td>
+            </ng-container>
+            <ng-container matColumnDef="outcomes">
+              <th mat-header-cell *matHeaderCellDef>Outcomes</th>
+              <td mat-cell *matCellDef="let i" [class.rejected]="i.rejectedReason">
+                {{ i.rejectedReason ? 'Rejected: ' + i.rejectedReason : summary(i.counts) }}
+              </td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="columns"></tr>
+            <tr mat-row *matRowDef="let row; columns: columns"></tr>
+          </table>
+        </div>
       }
+    } @else if (imports.error()) {
+      <app-load-state kind="error" message="The imports could not be loaded." />
+    } @else {
+      <app-load-state kind="loading" message="Loading imports" />
+    }
+  `,
+  styles: `
+    .file {
+      min-width: 180px;
+      overflow-wrap: anywhere;
+    }
+    .nowrap {
+      white-space: nowrap;
+    }
+    .rejected {
+      color: var(--mat-sys-error);
     }
   `,
 })

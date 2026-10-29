@@ -100,7 +100,7 @@ describe('imports feature', () => {
     TestBed.tick();
     await vi.advanceTimersByTimeAsync(0);
     expect(harness.routeNativeElement!.textContent).toContain('Next in queue');
-    expect(harness.routeNativeElement!.querySelector('h1')!.textContent).toBe('Import report');
+    expect(harness.routeNativeElement!.querySelector('h1')!.textContent).toBe('Import #7 · q1.csv');
 
     await vi.advanceTimersByTimeAsync(1000);
     TestBed.tick();
@@ -151,6 +151,28 @@ describe('imports feature', () => {
     expect(text).toContain('with BOM');
     expect(text).toContain('Ignored column not in the export format: region.');
     expect(text).toContain('Missing: FRA, JPN');
+  });
+
+  it('collapses a warning naming many missing states to their count, which expands', async () => {
+    const missing = Array.from({ length: 69 }, (_, i) => `S${String(i).padStart(2, '0')}`);
+    const harness = await RouterTestingHarness.create('/imports/7');
+    http.expectOne('/api/imports/7').flush({
+      ...importDto('done'),
+      warnings: [
+        { id: 2, kind: 'incomplete_vote', message: 'Incomplete vote: 69 members on its date with no approved ballot.',
+          vote: { voteId: 41, assemblyVoteId: 'MA/2024/001' }, identicalToImportId: null, columns: null,
+          missingStateCodes: missing, newestPublishedAt: null },
+      ],
+    });
+    await settle();
+
+    const warnings = harness.routeNativeElement!.querySelector('[data-testid=warnings]')!;
+    const toggle = warnings.querySelector('button')!;
+    expect(toggle.textContent!.trim()).toBe('69 missing states');
+    expect(warnings.textContent).not.toContain('S68');
+    toggle.click();
+    await settle();
+    expect(warnings.textContent).toContain('S68');
   });
 
   it('shows counts as filters, the counts per vote and the rows of the chosen outcome', async () => {

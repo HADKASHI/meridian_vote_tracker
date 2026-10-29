@@ -4,11 +4,11 @@
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Imports list in a card with the upload action, job-state chips and outcome chips, plus empty, loading and rejected states
-- [ ] Report header with breadcrumb to Imports, evidence, job-state chip and progress bar while queued or running
-- [ ] Counts per outcome as Material filter chips, the selected one marked by more than colour
-- [ ] Warnings name the vote and collapse a long missing-state list to its count
-- [ ] Row records with outcome chips; long raw text wraps; tables scroll inside their own container at 390 px
-- [ ] Existing imports tests pass with their `data-testid`s
+- [x] Imports list in a card with the upload action, job-state chips and outcome chips, plus empty, loading and rejected states
+- [x] Report header with breadcrumb to Imports, evidence, job-state chip and progress bar while queued or running
+- [x] Counts per outcome as Material filter chips, the selected one marked by more than colour
+- [x] Warnings name the vote and collapse a long missing-state list to its count
+- [x] Row records with outcome chips; long raw text wraps; tables scroll inside their own container at 390 px
+- [x] Existing imports tests pass with their `data-testid`s

@@ -8,9 +8,7 @@ import { ChangeDetectionStrategy, Component, computed, input, signal } from '@an
   selector: 'app-expandable-list',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    @if (items().length <= inlineMax()) {
-      {{ items().join(', ') }}
-    } @else {
+    @if (items().length <= inlineMax()) {<span>{{ items().join(', ') }}</span>} @else {
       <button type="button" class="toggle" [attr.aria-expanded]="open()" (click)="open.set(!open())">
         {{ label() }}
       </button>
