@@ -168,3 +168,13 @@ public sealed class FlakySheetReader(Func<int, Exception?> failure, SheetRead sh
         return failure(Calls) is { } error ? throw error : Task.FromResult(sheet);
     }
 }
+
+/// <summary>Runs <paramref name="during"/> while the read is in progress, then returns the sheet: a slow reader the world moves on past.</summary>
+public sealed class SlowSheetReader(Func<Task> during, SheetRead sheet) : IVoteSheetReader
+{
+    public async Task<SheetRead> ReadAsync(Stream pdf, CancellationToken cancellationToken)
+    {
+        await during();
+        return sheet;
+    }
+}

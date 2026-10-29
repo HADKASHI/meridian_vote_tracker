@@ -58,11 +58,18 @@ internal sealed class ExtractionJobHandler(
         var mapped = SheetMapper.Map(read);
         var check = SheetValidator.Check(mapped, extraction.FileName, await db.LoadMemberStatesAsync(cancellationToken));
 
-        extraction.Extracted = ExtractionJson.Write(mapped);
-        extraction.Sheet = extraction.Extracted;
-        extraction.CheckResult = ExtractionJson.Write(check);
-        extraction.Status = ExtractionStatus.NeedsReview;
-        await db.SaveChangesAsync(cancellationToken);
+        // Only while the sheet is still being read: a slower run (after a timeout and a retry) must not wipe what
+        // a faster one left and an analyst edited.
+        var json = ExtractionJson.Write(mapped);
+        var checkJson = ExtractionJson.Write(check);
+        var saved = await db.Extractions.Where(x => x.Id == id && x.Status == ExtractionStatus.Extracting)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.Extracted, json).SetProperty(x => x.Sheet, json)
+                .SetProperty(x => x.CheckResult, checkJson).SetProperty(x => x.Status, ExtractionStatus.NeedsReview), cancellationToken);
+        if (saved == 0)
+        {
+            logger.LogInformation("Extraction {ExtractionId} moved on while this read ran; its result is dropped", id);
+            return;
+        }
 
         logger.LogInformation("Extraction {ExtractionId} read {Rows} rows with {Blocking} blocking issues and {Warnings} warnings",
             id, mapped.Rows.Count,
@@ -72,10 +79,10 @@ internal sealed class ExtractionJobHandler(
 
     private async Task FailAsync(Data.Entities.Extraction extraction, string error, CancellationToken cancellationToken)
     {
-        extraction.Status = ExtractionStatus.Failed;
-        extraction.Error = error;
-        await db.SaveChangesAsync(cancellationToken);
-        logger.LogWarning("Extraction {ExtractionId} failed: {Error}", extraction.Id, error);
+        var id = extraction.Id;
+        var failed = await db.Extractions.Where(x => x.Id == id && x.Status == ExtractionStatus.Extracting)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.Status, ExtractionStatus.Failed).SetProperty(x => x.Error, error), cancellationToken);
+        if (failed == 1) logger.LogWarning("Extraction {ExtractionId} failed: {Error}", id, error);
     }
 
     private static readonly byte[] PdfMagic = "%PDF-"u8.ToArray();

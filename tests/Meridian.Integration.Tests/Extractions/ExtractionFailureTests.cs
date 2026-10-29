@@ -102,6 +102,34 @@ public sealed class ExtractionFailureTests(PostgresFixture postgres, AzuriteFixt
     }
 
     [Fact]
+    public async Task A_read_that_finishes_after_the_sheet_was_read_and_edited_does_not_wipe_the_edits()
+    {
+        await using var api = await ApiFactory.CreateAsync(postgres, azurite);
+        var client = api.ClientAs("dana");
+        var created = await ExtractionApi.UploadOkAsync(client, "MA_2011_042.pdf");
+        // While this (stale) read works, another run has finished and an analyst has edited the sheet.
+        var slow = new SlowSheetReader(async () =>
+        {
+            await using var connection = new Npgsql.NpgsqlConnection(api.ConnectionString);
+            await connection.OpenAsync(TestContext.Current.CancellationToken);
+            await using var command = new Npgsql.NpgsqlCommand("""
+                UPDATE extraction SET status = 'needs_review',
+                  sheet = '{"header":{"voteId":"MA/EDITED/1","session":"66","date":"4 October 2011","title":"Edited"},"rows":[],"printed":null}'::jsonb
+                WHERE id = @id
+                """, connection);
+            command.Parameters.AddWithValue("id", created.ExtractionId);
+            await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
+        }, SheetFixtures.Sheet());
+
+        await ExtractionApi.RunJobsAsync(api, slow);
+
+        var extraction = await ExtractionApi.GetAsync(client, created.ExtractionId);
+        Assert.Equal(ExtractionStatus.NeedsReview, extraction.Status);
+        Assert.Equal("MA/EDITED/1", extraction.Header!.VoteId);
+        Assert.Empty(extraction.Rows);
+    }
+
+    [Fact]
     public async Task Retrying_a_failed_extraction_queues_it_again_and_a_good_read_then_reaches_review()
     {
         await using var api = await ApiFactory.CreateAsync(postgres, azurite);
