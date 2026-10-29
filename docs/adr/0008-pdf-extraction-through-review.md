@@ -27,6 +27,14 @@ The bonus (brief section 8, PDF-01 to PDF-06) extracts country votes from scanne
 - **Folding extractions into the conflict list:** it would change a query and DTO that slice 3 owns and mix two kinds of decision in one list.
 - **Approving an extraction without review when confidence is high:** the brief says an AI result is never trusted without a check.
 
+## Known limits
+
+- **An analyst corrects rows but cannot add or delete one.** A sheet with a state that is not a member (a spurious row) can be fixed only by changing its code or rejecting the sheet.
+- **A failed sheet can be retried but not dismissed;** only a sheet waiting for review can be rejected, so a permanently failed one stays in the Failed list.
+- **A warning is never acknowledged:** a low-confidence row can be approved with the sheet; the printed totals are the check on a misread mark.
+- **The Document Intelligence request and response shapes are the documented v4 ones, proven only against a hand-written fixture.** The RealData smoke test, which needs real credentials and real sheets, is the first live check. Whether the layout model returns a drawn X as text, as a selection mark or not at all is unknown until then; the mapper counts any text in a vote column as a mark.
+- **The page image beside the table is not built.**
+
 ## Consequences
 
 - One migration, flagged at the top of the slice's PR.
