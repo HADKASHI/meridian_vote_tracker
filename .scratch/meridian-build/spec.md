@@ -148,7 +148,7 @@ A web application (ASP.NET Core API, background worker, PostgreSQL, Angular, run
 
 ### Snapshot comparison (extra)
 
-102. As an analyst, I want to compare two snapshots and see each state's rank and score movement, so that I can explain changes between quarters or between a publication and its replacement.
+102. As an analyst, I want to compare two snapshots and see each state's rank and score movement, and the votes the two treated differently that explain it, so that I can explain changes between quarters or between a publication and its replacement.
 
 ### Jobs
 
@@ -222,7 +222,7 @@ Detailed reasoning lives in the resolved map tickets; the locked schema is in `.
 - Job: in one `REPEATABLE READ` transaction, stream facts (state, vote, ballot or none, member on date, stance, weight) from the current views, re-check positions, apply the pure scoring module, and write snapshot votes (with details and position revision ids), lines (with country vote revision id, or null for no data, and category), results (matched and counted weight as integers, rank or null) and warnings. The header records the scoring rules version.
 - Scoring: score = 100 × matched ÷ counted over yes/no ballots of members; abstain, absent, non-member and no-data excluded and labelled; counted 0 means n/a and no rank; competition ranking on the exact value; ties ordered by code. The database checks `matched ≤ counted` and that rank is null exactly when counted is 0.
 - Publication: an insert-only chain (snapshot, quarter `YYYY-Qn`, who, when, reason, supersedes). Partial unique indexes allow one first publication per quarter and one successor per publication; a reason is required exactly when superseding. A unique violation becomes 409 `quarter-published`.
-- Comparison (extra): a pure read over two snapshots' stored results and lines.
+- Comparison (extra): a pure read over two snapshots' stored results, lines, votes and the ballots they used. `GET /api/snapshots/compare` returns each state's rank and score in A and B with their basis and the change, and its **reasons**: the votes whose matched or counted weight differs (vote only in one snapshot, a different ballot, a different stance or weight). The reasons are in the same response, not a second endpoint.
 
 ### Jobs (ADR: job table as queue, Blob for files)
 
