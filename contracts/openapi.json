@@ -630,6 +630,160 @@
         }
       }
     },
+    "/api/extractions/{extractionId}/edits": {
+      "post": {
+        "tags": [
+          "Extractions"
+        ],
+        "summary": "Correct rows, header fields or the printed totals; the sheet is checked again.",
+        "operationId": "saveExtractionEdits",
+        "parameters": [
+          {
+            "name": "extractionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveEditsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtractionDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtractionAlreadyDecidedProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/extractions/{extractionId}/rejection": {
+      "post": {
+        "tags": [
+          "Extractions"
+        ],
+        "summary": "Reject a sheet waiting for review. Exactly one of two simultaneous decisions applies.",
+        "operationId": "rejectExtraction",
+        "parameters": [
+          {
+            "name": "extractionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectExtractionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtractionDecisionDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtractionAlreadyDecidedProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/extractions/{extractionId}/retry": {
       "post": {
         "tags": [
@@ -2431,6 +2585,40 @@
           }
         }
       },
+      "ExtractionAlreadyDecidedProblem": {
+        "required": [
+          "decision",
+          "type",
+          "title",
+          "status",
+          "traceId"
+        ],
+        "type": "object",
+        "properties": {
+          "decision": {
+            "$ref": "#/components/schemas/ExtractionDecisionDto"
+          },
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "traceId": {
+            "type": "string"
+          }
+        }
+      },
       "ExtractionCreatedDto": {
         "required": [
           "extractionId",
@@ -2452,6 +2640,33 @@
           }
         }
       },
+      "ExtractionDecisionDto": {
+        "required": [
+          "status",
+          "decidedBy",
+          "decidedAt",
+          "comment"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/ExtractionStatus"
+          },
+          "decidedBy": {
+            "type": "string"
+          },
+          "decidedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "comment": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "ExtractionDto": {
         "required": [
           "id",
@@ -2469,7 +2684,9 @@
           "counted",
           "printed",
           "issues",
-          "canApprove"
+          "canApprove",
+          "edits",
+          "decision"
         ],
         "type": "object",
         "properties": {
@@ -2556,6 +2773,71 @@
           },
           "canApprove": {
             "type": "boolean"
+          },
+          "edits": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExtractionEditDto"
+            }
+          },
+          "decision": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ExtractionDecisionDto"
+              }
+            ]
+          }
+        }
+      },
+      "ExtractionEditDto": {
+        "required": [
+          "by",
+          "at",
+          "field",
+          "position",
+          "code",
+          "from",
+          "to"
+        ],
+        "type": "object",
+        "properties": {
+          "by": {
+            "type": "string"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "field": {
+            "type": "string"
+          },
+          "position": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "code": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "from": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "to": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -2620,6 +2902,41 @@
           "warnings": {
             "type": "integer",
             "format": "int32"
+          }
+        }
+      },
+      "HeaderEdit": {
+        "required": [
+          "voteId",
+          "session",
+          "date",
+          "title"
+        ],
+        "type": "object",
+        "properties": {
+          "voteId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "session": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "date": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -4082,11 +4399,55 @@
           }
         }
       },
+      "RejectExtractionRequest": {
+        "required": [
+          "comment"
+        ],
+        "type": "object",
+        "properties": {
+          "comment": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "Role": {
         "enum": [
           "analyst",
           "admin"
         ]
+      },
+      "RowEdit": {
+        "required": [
+          "position",
+          "code",
+          "choice"
+        ],
+        "type": "object",
+        "properties": {
+          "position": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "code": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "choice": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Ballot"
+              }
+            ]
+          }
+        }
       },
       "RuleSetDto": {
         "required": [
@@ -4113,6 +4474,45 @@
           },
           "isDefault": {
             "type": "boolean"
+          }
+        }
+      },
+      "SaveEditsRequest": {
+        "required": [
+          "rows",
+          "header",
+          "printed"
+        ],
+        "type": "object",
+        "properties": {
+          "rows": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/RowEdit"
+            }
+          },
+          "header": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/HeaderEdit"
+              }
+            ]
+          },
+          "printed": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/SheetTotals"
+              }
+            ]
           }
         }
       },

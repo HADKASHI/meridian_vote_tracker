@@ -46,8 +46,12 @@ internal static class ExtractionQueries
         var check = ExtractionJson.Read<SheetCheck>(x.CheckResult);
         var (status, error) = StatusOf(x, job);
         return new ExtractionDto(x.Id, x.FileName, x.Sha256, x.SizeBytes, x.UploadedBy, x.RecordedAt, status, job, error,
-            check?.VoteId, sheet?.Header, sheet?.Rows ?? [], check?.Counted, check?.Printed, check?.Issues ?? [], check?.CanApprove ?? false);
+            check?.VoteId, sheet?.Header, sheet?.Rows ?? [], check?.Counted, check?.Printed, check?.Issues ?? [], check?.CanApprove ?? false,
+            ExtractionJson.Read<List<ExtractionEditDto>>(x.Edits) ?? [], DecisionOf(x));
     }
+
+    public static ExtractionDecisionDto? DecisionOf(Extraction x) =>
+        x.DecidedBy is { } by ? new ExtractionDecisionDto(x.Status, by, x.DecidedAt!.Value, x.DecisionComment) : null;
 
     /// <summary>
     /// What the analyst sees. A sheet the handler failed is stored as failed; one whose job failed (a timeout,

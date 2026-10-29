@@ -36,6 +36,28 @@ public static class ExtractionApi
     public static Task<ExtractionDto> GetAsync(HttpClient client, long id) =>
         ImportApi.GetAsync<ExtractionDto>(client, $"/api/extractions/{id}");
 
+    /// <summary>Uploads a distinct sheet, runs its job with <paramref name="sheet"/> and returns it waiting for review.</summary>
+    public static async Task<long> ReadyForReviewAsync(ApiFactory api, SheetRead? sheet = null, string name = "MA_2011_042.pdf")
+    {
+        var created = await UploadOkAsync(api.ClientAs("dana"), name, [.. System.Text.Encoding.UTF8.GetBytes($"%PDF-1.4 {Guid.NewGuid()}")]);
+        await RunJobsAsync(api, new FakeSheetReader(sheet ?? SheetFixtures.Sheet()));
+        return created.ExtractionId;
+    }
+
+    public static Task<HttpResponseMessage> SaveEditsAsync(HttpClient client, long id, SaveEditsRequest request) =>
+        client.PostAsJsonAsync($"/api/extractions/{id}/edits", request, ImportApi.Json, TestContext.Current.CancellationToken);
+
+    public static Task<HttpResponseMessage> RejectAsync(HttpClient client, long id, string? comment = null) =>
+        client.PostAsJsonAsync($"/api/extractions/{id}/rejection", new RejectExtractionRequest(comment), ImportApi.Json,
+            TestContext.Current.CancellationToken);
+
+    public static async Task<ExtractionDto> SaveEditsOkAsync(HttpClient client, long id, SaveEditsRequest request)
+    {
+        var response = await SaveEditsAsync(client, id, request);
+        Assert.True(response.IsSuccessStatusCode, await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        return (await response.Content.ReadFromJsonAsync<ExtractionDto>(ImportApi.Json, TestContext.Current.CancellationToken))!;
+    }
+
     public static Task<HttpResponseMessage> RetryAsync(HttpClient client, long id) =>
         client.PostAsync($"/api/extractions/{id}/retry", null, TestContext.Current.CancellationToken);
 
@@ -85,21 +107,29 @@ public static class SheetFixtures
     /// <summary>Counted from <see cref="Choices"/>: 5 yes, 3 no, 2 abstentions, 1 not voting.</summary>
     public static readonly SheetTotals Printed = new(5, 3, 2, 1);
 
-    public static SheetRead Sheet(SheetTotals? printed = null)
+    /// <param name="tweak">Changes one row's cells by its index, as a misread would.</param>
+    /// <param name="omitTotals">The footer could not be read.</param>
+    public static SheetRead Sheet(SheetTotals? printed = null, Action<int, SheetCell[]>? tweak = null,
+        string date = "4 October 2011", bool omitTotals = false)
     {
-        var rows = Members.Select((code, i) => (IReadOnlyList<SheetCell>)
-        [
-            new SheetCell(code, .99), new SheetCell(code, .98),
-            new SheetCell(Choices[i] == Ballot.Y ? "X" : "", .95), new SheetCell(Choices[i] == Ballot.N ? "X" : "", .95),
-            new SheetCell(Choices[i] == Ballot.A ? "X" : "", .95),
-        ]).ToList();
-        var p = printed ?? Printed;
-        var lines = new[]
+        var rows = Members.Select((code, i) =>
         {
-            "MERIDIAN ASSEMBLY", "RECORD OF VOTE", "Vote No.:", "MA/2011/042", "Session:", "66", "Date of vote:", "4 October 2011",
+            var cells = new[]
+            {
+                new SheetCell(code, .99), new SheetCell(code, .98),
+                new SheetCell(Choices[i] == Ballot.Y ? "X" : "", .95), new SheetCell(Choices[i] == Ballot.N ? "X" : "", .95),
+                new SheetCell(Choices[i] == Ballot.A ? "X" : "", .95),
+            };
+            tweak?.Invoke(i, cells);
+            return (IReadOnlyList<SheetCell>)cells;
+        }).ToList();
+        var p = printed ?? Printed;
+        var lines = new List<string>
+        {
+            "MERIDIAN ASSEMBLY", "RECORD OF VOTE", "Vote No.:", "MA/2011/042", "Session:", "66", "Date of vote:", date,
             "Resolution:", "Protection of Cultural Heritage",
-            $"Recorded totals: Yes: {p.Yes} No: {p.No} Abstentions: {p.Abstentions} Not voting: {p.NotVoting}",
         };
+        if (!omitTotals) lines.Add($"Recorded totals: Yes: {p.Yes} No: {p.No} Abstentions: {p.Abstentions} Not voting: {p.NotVoting}");
         return new SheetRead([new SheetPage(lines, [new SheetTable(rows)])]);
     }
 }

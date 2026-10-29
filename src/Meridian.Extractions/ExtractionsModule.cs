@@ -54,6 +54,20 @@ public static class ExtractionsModule
             .ProducesProblems(StatusCodes.Status404NotFound)
             .ForAnalysts();
 
+        extractions.MapPost("/{extractionId:long}/edits", ExtractionReview.SaveEditsAsync)
+            .WithName("saveExtractionEdits")
+            .WithSummary("Correct rows, header fields or the printed totals; the sheet is checked again.")
+            .ProducesProblems(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound)
+            .ProducesProblem<ExtractionAlreadyDecidedProblem>(StatusCodes.Status409Conflict)
+            .ForAnalysts();
+
+        extractions.MapPost("/{extractionId:long}/rejection", ExtractionReview.RejectAsync)
+            .WithName("rejectExtraction")
+            .WithSummary("Reject a sheet waiting for review. Exactly one of two simultaneous decisions applies.")
+            .ProducesProblems(StatusCodes.Status404NotFound)
+            .ProducesProblem<ExtractionAlreadyDecidedProblem>(StatusCodes.Status409Conflict)
+            .ForAnalysts();
+
         extractions.MapPost("/{extractionId:long}/retry", ExtractionRetry.HandleAsync)
             .WithName("retryExtraction")
             .WithSummary("Queue a failed extraction again.")
