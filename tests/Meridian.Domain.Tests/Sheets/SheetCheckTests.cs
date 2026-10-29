@@ -108,6 +108,18 @@ public sealed class SheetCheckTests
     }
 
     [Fact]
+    public void A_sheet_with_no_rows_at_all_blocks_even_when_its_printed_totals_are_zero()
+    {
+        var empty = new SheetRead([new SheetPage(["Vote No.:", "MA/2011/042", "Session:", "66", "Date of vote:", "4 October 2011",
+            "Resolution:", "Heritage", "Recorded totals: Yes: 0 No: 0 Abstentions: 0 Not voting: 0"], [])]);
+
+        var check = Check(empty, SheetFixture.Members(0));
+
+        Assert.Equal([SheetIssueKind.NoRows], Blocking(check).Select(i => i.Kind));
+        Assert.False(check.CanApprove);
+    }
+
+    [Fact]
     public void A_header_that_cannot_be_read_as_a_vote_blocks()
     {
         var read = SheetFixture.Build(SheetFixture.Choices(SheetFixture.Printed2011), SheetFixture.Printed2011, session: "sixty-six", date: "sometime in autumn");

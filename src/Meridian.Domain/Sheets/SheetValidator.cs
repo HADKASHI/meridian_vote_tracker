@@ -8,7 +8,7 @@ public enum SheetIssueSeverity { Blocking, Warning }
 public enum SheetIssueKind
 {
     Header, TotalsMissing, TotalsMismatch, UnknownCode, NotMemberOnDate, DuplicateCode, AmbiguousMark,
-    LowConfidence, VoteIdMismatch, MissingMember,
+    LowConfidence, VoteIdMismatch, MissingMember, NoRows,
 }
 
 /// <summary>One thing wrong or doubtful on a sheet. Messages carry codes and counts, never the sheet's own text.</summary>
@@ -22,7 +22,7 @@ public sealed record SheetCheck(
 }
 
 /// <summary>
-/// PDF-03 and PDF-04. Blocking: the header can't be read as a vote, the counts differ from the printed totals
+/// PDF-03 and PDF-04. Blocking: the header can't be read as a vote, no row could be read at all, the counts differ from the printed totals
 /// (or none are printed), a code is unknown, wasn't a member on the vote date or appears twice, or a row has
 /// two marks. Warnings: a low-confidence row, a header vote id that doesn't match the file name, a member on
 /// the date with no row. Membership is the import's own <see cref="MemberStates"/>, the date reading its own
@@ -38,6 +38,7 @@ public static class SheetValidator
         var details = ReadDetails(sheet.Header, issues);
         var counted = Count(sheet.Rows);
 
+        if (sheet.Rows.Count == 0) Add(issues, SheetIssueKind.NoRows, "No rows could be read from the sheet.");
         CheckTotals(counted, sheet.Printed, issues);
         CheckRows(sheet.Rows, details?.VoteDate, members, issues);
         if (details is { } d) CheckMissingMembers(sheet.Rows, d.VoteDate, members, issues);

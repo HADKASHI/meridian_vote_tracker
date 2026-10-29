@@ -4855,7 +4855,8 @@
           "ambiguous_mark",
           "low_confidence",
           "vote_id_mismatch",
-          "missing_member"
+          "missing_member",
+          "no_rows"
         ]
       },
       "SheetIssueSeverity": {

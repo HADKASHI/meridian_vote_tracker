@@ -110,6 +110,21 @@ public sealed class ExtractionApprovalTests(PostgresFixture postgres, AzuriteFix
     }
 
     [Fact]
+    public async Task A_sheet_with_no_rows_is_blocked_and_neither_approved_nor_previewed_as_a_crash()
+    {
+        await using var api = await ApiFactory.CreateAsync(postgres, azurite);
+        var noRows = new SheetRead([new SheetPage(["Vote No.:", "MA/2011/042", "Session:", "66", "Date of vote:", "4 October 2011",
+            "Resolution:", "Heritage", "Recorded totals: Yes: 0 No: 0 Abstentions: 0 Not voting: 0"], [])]);
+        var id = await ExtractionApi.ReadyForReviewAsync(api, noRows);
+        var client = api.ClientAs("omar");
+
+        Assert.Contains(SheetIssueKind.NoRows, (await ExtractionApi.GetAsync(client, id)).Issues.Select(i => i.Kind));
+        await (await ExtractionApi.ApproveAsync(client, id)).AssertProblemAsync(409, "has-blocking-issues");
+        await (await ExtractionApi.PreviewAsync(client, id)).AssertProblemAsync(409, "has-blocking-issues");
+        Assert.Equal(ExtractionStatus.NeedsReview, (await ExtractionApi.GetAsync(client, id)).Status);
+    }
+
+    [Fact]
     public async Task What_the_analyst_edited_is_what_is_imported()
     {
         await using var api = await ApiFactory.CreateAsync(postgres, azurite);
