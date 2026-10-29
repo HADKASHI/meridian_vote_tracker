@@ -1904,6 +1904,64 @@
           }
         }
       },
+      "CountryVoteChangeDto": {
+        "required": [
+          "vote",
+          "stateCode",
+          "old",
+          "new",
+          "changedBy",
+          "at"
+        ],
+        "type": "object",
+        "properties": {
+          "vote": {
+            "$ref": "#/components/schemas/VoteRefDto"
+          },
+          "stateCode": {
+            "type": "string"
+          },
+          "old": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Ballot"
+              }
+            ]
+          },
+          "new": {
+            "$ref": "#/components/schemas/Ballot"
+          },
+          "changedBy": {
+            "$ref": "#/components/schemas/ChangeOriginDto"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CountryVoteChangesDto": {
+        "required": [
+          "count",
+          "votes"
+        ],
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "votes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CountryVoteChangeDto"
+            }
+          }
+        }
+      },
       "CountryVoteDto": {
         "required": [
           "stateCode",
@@ -3538,6 +3596,7 @@
         "required": [
           "readAt",
           "positionChanged",
+          "countryVotesChanged",
           "detailsChanged"
         ],
         "type": "object",
@@ -3548,6 +3607,9 @@
           },
           "positionChanged": {
             "$ref": "#/components/schemas/PositionChangesDto"
+          },
+          "countryVotesChanged": {
+            "$ref": "#/components/schemas/CountryVoteChangesDto"
           },
           "detailsChanged": {
             "$ref": "#/components/schemas/DetailsChangesDto"

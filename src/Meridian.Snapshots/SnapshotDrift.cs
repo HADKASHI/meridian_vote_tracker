@@ -14,7 +14,8 @@ internal static class SnapshotDrift
     private const int Listed = 20;
 
     public static async Task<SnapshotChangesDto> ChangesAsync(MeridianDbContext db, long snapshotId, CancellationToken ct) =>
-        new(DateTimeOffset.UtcNow, await PositionsAsync(db, snapshotId, ct), await DetailsAsync(db, snapshotId, ct));
+        new(DateTimeOffset.UtcNow, await PositionsAsync(db, snapshotId, ct),
+            await CountryVotesAsync(db, snapshotId, ct), await DetailsAsync(db, snapshotId, ct));
 
     /// <summary>Votes whose position now has a different stance or weight than the one the snapshot used.</summary>
     private static async Task<PositionChangesDto> PositionsAsync(MeridianDbContext db, long snapshotId, CancellationToken ct)
@@ -37,6 +38,31 @@ internal static class SnapshotDrift
             new ChangeOriginDto(ChangeOriginKind.Position, c.New.SetBy, null, null), c.New.RecordedAt)).ToList());
     }
 
+    /// <summary>
+    /// States whose approved ballot in a held vote is no longer the revision the snapshot used,
+    /// including a state it had no data for that now has one.
+    /// </summary>
+    private static async Task<CountryVoteChangesDto> CountryVotesAsync(MeridianDbContext db, long snapshotId, CancellationToken ct)
+    {
+        var changed =
+            from l in db.SnapshotLines
+            where l.SnapshotId == snapshotId
+            join now in db.CountryVoteRevisions on new { l.VoteId, l.StateCode } equals new { now.VoteId, now.StateCode }
+            join pointer in db.CountryVoteCurrents on now.Id equals pointer.RevisionId
+            where l.CountryVoteRevisionId == null || l.CountryVoteRevisionId != now.Id
+            join v in db.Votes on l.VoteId equals v.Id
+            join old in db.CountryVoteRevisions on l.CountryVoteRevisionId equals old.Id into olds
+            from old in olds.DefaultIfEmpty()
+            select new { v.Id, v.AssemblyVoteId, l.StateCode, Old = old, New = now };
+
+        var count = await changed.CountAsync(ct);
+        var rows = await changed.OrderBy(c => c.AssemblyVoteId).ThenBy(c => c.StateCode).Take(Listed).AsNoTracking().ToListAsync(ct);
+        var origins = await OriginsAsync(db, rows.Select(r => r.New.OriginImportRowId), rows.Select(r => r.New.OriginDecisionId), ct);
+        return new CountryVoteChangesDto(count, rows.Select(c => new CountryVoteChangeDto(
+            new VoteRefDto(c.Id, c.AssemblyVoteId), c.StateCode, c.Old?.Ballot, c.New.Ballot,
+            origins(c.New.OriginImportRowId, c.New.OriginDecisionId), c.New.RecordedAt)).ToList());
+    }
+
     /// <summary>Votes whose approved details now differ from the ones the snapshot used.</summary>
     private static async Task<DetailsChangesDto> DetailsAsync(MeridianDbContext db, long snapshotId, CancellationToken ct)
     {
@@ -53,24 +79,31 @@ internal static class SnapshotDrift
         var count = await changed.CountAsync(ct);
         var rows = await changed.OrderBy(c => c.AssemblyVoteId).Take(Listed).AsNoTracking().ToListAsync(ct);
 
-        var rowIds = rows.Select(r => r.New.OriginImportRowId).OfType<long>().ToList();
+        var origins = await OriginsAsync(db, rows.Select(r => r.New.OriginImportRowId), rows.Select(r => r.New.OriginDecisionId), ct);
+
+        return new DetailsChangesDto(count, rows.Select(c => new DetailsChangeDto(
+            new VoteRefDto(c.Id, c.AssemblyVoteId), new DetailsValueDto(c.Old.Session, c.Old.VoteDate, c.Old.Title),
+            new DetailsValueDto(c.New.Session, c.New.VoteDate, c.New.Title),
+            origins(c.New.OriginImportRowId, c.New.OriginDecisionId),
+            c.New.RecordedAt)).ToList());
+    }
+
+    /// <summary>Resolves a revision's origin (an import row's import and uploader, or a decision and who made it).</summary>
+    private static async Task<Func<long?, long?, ChangeOriginDto>> OriginsAsync(MeridianDbContext db,
+        IEnumerable<long?> importRowIds, IEnumerable<long?> decisionIds, CancellationToken ct)
+    {
+        var rowIds = importRowIds.OfType<long>().ToList();
         var uploaders = await (
                 from r in db.ImportRows
                 where rowIds.Contains(r.Id)
                 join i in db.Imports on r.ImportId equals i.Id
                 select new { RowId = r.Id, ImportId = i.Id, i.UploadedBy })
             .AsNoTracking().ToDictionaryAsync(r => r.RowId, ct);
-        var decisionIds = rows.Select(r => r.New.OriginDecisionId).OfType<long>().ToList();
-        var deciders = await db.ConflictDecisions.AsNoTracking().Where(d => decisionIds.Contains(d.Id))
+        var ids = decisionIds.OfType<long>().ToList();
+        var deciders = await db.ConflictDecisions.AsNoTracking().Where(d => ids.Contains(d.Id))
             .ToDictionaryAsync(d => d.Id, d => d.DecidedBy, ct);
-
-        return new DetailsChangesDto(count, rows.Select(c => new DetailsChangeDto(
-            new VoteRefDto(c.Id, c.AssemblyVoteId), new DetailsValueDto(c.Old.Session, c.Old.VoteDate, c.Old.Title),
-            new DetailsValueDto(c.New.Session, c.New.VoteDate, c.New.Title),
-            c.New.OriginDecisionId is { } decision
-                ? new ChangeOriginDto(ChangeOriginKind.Decision, deciders[decision], null, decision)
-                : new ChangeOriginDto(ChangeOriginKind.Import, uploaders[c.New.OriginImportRowId!.Value].UploadedBy,
-                    uploaders[c.New.OriginImportRowId.Value].ImportId, null),
-            c.New.RecordedAt)).ToList());
+        return (rowId, decisionId) => decisionId is { } decision
+            ? new ChangeOriginDto(ChangeOriginKind.Decision, deciders[decision], null, decision)
+            : new ChangeOriginDto(ChangeOriginKind.Import, uploaders[rowId!.Value].UploadedBy, uploaders[rowId.Value].ImportId, null);
     }
 }

@@ -4,11 +4,11 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Country votes changed has its count and the first 20 entries, each with vote, state, old ballot (or none) and new ballot, origin and when
-- [ ] An accepted conflict decision shows the decision and who decided it as the origin; an import row shows the import and its uploader
-- [ ] A state with no data in the snapshot and an approved ballot now is listed with an old value of none
-- [ ] An unchanged ballot, a pending conflict and an approved value for a vote the snapshot does not hold are not listed
-- [ ] Integration tests through the HTTP API prove the above against fixture-built snapshots
+- [x] Country votes changed has its count and the first 20 entries, each with vote, state, old ballot (or none) and new ballot, origin and when
+- [x] An accepted conflict decision shows the decision and who decided it as the origin; an import row shows the import and its uploader
+- [x] A state with no data in the snapshot and an approved ballot now is listed with an old value of none
+- [x] An unchanged ballot, a pending conflict and an approved value for a vote the snapshot does not hold are not listed
+- [x] Integration tests through the HTTP API prove the above against fixture-built snapshots
 

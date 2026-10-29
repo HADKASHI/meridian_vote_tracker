@@ -138,17 +138,25 @@ public sealed record PositionChangeDto(
 public sealed record DetailsChangeDto(
     VoteRefDto Vote, DetailsValueDto Old, DetailsValueDto New, ChangeOriginDto ChangedBy, DateTimeOffset At);
 
+/// <param name="Old">The ballot the snapshot used; null when it had no data for the state.</param>
+public sealed record CountryVoteChangeDto(
+    VoteRefDto Vote, string StateCode, Ballot? Old, Ballot New, ChangeOriginDto ChangedBy, DateTimeOffset At);
+
 /// <param name="Count">Every vote that changed; <c>Votes</c> holds the first 20.</param>
 public sealed record PositionChangesDto(int Count, IReadOnlyList<PositionChangeDto> Votes);
 
 /// <inheritdoc cref="PositionChangesDto"/>
 public sealed record DetailsChangesDto(int Count, IReadOnlyList<DetailsChangeDto> Votes);
 
+/// <summary>Each entry is one member state's ballot in one vote; <c>Count</c> counts those, not votes.</summary>
+public sealed record CountryVoteChangesDto(int Count, IReadOnlyList<CountryVoteChangeDto> Votes);
+
 /// <summary>
 /// What would differ if the snapshot were created now, read live from its stored revisions and today's
 /// values. It holds no score or rank and was not calculated.
 /// </summary>
-public sealed record SnapshotChangesDto(DateTimeOffset ReadAt, PositionChangesDto PositionChanged, DetailsChangesDto DetailsChanged);
+public sealed record SnapshotChangesDto(DateTimeOffset ReadAt, PositionChangesDto PositionChanged,
+    CountryVoteChangesDto CountryVotesChanged, DetailsChangesDto DetailsChanged);
 
 public sealed class PublishSnapshotRequest : IValidatableObject
 {

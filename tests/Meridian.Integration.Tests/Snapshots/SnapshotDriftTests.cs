@@ -117,4 +117,56 @@ public sealed class SnapshotDriftTests(PostgresFixture postgres, AzuriteFixture 
         Assert.Equal(401, (int)(await api.ClientAs(null).GetAsync($"/api/snapshots/{done.Id}/changes", Ct)).StatusCode);
         Assert.Equal(200, (int)(await api.ClientAs("lena").GetAsync($"/api/snapshots/{done.Id}/changes", Ct)).StatusCode);
     }
+
+    [Fact]
+    public async Task A_changed_country_vote_shows_the_old_and_new_ballot_and_what_approved_it()
+    {
+        await using var api = await ApiFactory.CreateAsync(postgres, azurite);
+        await using var fx = Meridian.Fixtures.Fixtures.For(api.ConnectionString);
+        var vote = await fx.VoteAsync("MA/2024/001", new DateOnly(2024, 1, 10));
+        await fx.CountryVotesAsync(vote, ("ARG", Y), ("BRA", N), ("FRA", Y));
+        await fx.PositionAsync(vote, Stance.Yes, 2);
+        var snapshot = await fx.SnapshotAsync("Q1", [vote]);
+        var pending = await fx.BallotConflictAsync(vote, "BRA", Y);
+        // A pending conflict is not a change.
+        Assert.Equal(0, (await ChangesAsync(api, snapshot.Id)).GetProperty("countryVotesChanged").GetProperty("count").GetInt32());
+
+        var decision = await fx.DecideAsync(pending, Decision.Accept, decidedBy: "omar");
+
+        var changed = (await ChangesAsync(api, snapshot.Id)).GetProperty("countryVotesChanged");
+        Assert.Equal(1, changed.GetProperty("count").GetInt32());
+        var entry = Assert.Single(changed.GetProperty("votes").EnumerateArray());
+        Assert.Equal(("MA/2024/001", "BRA", "n", "y"), (entry.GetProperty("vote").GetProperty("assemblyVoteId").GetString(),
+            entry.GetProperty("stateCode").GetString(), entry.GetProperty("old").GetString(), entry.GetProperty("new").GetString()));
+        var origin = entry.GetProperty("changedBy");
+        Assert.Equal(("decision", "omar", decision.Id), (origin.GetProperty("kind").GetString(), origin.GetProperty("by").GetString(),
+            origin.GetProperty("decisionId").GetInt64()));
+    }
+
+    [Fact]
+    public async Task A_state_the_snapshot_had_no_data_for_that_now_has_a_ballot_is_listed_from_none_with_its_import()
+    {
+        await using var api = await ApiFactory.CreateAsync(postgres, azurite);
+        await using var fx = Meridian.Fixtures.Fixtures.For(api.ConnectionString);
+        var vote = await fx.VoteAsync("MA/2024/001", new DateOnly(2024, 1, 10));
+        await fx.CountryVotesAsync(vote, ("ARG", Y));
+        await fx.PositionAsync(vote, Stance.Yes, 1);
+        var snapshot = await fx.SnapshotAsync("Q1", [vote]);
+        var later = await fx.VoteAsync("MA/2024/002", new DateOnly(2024, 1, 11));
+        await fx.CountryVotesAsync(later, ("ARG", N));
+        var late = await fx.ImportAsync(uploadedBy: "omar", fileName: "late.csv");
+        await fx.CountryVotesAsync(vote, late, ("BRA", A));
+
+        var changed = (await ChangesAsync(api, snapshot.Id)).GetProperty("countryVotesChanged");
+
+        // ARG is unchanged, and MA/2024/002 is not in the snapshot.
+        Assert.Equal(1, changed.GetProperty("count").GetInt32());
+        var entry = Assert.Single(changed.GetProperty("votes").EnumerateArray());
+        Assert.Equal("BRA", entry.GetProperty("stateCode").GetString());
+        Assert.Equal(JsonValueKind.Null, entry.GetProperty("old").ValueKind);
+        Assert.Equal("a", entry.GetProperty("new").GetString());
+        var origin = entry.GetProperty("changedBy");
+        Assert.Equal(("import", "omar", late.Id), (origin.GetProperty("kind").GetString(), origin.GetProperty("by").GetString(),
+            origin.GetProperty("importId").GetInt64()));
+    }
 }
