@@ -23,6 +23,9 @@ public sealed class PostgresFixture : IAsyncLifetime
         .WithDatabase("postgres")
         .WithUsername("meridian")
         .WithPassword("meridian_test")
+        // Every test database keeps its own pool of idle connections, so the
+        // default limit of 100 runs out once the suite passes about 100 tests.
+        .WithCommand("-c", "max_connections=500")
         .Build();
 
     private readonly SemaphoreSlim _createLock = new(1, 1);

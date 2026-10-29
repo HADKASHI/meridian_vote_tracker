@@ -164,7 +164,7 @@ A web application (ASP.NET Core API, background worker, PostgreSQL, Angular, run
 109. As an operator, I want one trace id to follow an upload through the API, the job and every vote transaction, so that I can debug a whole import from one id.
 110. As the Institute, I want logs to carry ids, counts and timings but never client data (raw rows, titles, ballots, comments), so that logs are safe to ship.
 111. As an operator, I want Application Insights to switch on only when its connection string is configured, so that the app runs locally without Azure.
-112. As a reviewer, I want `docker compose up --build` on a clean clone (with `member_states.csv` in `data_candidate/`) to start the whole system, so that I can evaluate it without setup.
+112. As a reviewer, I want `docker compose up --build` on a clean clone (with `member_states.csv` in `candidate_data/`) to start the whole system, so that I can evaluate it without setup.
 113. As a reviewer, I want `migrate` to fail with a clear message naming the missing member states file, so that a setup mistake is obvious.
 114. As a reviewer, I want it to work with no `.env` file, so that there is nothing to configure.
 115. As an operator, I want uploaded files stored in Azure Blob (Azurite locally) through configuration only, so that moving to real Azure is a connection string.
@@ -310,7 +310,7 @@ Slices 3, 4 and 6 arrange their data with slice 0's fixture builders, never with
   - Races for conflict decision, publication and stale position: two connections released by a barrier, 20 rounds, exactly one success and one 409 per round.
   - Validation error keys are camelCase JSON paths.
   - Guard coverage as above.
-- **Categories run on demand, never in CI**: `RealData` (real Q1 files give the audited counts: original 5,737 new / 3 duplicate / 5 invalid / 151 contradiction; rev2 372 new / 5,284 unchanged / 304 conflict rows / 8 conflicts; rev2 again opens none; historic predicts 962,109 new / 30 duplicate / 32 invalid), skipping itself when `data_candidate/` is missing; `Performance` (deterministic synthetic ~1M-row file shaped like the historic one, fails above 5 minutes, reports time and peak memory), also available as a manual workflow.
+- **Categories run on demand, never in CI**: `RealData` (real Q1 files give the audited counts: original 5,737 new / 3 duplicate / 5 invalid / 151 contradiction; rev2 372 new / 5,284 unchanged / 304 conflict rows / 8 conflicts; rev2 again opens none; historic predicts 962,109 new / 30 duplicate / 32 invalid), skipping itself when `candidate_data/` is missing; `Performance` (deterministic synthetic ~1M-row file shaped like the historic one, fails above 5 minutes, reports time and peak memory), also available as a manual workflow.
 - **Frontend**: Vitest with Material harnesses and `HttpTestingController` for the identity interceptor, ProblemDetails-to-field mapping, the 409 cards and stopping polling. One Playwright smoke test against the compose stack, added in slice 8 once slices 1 and 3 are merged: switch user, upload a small file, see the report, then a decision race in two tabs.
 - **Test data**: committed synthetic fixtures only (one small CSV per import rule, synthetic member states, C# builders). Real data is never committed.
 - **CI on every push**: build with warnings as errors, OpenAPI drift check, pending-model-changes check, domain and integration tests, Angular lint/test/build, compose smoke test. Prior art: none yet in the codebase (it has no code); the audit scripts in `../meridian-vote-tracker/research/07-data-audit-scripts/` and `../meridian-vote-tracker/research/17-historic-audit-scripts/` are the reference for expected counts.
@@ -335,4 +335,4 @@ Slices 3, 4 and 6 arrange their data with slice 0's fixture builders, never with
 - Session numbers are validated as positive integers consistent within a vote, never against the year.
 - The sandbox needs a proxy override for container builds; it lives in a separate compose file passed explicitly with `-f`, never in the committed Dockerfiles or `compose.yaml`, and the README never mentions it.
 - DECISIONS.md must stay within 2 pages (~1,000 words, no code, tables or diagrams), with the full reasoning in six ADRs and a four-developer plan built on the 501-stubbed skeleton (owners: A import and scale, B conflicts and Review inbox, C vote page, timeline, positions, D snapshots and publication).
-- Container reclaims wipe the gitignored `data_candidate/`; real-data tests and the compose run need those files re-uploaded in a fresh session.
+- Container reclaims wipe the gitignored `candidate_data/`; real-data tests and the compose run need those files re-uploaded in a fresh session.

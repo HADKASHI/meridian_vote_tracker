@@ -3,7 +3,7 @@
 Run every script with:  python3 -I <script> [repo_root]
 (-I isolates from cwd; scripts add their own directory to sys.path explicitly.)
 Files that are absent are reported as "pending: file missing: <path>" and the
-dependent check is skipped, so the scripts run on any subset of data_candidate/.
+dependent check is skipped, so the scripts run on any subset of candidate_data/.
 """
 import csv
 import io
@@ -16,7 +16,7 @@ from datetime import date
 
 ROOT = sys.argv[1] if len(sys.argv) > 1 and not "=" in sys.argv[1] else os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
-DATA = os.path.join(ROOT, "data_candidate")
+DATA = os.path.join(ROOT, "candidate_data")
 HIST = os.path.join(DATA, "assembly_historic.csv")
 ORIG = os.path.join(DATA, "assembly_export_2024_q1.csv")
 REV2 = os.path.join(DATA, "assembly_export_2024_q1_rev2.csv")

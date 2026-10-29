@@ -12,7 +12,7 @@ In what order are the vertical slices built, so that a partial submission is sti
 
 - From [Design background jobs and live progress](10-background-jobs.md): compose gains `worker` and `azurite` services, and the integration tests need Azurite via Testcontainers. The Jobs list and the header indicator are UI to schedule.
 - From [Design snapshots](11-snapshots.md): candidate extra: comparing two snapshots (rank movement between quarters, or a publication and the one it superseded), a pure read over stored snapshot lines. The create dialog has a preview step (vote count, blocking "no position" list with "Remove these votes", warnings).
-- From [Lock the database schema](16-lock-database-schema.md): the first migration is fully specified in [research/16-schema.md](../research/16-schema.md), including tables, guard trigger, views and seeding by the `migrate` service from `data_candidate/member_states.csv`. The guard test, the decision-race test (unique index → 409) and the publication-race test are early, cheap wins that show integrity. The "Why this shape" section is ready-made material for DECISIONS.md.
+- From [Lock the database schema](16-lock-database-schema.md): the first migration is fully specified in [research/16-schema.md](../research/16-schema.md), including tables, guard trigger, views and seeding by the `migrate` service from `candidate_data/member_states.csv`. The guard test, the decision-race test (unique index → 409) and the publication-race test are early, cheap wins that show integrity. The "Why this shape" section is ready-made material for DECISIONS.md.
 
 ## Answer
 

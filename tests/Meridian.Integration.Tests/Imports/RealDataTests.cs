@@ -10,7 +10,7 @@ namespace Meridian.Integration.Tests.Imports;
 /// <summary>
 /// The real assignment files give the counts the data audit predicted (map ticket 08). Run
 /// on demand, never in CI: the files are client data and are never committed, so these
-/// tests skip themselves when <c>data_candidate/</c> is missing.
+/// tests skip themselves when <c>candidate_data/</c> is missing.
 /// </summary>
 [Trait("Category", "RealData")]
 public sealed class RealDataTests(PostgresFixture postgres, AzuriteFixture azurite)
@@ -67,16 +67,16 @@ public sealed class RealDataTests(PostgresFixture postgres, AzuriteFixture azuri
         return new ApiFactory(connectionString, azurite.ConnectionString);
     }
 
-    /// <summary><c>data_candidate/</c> at the repository root, or skips the test.</summary>
+    /// <summary><c>candidate_data/</c> at the repository root, or skips the test.</summary>
     private static string DataDirectory()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
         while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Meridian.slnx")))
             directory = directory.Parent;
-        var data = directory is null ? null : Path.Combine(directory.FullName, "data_candidate");
+        var data = directory is null ? null : Path.Combine(directory.FullName, "candidate_data");
         string[] files = ["member_states.csv", "assembly_export_2024_q1.csv", "assembly_export_2024_q1_rev2.csv", "assembly_historic.csv"];
         Assert.SkipUnless(data is not null && files.All(f => File.Exists(Path.Combine(data, f))),
-            "data_candidate/ with the assignment files is missing; real-data tests run only where the files are present.");
+            "candidate_data/ with the assignment files is missing; real-data tests run only where the files are present.");
         return data!;
     }
 }

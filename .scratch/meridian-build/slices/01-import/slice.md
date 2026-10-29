@@ -27,7 +27,7 @@ Committed CSV fixtures, one small file per import rule, plus the brief's 7.2 exa
 - every numbered rule of map ticket 08 has a named domain test
 - a retried import resumes from its committed votes and ends with the same report as an uninterrupted run
 - re-uploading the same file is warned as identical and changes nothing
-- the `RealData` test gives the audited counts when `data_candidate/` is present (it skips itself otherwise)
+- the `RealData` test gives the audited counts when `candidate_data/` is present (it skips itself otherwise)
 
 ## Tickets
 

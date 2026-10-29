@@ -63,8 +63,8 @@ services:
     entrypoint: ["/app/migrate/efbundle"]
     environment:
       <<: *backend-env
-      Seed__MemberStatesPath: /data_candidate/member_states.csv
-    volumes: ["${DATA_DIR:-./data_candidate}:/data_candidate:ro"]
+      Seed__MemberStatesPath: /candidate_data/member_states.csv
+    volumes: ["${DATA_DIR:-./candidate_data}:/candidate_data:ro"]
     depends_on:
       db: { condition: service_healthy }
     restart: "no"
@@ -204,5 +204,5 @@ The three jobs run in parallel. Nothing is pushed to a registry: there is no dep
 | Routing and CORS | Same origin: nginx proxies `/api/`; dev uses the Angular proxy | **CORS with configured origins**: the identity header from the user switcher makes every call a preflighted request, and it adds a setting that can be wrong. **Absolute API URL baked into the build**: one bundle per environment |
 | Local passwords | Compose defaults for throwaway local values; `.env` overrides | **`env_file: .env` required**: a clean clone fails until the reviewer copies a file. **Generated passwords**: a setup script before `docker compose up` |
 | Sandbox proxy | Separate file under `.claude/sandbox/` plus shadowed base images | **`compose.override.yaml`**: Compose loads it automatically. **Proxy and CA lines in the real Dockerfiles behind build args**: harmless, but visible to the reviewer and not needed by them. **Uncommitted file**: lost when the container is reclaimed (the reason `cloud-dev-setup.sh` is committed) |
-| Seed file mount | Short syntax `./data_candidate:/data_candidate:ro` | **Long syntax with `create_host_path: false`**: Compose stops with a generic bind-mount error. The short syntax creates an empty folder, and the seeder then fails with a message that says which file to put where |
+| Seed file mount | Short syntax `./candidate_data:/candidate_data:ro` | **Long syntax with `create_host_path: false`**: Compose stops with a generic bind-mount error. The short syntax creates an empty folder, and the seeder then fails with a message that says which file to put where |
 | Host ports | `127.0.0.1` only, configurable | **All interfaces**: the user switcher is not real authentication, so the app must not be reachable from the LAN. **Standard 5432 for PostgreSQL**: often already taken on a .NET developer's machine |

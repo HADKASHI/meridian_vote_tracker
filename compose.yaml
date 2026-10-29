@@ -1,5 +1,5 @@
 # docker compose up --build  →  http://localhost:8080
-# Needs data_candidate/member_states.csv (the assignment file); works with no .env.
+# Needs candidate_data/member_states.csv (the assignment file); works with no .env.
 name: meridian
 
 x-backend: &backend
@@ -49,9 +49,9 @@ services:
     entrypoint: ["/app/migrate/efbundle"]
     environment:
       <<: *backend-env
-      Seed__MemberStatesPath: /data_candidate/member_states.csv
+      Seed__MemberStatesPath: /candidate_data/member_states.csv
     # Only migrate reads the assignment data; the exports are uploaded through the UI.
-    volumes: ["${DATA_DIR:-./data_candidate}:/data_candidate:ro"]
+    volumes: ["${DATA_DIR:-./candidate_data}:/candidate_data:ro"]
     depends_on:
       db: { condition: service_healthy }
     restart: "no"

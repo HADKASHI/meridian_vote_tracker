@@ -5,11 +5,11 @@ Status: resolved
 
 ## Question
 
-Get the `data_candidate/` files (member_states.csv, assembly_export_2024_q1.csv, assembly_export_2024_q1_rev2.csv, assembly_historic.csv, voting_sheets/) into a gitignored `data_candidate/` folder at the repo root without them ever entering git history. HITL: the user uploads them, the agent adds the .gitignore entry, copies them in, and checks `git status` shows nothing to commit. Record file sizes and row counts for later tickets.
+Get the `candidate_data/` files (member_states.csv, assembly_export_2024_q1.csv, assembly_export_2024_q1_rev2.csv, assembly_historic.csv, voting_sheets/) into a gitignored `candidate_data/` folder at the repo root without them ever entering git history. HITL: the user uploads them, the agent adds the .gitignore entry, copies them in, and checks `git status` shows nothing to commit. Record file sizes and row counts for later tickets.
 
 ## Answer
 
-`data_candidate/` at the repo root is ignored by `.gitignore` (`/data_candidate/`); `git check-ignore` confirms it, and `git status` shows nothing from it to commit. The files must be uploaded again in each new cloud session.
+`candidate_data/` at the repo root is ignored by `.gitignore` (`/candidate_data/`); `git check-ignore` confirms it, and `git status` shows nothing from it to commit. The files must be uploaded again in each new cloud session.
 
 | File | Bytes | Lines (incl. header) | sha256 (first 16) |
 | --- | --- | --- | --- |
