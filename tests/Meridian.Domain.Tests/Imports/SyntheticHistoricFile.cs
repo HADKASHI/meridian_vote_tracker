@@ -15,7 +15,8 @@ public sealed class SyntheticHistoricFile
 {
     public const string Header = "assembly_vote_id,session,vote_date,resolution_title,country_code,country_name,ballot,published_at";
 
-    private const int Votes = 6_480;
+    /// <summary>The historic file's vote count; the default for <see cref="Generate"/>.</summary>
+    public const int HistoricVotes = 6_480;
     private const int VotesPerYear = 720;
     private const int FirstYear = 2015;
     private const int Members = 150;
@@ -27,7 +28,7 @@ public sealed class SyntheticHistoricFile
 
     public required ExpectedOutcomes Expected { get; init; }
 
-    public static SyntheticHistoricFile Generate(int seed = 20240229)
+    public static SyntheticHistoricFile Generate(int seed = 20240229, int votes = HistoricVotes)
     {
         var random = new Random(seed);
         var codes = Enumerable.Range(0, Members).Select(Code).ToList();
@@ -39,7 +40,7 @@ public sealed class SyntheticHistoricFile
         var beforeJoining = Enumerable.Range(0, VotesPerYear).OrderBy(_ => random.Next()).Take(2).ToList();
 
         // Each defect kind lands on votes of its own, so a vote shows one thing at a time.
-        var others = Enumerable.Range(0, Votes).Except(beforeJoining).OrderBy(_ => random.Next()).ToList();
+        var others = Enumerable.Range(0, votes).Except(beforeJoining).OrderBy(_ => random.Next()).ToList();
         var next = 0;
         HashSet<int> Pick(int count) { var set = others.Skip(next).Take(count).ToHashSet(); next += count; return set; }
         var duplicated = Pick(30);
@@ -51,10 +52,10 @@ public sealed class SyntheticHistoricFile
         // Two incomplete votes with no defects: the first misses 2 members, the second 3.
         var thin = others.Skip(next).Where(v => v >= VotesPerYear).Take(2).ToList();
 
-        var lines = new List<string>(Votes * Members);
+        var lines = new List<string>(votes * Members);
         var expected = new ExpectedOutcomes(0, 30, 32, 0);
         var badBallot = 0;
-        for (var vote = 0; vote < Votes; vote++)
+        for (var vote = 0; vote < votes; vote++)
         {
             var year = FirstYear + vote / VotesPerYear;
             var number = vote % VotesPerYear + 1;

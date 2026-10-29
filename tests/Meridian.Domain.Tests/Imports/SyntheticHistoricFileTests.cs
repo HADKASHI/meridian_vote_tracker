@@ -84,6 +84,17 @@ public sealed class SyntheticHistoricFileTests
         return new MemberStates(periods);
     }
 
+    [Fact]
+    public void Twice_the_votes_make_a_file_that_still_fits_under_the_200_MB_upload_limit()
+    {
+        var big = SyntheticHistoricFile.Generate(votes: 12_960);
+
+        Assert.Equal(12_960, Rows(big.Csv).Select(r => r[0]).Distinct().Count());
+        Assert.InRange(big.Csv.Length, 180L * 1024 * 1024, 200L * 1024 * 1024);
+        // The same 62 defects are scattered through the larger file.
+        Assert.Equal((30, 32), (big.Expected.Duplicate, big.Expected.Invalid));
+    }
+
     /// <summary>The data rows, split into fields, without the header.</summary>
     private static IEnumerable<IReadOnlyList<string>> Rows(byte[] csv)
     {
