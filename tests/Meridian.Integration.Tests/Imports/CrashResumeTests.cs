@@ -100,7 +100,7 @@ public sealed class CrashResumeTests(PostgresFixture postgres, AzuriteFixture az
 
         var job = await JobAsync(api, created.ImportId);
         Assert.Equal((JobState.Failed, 2, 4), (job.State, job.VotesDone, job.VotesTotal));
-        Assert.Equal("Unexpected DbUpdateException; find it in the logs by the job's trace id.", job.LastError);
+        Assert.Equal("Unexpected PostgresException; find it in the logs by the job's trace id.", job.LastError);
     }
 
     /// <summary>Approves vote 001 with BRA Y, so the file's BRA A is a conflict.</summary>

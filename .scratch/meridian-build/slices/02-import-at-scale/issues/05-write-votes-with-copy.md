@@ -4,8 +4,12 @@
 
 **Blocked by:** 02 Performance test.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] All slice 1 tests give the same results as before (including the brief's 7.2 example and crash resume)
-- [ ] The `Performance` test finishes within 5 minutes with the same outcome counts
-- [ ] Only the inside of `ImportWriter` changed; classification and its tests are untouched
+- [x] All slice 1 tests give the same results as before (including the brief's 7.2 example and crash resume)
+- [x] The `Performance` test finishes within 5 minutes with the same outcome counts
+- [x] Only the inside of `ImportWriter` changed; classification and its tests are untouched
+
+## Comments
+
+- One test line changed: the crash-resume test named EF's `DbUpdateException` in the job's redacted error; the same database failure now surfaces as `PostgresException`. The progress it asserts (2 of 4 votes kept) is unchanged.

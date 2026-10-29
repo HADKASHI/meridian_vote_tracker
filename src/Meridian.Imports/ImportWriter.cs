@@ -11,7 +11,8 @@ namespace Meridian.Imports;
 /// The bulk path's one seam (ADR 0005): writes an import one vote per transaction. It
 /// takes the vote's row lock first, reads what is approved for the vote under that lock,
 /// classifies the rows with the pure <see cref="Classifier"/>, and inserts the verdicts and
-/// what they change. Built with EF; only its insides change if the budget is missed.
+/// what they change. Reads go through EF; the inserts use binary COPY, because EF's
+/// SaveChanges took 82% of the historic import and missed the 5-minute budget (ADR 5).
 /// </summary>
 internal sealed class ImportWriter(MeridianDbContext db)
 {
@@ -76,12 +77,21 @@ internal sealed class ImportWriter(MeridianDbContext db)
         var ids = new Queue<long>(await ReserveIdsAsync(verdict.Rows.Count + newBallots + newBallotConflicts
             + (verdict.NewDetails is null ? 0 : 1) + (verdict.NewDetailsConflict is null ? 0 : 1), ct));
 
+        // The verdicts' inserts are collected and written with COPY at the end, in foreign-key order.
+        List<Conflict> conflicts = [];
+        List<ImportRow> importRows = [];
+        List<VoteDetailsRevision> detailsRevisions = [];
+        List<VoteCurrent> voteCurrents = [];
+        List<CountryVoteRevision> ballotRevisions = [];
+        List<CountryVoteCurrent> ballotCurrents = [];
+        List<ImportRowConflict> rowConflicts = [];
+
         var rowIds = verdict.Rows.Select(_ => ids.Dequeue()).ToList();
         long? detailsConflictId = null;
         if (verdict.NewDetailsConflict is { } incoming)
         {
             detailsConflictId = ids.Dequeue();
-            db.Conflicts.Add(new Conflict
+            conflicts.Add(new Conflict
             {
                 Id = detailsConflictId.Value, VoteId = voteId!.Value, Subject = ConflictSubject.Details, OpenedByImportId = importId,
                 IncomingSession = incoming.Session, IncomingVoteDate = incoming.VoteDate, IncomingTitle = incoming.Title,
@@ -94,13 +104,13 @@ internal sealed class ImportWriter(MeridianDbContext db)
         {
             newDetailsId = ids.Dequeue();
             var origin = verdict.Rows.Select((r, i) => (r, i)).First(x => x.r.Details.Kind == LinkKind.NewRevision).i;
-            db.VoteDetailsRevisions.Add(new VoteDetailsRevision
+            detailsRevisions.Add(new VoteDetailsRevision
             {
                 Id = newDetailsId.Value, VoteId = voteId!.Value, Session = details.Session, VoteDate = details.VoteDate,
                 Title = details.Title, OriginImportRowId = rowIds[origin],
             });
             if (approved.Details is null)
-                db.VoteCurrents.Add(new VoteCurrent { VoteId = voteId.Value, DetailsRevisionId = newDetailsId.Value });
+                voteCurrents.Add(new VoteCurrent { VoteId = voteId.Value, DetailsRevisionId = newDetailsId.Value });
         }
 
         for (var i = 0; i < verdict.Rows.Count; i++)
@@ -115,18 +125,18 @@ internal sealed class ImportWriter(MeridianDbContext db)
             if (row.Ballot.Kind == LinkKind.NewRevision)
             {
                 var state = row.Values!.StateCode!;
-                db.CountryVoteRevisions.Add(new CountryVoteRevision
+                ballotRevisions.Add(new CountryVoteRevision
                 {
                     Id = ballotRevisionId!.Value, VoteId = voteId!.Value, StateCode = state, Ballot = row.Values.Ballot!.Value,
                     OriginImportRowId = rowIds[i],
                 });
-                db.CountryVoteCurrents.Add(new CountryVoteCurrent { VoteId = voteId.Value, StateCode = state, RevisionId = ballotRevisionId.Value });
+                ballotCurrents.Add(new CountryVoteCurrent { VoteId = voteId.Value, StateCode = state, RevisionId = ballotRevisionId.Value });
             }
             if (row.Ballot.Kind == LinkKind.NewConflict)
             {
                 var state = row.Values!.StateCode!;
                 var conflictId = ids.Dequeue();
-                db.Conflicts.Add(new Conflict
+                conflicts.Add(new Conflict
                 {
                     Id = conflictId, VoteId = voteId!.Value, Subject = ConflictSubject.Ballot, OpenedByImportId = importId,
                     StateCode = state, IncomingBallot = row.Values.Ballot, ComparedCountryVoteRevisionId = approved.Ballots[state].RevisionId,
@@ -137,7 +147,7 @@ internal sealed class ImportWriter(MeridianDbContext db)
             if (row.Details.Kind == LinkKind.NewConflict) Link(rowIds[i], detailsConflictId!.Value);
             else if (row.Details.Kind == LinkKind.Conflict) Link(rowIds[i], row.Details.Id!.Value);
 
-            db.ImportRows.Add(ToRecord(importId, voteId, rowIds[i], row, ballotRevisionId, row.Details.Kind switch
+            importRows.Add(ToRecord(importId, voteId, rowIds[i], row, ballotRevisionId, row.Details.Kind switch
             {
                 LinkKind.NewRevision => newDetailsId,
                 LinkKind.Approved => row.Details.Id,
@@ -145,10 +155,16 @@ internal sealed class ImportWriter(MeridianDbContext db)
             }));
         }
         await db.SaveChangesAsync(ct);
-    }
+        await BulkCopy.InsertAsync(db, conflicts, ct);
+        await BulkCopy.InsertAsync(db, importRows, ct);
+        await BulkCopy.InsertAsync(db, detailsRevisions, ct);
+        await BulkCopy.InsertAsync(db, voteCurrents, ct);
+        await BulkCopy.InsertAsync(db, ballotRevisions, ct);
+        await BulkCopy.InsertAsync(db, ballotCurrents, ct);
+        await BulkCopy.InsertAsync(db, rowConflicts, ct);
 
-    private void Link(long rowId, long conflictId) =>
-        db.ImportRowConflicts.Add(new ImportRowConflict { ImportRowId = rowId, ConflictId = conflictId });
+        void Link(long rowId, long conflictId) => rowConflicts.Add(new ImportRowConflict { ImportRowId = rowId, ConflictId = conflictId });
+    }
 
     private static ImportRow ToRecord(long importId, long? voteId, long id, RowVerdict row, long? ballotRevisionId, long? detailsRevisionId) => new()
     {
