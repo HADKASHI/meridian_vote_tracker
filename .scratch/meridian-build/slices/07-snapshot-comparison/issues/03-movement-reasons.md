@@ -4,12 +4,12 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Each state carries a list of reasons, one per vote whose matched or counted weight differs between A and B, with the vote, whether it is in both snapshots or only one, and what changed on each side (category, ballot used, stance, weight)
-- [ ] A vote only in A, or only in B, is a reason when it counted for the state there; a vote that is in both and counted the same is not listed
-- [ ] The reasons add up: for every state the sum of matched and counted weight changes over its reasons equals the difference between the stored matched and counted weight in B and in A
-- [ ] A changed ballot (an accepted conflict between the snapshots), a changed position (stance or weight) and a different vote set are each proven by a named integration test through the HTTP API
-- [ ] A state n/a in one or both snapshots, and a state with no difference, return an empty list rather than null
-- [ ] It reads stored data only: later changes to approved data or positions do not change the reasons
-- [ ] The OpenAPI file is regenerated for the changed response only; no endpoint is added and no migration is needed
+- [x] Each state carries a list of reasons, one per vote whose matched or counted weight differs between A and B, with the vote, whether it is in both snapshots or only one, and what changed on each side (category, ballot used, stance, weight)
+- [x] A vote only in A, or only in B, is a reason when it counted for the state there; a vote that is in both and counted the same is not listed
+- [x] The reasons add up: for every state the sum of matched and counted weight changes over its reasons equals the difference between the stored matched and counted weight in B and in A
+- [x] A changed ballot (an accepted conflict between the snapshots), a changed position (stance or weight) and a different vote set are each proven by a named integration test through the HTTP API
+- [x] A state n/a in one or both snapshots, and a state with no difference, return an empty list rather than null
+- [x] It reads stored data only: later changes to approved data or positions do not change the reasons
+- [x] The OpenAPI file is regenerated for the changed response only; no endpoint is added and no migration is needed

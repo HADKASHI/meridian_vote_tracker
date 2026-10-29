@@ -94,10 +94,31 @@ public sealed record SnapshotRefDto(long Id, string Name, DateTimeOffset Created
 /// <summary>What a score rests on: countable votes and the weight matched out of the weight counted.</summary>
 public sealed record ScoreBasisDto(int CountableVotes, int MatchedWeight, int CountedWeight);
 
+/// <summary>Whether a vote is in both snapshots or only one, for a reason a state moved.</summary>
+public enum ReasonKind { OnlyInA, OnlyInB, Changed }
+
+/// <summary>What differs for a vote in both snapshots.</summary>
+public enum ReasonChange { Category, Ballot, Stance, Weight }
+
+/// <summary>How one snapshot treated a vote for a state: the category, the ballot it used and the position.</summary>
+public sealed record ReasonSideDto(LineCategory Category, Ballot? Ballot, Stance Stance, short Weight);
+
+/// <summary>
+/// A vote that changed what a state matched or counted between A and B. <c>MatchedChange</c> and
+/// <c>CountedChange</c> are B minus A, so a state's reasons add up to its change in matched and counted weight.
+/// </summary>
+/// <param name="A">How A treated the vote; null for a vote only in B.</param>
+/// <param name="B">How B treated the vote; null for a vote only in A.</param>
+public sealed record MovementReasonDto(
+    VoteRefDto Vote, string Title, ReasonKind Kind, IReadOnlyList<ReasonChange> Changes,
+    ReasonSideDto? A, ReasonSideDto? B, int MatchedChange, int CountedChange);
+
 /// <param name="BasisA">What the score in A rests on; null when the state has no result in A.</param>
+/// <param name="Reasons">The votes that explain the movement; empty when the state's weights did not change.</param>
 public sealed record StateMovementDto(
     string StateCode, string StateName, double? ScoreA, int? RankA, ScoreBasisDto? BasisA,
-    double? ScoreB, int? RankB, ScoreBasisDto? BasisB, double? ScoreChange, int? RankChange);
+    double? ScoreB, int? RankB, ScoreBasisDto? BasisB, double? ScoreChange, int? RankChange,
+    IReadOnlyList<MovementReasonDto> Reasons);
 
 public sealed record SnapshotComparisonDto(SnapshotRefDto A, SnapshotRefDto B, IReadOnlyList<StateMovementDto> States);
 

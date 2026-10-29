@@ -2474,6 +2474,64 @@
           }
         }
       },
+      "MovementReasonDto": {
+        "required": [
+          "vote",
+          "title",
+          "kind",
+          "changes",
+          "a",
+          "b",
+          "matchedChange",
+          "countedChange"
+        ],
+        "type": "object",
+        "properties": {
+          "vote": {
+            "$ref": "#/components/schemas/VoteRefDto"
+          },
+          "title": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ReasonKind"
+          },
+          "changes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReasonChange"
+            }
+          },
+          "a": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ReasonSideDto"
+              }
+            ]
+          },
+          "b": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ReasonSideDto"
+              }
+            ]
+          },
+          "matchedChange": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "countedChange": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "NoPositionProblem": {
         "required": [
           "votes",
@@ -3118,6 +3176,52 @@
           }
         }
       },
+      "ReasonChange": {
+        "enum": [
+          "category",
+          "ballot",
+          "stance",
+          "weight"
+        ]
+      },
+      "ReasonKind": {
+        "enum": [
+          "only_in_a",
+          "only_in_b",
+          "changed"
+        ]
+      },
+      "ReasonSideDto": {
+        "required": [
+          "category",
+          "ballot",
+          "stance",
+          "weight"
+        ],
+        "type": "object",
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/LineCategory"
+          },
+          "ballot": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Ballot"
+              }
+            ]
+          },
+          "stance": {
+            "$ref": "#/components/schemas/Stance"
+          },
+          "weight": {
+            "type": "integer",
+            "format": "int16"
+          }
+        }
+      },
       "Role": {
         "enum": [
           "analyst",
@@ -3679,7 +3783,8 @@
           "rankB",
           "basisB",
           "scoreChange",
-          "rankChange"
+          "rankChange",
+          "reasons"
         ],
         "type": "object",
         "properties": {
@@ -3750,6 +3855,12 @@
               "integer"
             ],
             "format": "int32"
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MovementReasonDto"
+            }
           }
         }
       },

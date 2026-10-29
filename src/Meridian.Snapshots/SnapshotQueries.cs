@@ -87,6 +87,7 @@ internal static class SnapshotQueries
     {
         var names = await db.MemberStates.AsNoTracking().ToDictionaryAsync(s => s.Code, s => s.Name, ct);
         var (resultsA, resultsB) = (await StoredAsync(db, a.Id, ct), await StoredAsync(db, b.Id, ct));
+        var reasons = ReasonsFor(await StoredLinesAsync(db, a.Id, ct), await StoredLinesAsync(db, b.Id, ct));
 
         var states = resultsA.Keys.Union(resultsB.Keys).Select(code =>
         {
@@ -95,11 +96,66 @@ internal static class SnapshotQueries
             var (rankA, rankB) = (resultA?.Rank, resultB?.Rank);
             return new StateMovementDto(code, names[code], scoreA, rankA, BasisOf(resultA), scoreB, rankB, BasisOf(resultB),
                 scoreA is { } sa && scoreB is { } sb ? sb - sa : null,
-                rankA is { } ra && rankB is { } rb ? ra - rb : null);
+                rankA is { } ra && rankB is { } rb ? ra - rb : null, reasons[code].ToList());
         });
         return new SnapshotComparisonDto(a, b, states
             .OrderBy(s => s.RankB is null).ThenBy(s => s.RankB).ThenBy(s => s.StateCode, StringComparer.Ordinal)
             .ToList());
+    }
+
+    private sealed record StoredLine(
+        long VoteId, string AssemblyVoteId, string Title, string StateCode, LineCategory Category, Ballot? Ballot,
+        Stance Stance, short Weight)
+    {
+        public int Matched => Category == LineCategory.Match ? Weight : 0;
+        public int Counted => Category is LineCategory.Match or LineCategory.Mismatch ? Weight : 0;
+        public ReasonSideDto Side => new(Category, Ballot, Stance, Weight);
+    }
+
+    /// <summary>Every stored line of a snapshot with the position and the ballot it used.</summary>
+    private static async Task<List<StoredLine>> StoredLinesAsync(MeridianDbContext db, long snapshotId, CancellationToken ct) =>
+        await (
+                from l in db.SnapshotLines
+                where l.SnapshotId == snapshotId
+                join sv in db.SnapshotVotes on new { l.SnapshotId, l.VoteId } equals new { sv.SnapshotId, sv.VoteId }
+                join v in db.Votes on l.VoteId equals v.Id
+                join d in db.VoteDetailsRevisions on sv.DetailsRevisionId equals d.Id
+                join p in db.PositionRevisions on sv.PositionRevisionId equals p.Id
+                join c in db.CountryVoteRevisions on l.CountryVoteRevisionId equals c.Id into ballots
+                from c in ballots.DefaultIfEmpty()
+                select new StoredLine(v.Id, v.AssemblyVoteId, d.Title, l.StateCode, l.Category, c != null ? c.Ballot : null,
+                    p.Stance, p.Weight))
+            .AsNoTracking().ToListAsync(ct);
+
+    /// <summary>
+    /// Per state, the votes whose matched or counted weight differs between A and B, by assembly vote id. A vote
+    /// that only moved between abstain, absent, non-member and no data changes no score and is not a reason.
+    /// </summary>
+    private static ILookup<string, MovementReasonDto> ReasonsFor(List<StoredLine> linesA, List<StoredLine> linesB)
+    {
+        var inA = linesA.ToDictionary(l => (l.VoteId, l.StateCode));
+        var inB = linesB.ToDictionary(l => (l.VoteId, l.StateCode));
+        return inA.Keys.Union(inB.Keys).Select(key =>
+            {
+                var (a, b) = (inA.GetValueOrDefault(key), inB.GetValueOrDefault(key));
+                var (matchedChange, countedChange) = ((b?.Matched ?? 0) - (a?.Matched ?? 0), (b?.Counted ?? 0) - (a?.Counted ?? 0));
+                if (matchedChange == 0 && countedChange == 0) return ((string StateCode, MovementReasonDto Reason)?)null;
+                var shown = (b ?? a)!;
+                var changes = new List<ReasonChange>();
+                if (a is not null && b is not null)
+                {
+                    if (a.Category != b.Category) changes.Add(ReasonChange.Category);
+                    if (a.Ballot != b.Ballot) changes.Add(ReasonChange.Ballot);
+                    if (a.Stance != b.Stance) changes.Add(ReasonChange.Stance);
+                    if (a.Weight != b.Weight) changes.Add(ReasonChange.Weight);
+                }
+                return ((string StateCode, MovementReasonDto Reason)?)(key.StateCode, new MovementReasonDto(new VoteRefDto(shown.VoteId, shown.AssemblyVoteId), shown.Title,
+                    a is null ? ReasonKind.OnlyInB : b is null ? ReasonKind.OnlyInA : ReasonKind.Changed, changes,
+                    a?.Side, b?.Side, matchedChange, countedChange));
+            })
+            .Where(r => r is not null).Select(r => r!.Value)
+            .OrderBy(r => r.Reason.Vote.AssemblyVoteId, StringComparer.Ordinal)
+            .ToLookup(r => r.StateCode, r => r.Reason);
     }
 
     /// <summary>True when every one of the snapshots has finished calculating.</summary>

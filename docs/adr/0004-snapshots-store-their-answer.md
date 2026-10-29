@@ -25,5 +25,5 @@ A published Alignment Index must read the same a year later, even after the data
 ## Consequences
 
 - A snapshot over all history is about 1M lines (about 70 MB); a quarter's is far smaller.
-- Comparing two snapshots is a pure read over stored results and lines.
+- Comparing two snapshots is a pure read over stored results, lines, votes and the ballots they used. It can say why a state moved (the votes whose matched or counted weight differs) because every snapshot kept the revisions it used, and the reasons come in the same response as the movement.
 - Unpublishing without a replacement is not offered.

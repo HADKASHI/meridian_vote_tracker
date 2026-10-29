@@ -25,6 +25,10 @@ public sealed class SnapshotComparisonTests(PostgresFixture postgres, AzuriteFix
             basis.GetProperty("countedWeight").GetInt32());
     }
 
+    private static List<JsonElement> Reasons(JsonElement state) => state.GetProperty("reasons").EnumerateArray().ToList();
+
+    private static string?[] Strings(JsonElement list) => list.EnumerateArray().Select(e => e.GetString()).ToArray();
+
     private static double? Number(JsonElement value) => value.ValueKind == JsonValueKind.Null ? null : value.GetDouble();
 
     [Fact]
@@ -105,13 +109,15 @@ public sealed class SnapshotComparisonTests(PostgresFixture postgres, AzuriteFix
         await fx.CountryVotesAsync(vote, ("ARG", Y), ("BRA", N));
         await fx.PositionAsync(vote, Stance.Yes, 2);
         var a = await fx.SnapshotAsync("Before", [vote]);
-        var b = await fx.SnapshotAsync("Same data", [vote]);
-        var before = (await CompareAsync(api, a.Id, b.Id)).GetRawText();
+        await fx.PositionAsync(vote, Stance.Yes, 3);
+        var b = await fx.SnapshotAsync("Heavier", [vote]);
+        var before = await CompareAsync(api, a.Id, b.Id);
+        Assert.Equal(1, Reasons(State(before, "ARG")).Single().GetProperty("matchedChange").GetInt32());
 
         await fx.DecideAsync(await fx.BallotConflictAsync(vote, "BRA", Y), Decision.Accept);
         await fx.PositionAsync(vote, Stance.No, 5);
 
-        Assert.Equal(before, (await CompareAsync(api, a.Id, b.Id)).GetRawText());
+        Assert.Equal(before.GetRawText(), (await CompareAsync(api, a.Id, b.Id)).GetRawText());
     }
 
     [Fact]
@@ -130,5 +136,114 @@ public sealed class SnapshotComparisonTests(PostgresFixture postgres, AzuriteFix
         await (await api.ClientAs("dana").GetAsync($"/api/snapshots/compare?a={done.Id}&b={queued}", Ct)).AssertProblemAsync(400, "bad-request");
         Assert.Equal(401, (int)(await api.ClientAs(null).GetAsync($"/api/snapshots/compare?a={done.Id}&b={done.Id}", Ct)).StatusCode);
         Assert.Equal(200, (int)(await api.ClientAs("lena").GetAsync($"/api/snapshots/compare?a={done.Id}&b={done.Id}", Ct)).StatusCode);
+    }
+
+    [Fact]
+    public async Task A_ballot_changed_between_the_snapshots_is_the_reason_the_state_moved()
+    {
+        await using var api = await ApiFactory.CreateAsync(postgres, azurite);
+        await using var fx = Meridian.Fixtures.Fixtures.For(api.ConnectionString);
+        var vote = await fx.VoteAsync("MA/2024/001", new DateOnly(2024, 1, 10), title: "Ocean Treaty");
+        await fx.CountryVotesAsync(vote, ("BRA", N), ("ARG", Y));
+        await fx.PositionAsync(vote, Stance.Yes, 2);
+        var a = await fx.SnapshotAsync("Before the decision", [vote]);
+        await fx.DecideAsync(await fx.BallotConflictAsync(vote, "BRA", Y), Decision.Accept);
+        var b = await fx.SnapshotAsync("After the decision", [vote]);
+
+        var comparison = await CompareAsync(api, a.Id, b.Id);
+
+        var bra = State(comparison, "BRA");
+        var reason = Assert.Single(Reasons(bra));
+        Assert.Equal(("MA/2024/001", "Ocean Treaty", "changed"), (reason.GetProperty("vote").GetProperty("assemblyVoteId").GetString(),
+            reason.GetProperty("title").GetString(), reason.GetProperty("kind").GetString()));
+        Assert.Equal(["category", "ballot"], Strings(reason.GetProperty("changes")));
+        Assert.Equal(("mismatch", "n", "yes", 2), (reason.GetProperty("a").GetProperty("category").GetString(),
+            reason.GetProperty("a").GetProperty("ballot").GetString(), reason.GetProperty("a").GetProperty("stance").GetString(),
+            reason.GetProperty("a").GetProperty("weight").GetInt32()));
+        Assert.Equal(("match", "y"), (reason.GetProperty("b").GetProperty("category").GetString(), reason.GetProperty("b").GetProperty("ballot").GetString()));
+        // BRA went from 0 of 2 to 2 of 2: the reason carries exactly that change.
+        Assert.Equal((2, 0), (reason.GetProperty("matchedChange").GetInt32(), reason.GetProperty("countedChange").GetInt32()));
+        // ARG voted the same in both: no reasons, an empty list rather than null.
+        Assert.Empty(Reasons(State(comparison, "ARG")));
+    }
+
+    [Fact]
+    public async Task A_changed_position_is_the_reason_when_the_stance_flips_a_match_into_a_mismatch_and_the_weight_moves()
+    {
+        await using var api = await ApiFactory.CreateAsync(postgres, azurite);
+        await using var fx = Meridian.Fixtures.Fixtures.For(api.ConnectionString);
+        var vote = await fx.VoteAsync("MA/2024/001", new DateOnly(2024, 1, 10));
+        await fx.CountryVotesAsync(vote, ("BRA", Y));
+        await fx.PositionAsync(vote, Stance.Yes, 2);
+        var a = await fx.SnapshotAsync("Yes, weight 2", [vote]);
+        await fx.PositionAsync(vote, Stance.No, 5);
+        var b = await fx.SnapshotAsync("No, weight 5", [vote]);
+
+        var reason = Assert.Single(Reasons(State(await CompareAsync(api, a.Id, b.Id), "BRA")));
+
+        Assert.Equal(["category", "stance", "weight"], Strings(reason.GetProperty("changes")));
+        Assert.Equal(("match", "yes", 2, "mismatch", "no", 5), (reason.GetProperty("a").GetProperty("category").GetString(),
+            reason.GetProperty("a").GetProperty("stance").GetString(), reason.GetProperty("a").GetProperty("weight").GetInt32(),
+            reason.GetProperty("b").GetProperty("category").GetString(), reason.GetProperty("b").GetProperty("stance").GetString(),
+            reason.GetProperty("b").GetProperty("weight").GetInt32()));
+        Assert.Equal((-2, 3), (reason.GetProperty("matchedChange").GetInt32(), reason.GetProperty("countedChange").GetInt32()));
+    }
+
+    [Fact]
+    public async Task A_vote_only_in_one_snapshot_is_a_reason_but_only_when_it_counted_for_the_state()
+    {
+        await using var api = await ApiFactory.CreateAsync(postgres, azurite);
+        await using var fx = Meridian.Fixtures.Fixtures.For(api.ConnectionString);
+        var shared = await fx.VoteAsync("MA/2024/001", new DateOnly(2024, 1, 10));
+        await fx.CountryVotesAsync(shared, ("BRA", Y), ("ARG", Y));
+        await fx.PositionAsync(shared, Stance.Yes, 1);
+        var added = await fx.VoteAsync("MA/2024/002", new DateOnly(2024, 2, 10), title: "Space Debris");
+        await fx.CountryVotesAsync(added, ("BRA", N), ("ARG", A));
+        await fx.PositionAsync(added, Stance.Yes, 4);
+        var a = await fx.SnapshotAsync("One vote", [shared]);
+        var b = await fx.SnapshotAsync("Two votes", [shared, added]);
+
+        var comparison = await CompareAsync(api, a.Id, b.Id);
+
+        var reason = Assert.Single(Reasons(State(comparison, "BRA")));
+        Assert.Equal(("only_in_b", "MA/2024/002", "Space Debris"), (reason.GetProperty("kind").GetString(),
+            reason.GetProperty("vote").GetProperty("assemblyVoteId").GetString(), reason.GetProperty("title").GetString()));
+        Assert.Equal(JsonValueKind.Null, reason.GetProperty("a").ValueKind);
+        Assert.Equal(("mismatch", "n"), (reason.GetProperty("b").GetProperty("category").GetString(), reason.GetProperty("b").GetProperty("ballot").GetString()));
+        Assert.Empty(reason.GetProperty("changes").EnumerateArray());
+        Assert.Equal((0, 4), (reason.GetProperty("matchedChange").GetInt32(), reason.GetProperty("countedChange").GetInt32()));
+        // ARG abstained on the added vote: it counted for nothing, so it explains nothing.
+        Assert.Empty(Reasons(State(comparison, "ARG")));
+    }
+
+    [Fact]
+    public async Task Every_states_reasons_add_up_to_its_change_in_matched_and_counted_weight()
+    {
+        await using var api = await ApiFactory.CreateAsync(postgres, azurite);
+        await using var fx = Meridian.Fixtures.Fixtures.For(api.ConnectionString);
+        var first = await fx.VoteAsync("MA/2024/001", new DateOnly(2024, 1, 10));
+        await fx.CountryVotesAsync(first, ("ARG", Y), ("BRA", N), ("FRA", Y), ("CIV", A));
+        await fx.PositionAsync(first, Stance.Yes, 2);
+        var second = await fx.VoteAsync("MA/2024/002", new DateOnly(2024, 2, 10));
+        await fx.CountryVotesAsync(second, ("ARG", N), ("BRA", N), ("FRA", Y), ("CIV", X));
+        await fx.PositionAsync(second, Stance.No, 3);
+        var a = await fx.SnapshotAsync("First vote", [first]);
+        await fx.DecideAsync(await fx.BallotConflictAsync(first, "ARG", N), Decision.Accept);
+        await fx.PositionAsync(first, Stance.Yes, 5);
+        var b = await fx.SnapshotAsync("Both votes, revised", [first, second]);
+
+        var comparison = await CompareAsync(api, a.Id, b.Id);
+
+        foreach (var state in comparison.GetProperty("states").EnumerateArray())
+        {
+            var (basisA, basisB) = (state.GetProperty("basisA"), state.GetProperty("basisB"));
+            var reasons = Reasons(state);
+            Assert.Equal(basisB.GetProperty("matchedWeight").GetInt32() - basisA.GetProperty("matchedWeight").GetInt32(),
+                reasons.Sum(r => r.GetProperty("matchedChange").GetInt32()));
+            Assert.Equal(basisB.GetProperty("countedWeight").GetInt32() - basisA.GetProperty("countedWeight").GetInt32(),
+                reasons.Sum(r => r.GetProperty("countedChange").GetInt32()));
+        }
+        // CIV abstained then was absent, FRA voted the same way on an unchanged vote: nothing to explain.
+        Assert.Empty(Reasons(State(comparison, "CIV")));
     }
 }
