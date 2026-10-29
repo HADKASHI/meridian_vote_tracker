@@ -32,7 +32,6 @@ public static class AlignmentScoring
     public static ScoredSnapshot Score(IEnumerable<ScoringFact> facts, RuleSet? ruleSet = null)
     {
         ruleSet ??= RuleSets.Default;
-        var unit = ruleSet.WeightUnit;
         var lines = new List<ScoredLine>();
         var totals = new Dictionary<string, (int Matched, int Counted, int Countable)>(StringComparer.Ordinal);
         foreach (var fact in facts)
@@ -40,22 +39,13 @@ public static class AlignmentScoring
             var category = Categorise(fact);
             lines.Add(new ScoredLine(fact.VoteId, fact.StateCode, category));
             var (matched, counted, countable) = totals.GetValueOrDefault(fact.StateCode);
-            totals[fact.StateCode] = category switch
-            {
-                LineCategory.Match => (matched + fact.Weight * unit, counted + fact.Weight * unit, countable + 1),
-                LineCategory.Mismatch => (matched, counted + fact.Weight * unit, countable + 1),
-                LineCategory.Abstain => Counted(ruleSet.Abstention, fact.Weight, matched, counted, countable),
-                LineCategory.Absent => Counted(ruleSet.Absence, fact.Weight, matched, counted, countable),
-                _ => (matched, counted, countable),
-            };
+            var (addedMatched, addedCounted) = ruleSet.Points(category, fact.Weight);
+            totals[fact.StateCode] = (matched + addedMatched, counted + addedCounted,
+                category is LineCategory.Match or LineCategory.Mismatch ? countable + 1 : countable);
         }
 
         return new ScoredSnapshot(lines, Rank(totals));
     }
-
-    /// <summary>An abstention or an absence adds what the rule set says; it is never a countable vote.</summary>
-    private static (int, int, int) Counted(Treatment treatment, short weight, int matched, int counted, int countable) =>
-        treatment.Counts ? (matched + weight * treatment.Credit, counted + weight * treatment.Unit, countable) : (matched, counted, countable);
 
     /// <summary>
     /// Rules 1–4: only a member's yes or no is countable. Membership comes first, so a

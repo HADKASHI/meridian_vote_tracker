@@ -13,11 +13,19 @@ export function formatScore(score: number | null): string {
   return score === null ? 'n/a' : score.toFixed(1);
 }
 
-/** "10 countable votes · 20 of 32 weight matched", or "nothing countable". */
-export function scoreBasis(facts: Omit<ScoreFacts, 'score'>): string {
-  if (facts.countableVotes === 0) return 'nothing countable';
+/** Weight from stored points of 1 ÷ unit of a weight (ADR 0007): 7 points of 2 is 3.5. */
+export function formatWeight(points: number, unit = 1): string {
+  return `${Math.round((points / unit) * 100) / 100}`;
+}
+
+/**
+ * "10 countable votes · 20 of 32 weight matched", or "nothing countable". Weights are in points of
+ * 1 ÷ <code>unit</code>. A rule set that counts abstentions can count weight with no countable vote.
+ */
+export function scoreBasis(facts: Omit<ScoreFacts, 'score'>, unit = 1): string {
+  if (facts.countableVotes === 0 && facts.countedWeight === 0) return 'nothing countable';
   const votes = `${facts.countableVotes} countable ${facts.countableVotes === 1 ? 'vote' : 'votes'}`;
-  return `${votes} · ${facts.matchedWeight} of ${facts.countedWeight} weight matched`;
+  return `${votes} · ${formatWeight(facts.matchedWeight, unit)} of ${formatWeight(facts.countedWeight, unit)} weight matched`;
 }
 
 /** A score to 1 decimal (n/a when nothing is countable), always beside its basis. */
@@ -45,6 +53,8 @@ export function scoreBasis(facts: Omit<ScoreFacts, 'score'>): string {
 })
 export class ScoreWithBasis {
   readonly result = input.required<ScoreFacts>();
+  /** The rule set's weight unit, when the weights are stored in points. */
+  readonly unit = input(1);
   protected readonly score = computed(() => formatScore(this.result().score));
-  protected readonly basis = computed(() => scoreBasis(this.result()));
+  protected readonly basis = computed(() => scoreBasis(this.result(), this.unit()));
 }

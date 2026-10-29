@@ -4,12 +4,12 @@
 
 **Blocked by:** 01 Create a snapshot under a chosen rule set
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Movement reasons count matched and counted weight per the snapshot's own rule set, so an abstention that earns credit in one side shows as a reason
-- [ ] The comparison response names the rule set of A and of B and says whether they differ
-- [ ] Two snapshots under the same rule set compare exactly as before
-- [ ] The compare screen shows both rule set names and a warning only when they differ
-- [ ] Integration tests compare the same data under two rule sets and under the same rule set; a Vitest spec covers the warning
-- [ ] The OpenAPI file is regenerated for this endpoint only
+- [x] Movement reasons count matched and counted weight per the snapshot's own rule set, so an abstention that earns credit in one side shows as a reason
+- [x] The comparison response names the rule set of A and of B and says whether they differ
+- [x] Two snapshots under the same rule set compare exactly as before
+- [x] The compare screen shows both rule set names and a warning only when they differ
+- [x] Integration tests compare the same data under two rule sets and under the same rule set; a Vitest spec covers the warning
+- [x] The OpenAPI file is regenerated for this endpoint only
 

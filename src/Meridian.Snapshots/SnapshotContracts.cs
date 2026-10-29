@@ -116,7 +116,7 @@ public sealed record SnapshotLineDto(
 
 public sealed record SnapshotBreakdownDto(SnapshotResultDto Result, IReadOnlyList<SnapshotLineDto> Lines);
 
-public sealed record SnapshotRefDto(long Id, string Name, DateTimeOffset CreatedAt);
+public sealed record SnapshotRefDto(long Id, string Name, DateTimeOffset CreatedAt, RuleSetDto RuleSet);
 
 /// <summary>What a score rests on: countable votes and the weight matched out of the weight counted.</summary>
 public sealed record ScoreBasisDto(int CountableVotes, int MatchedWeight, int CountedWeight);
@@ -125,7 +125,8 @@ public sealed record ScoreBasisDto(int CountableVotes, int MatchedWeight, int Co
 public enum ReasonKind { OnlyInA, OnlyInB, Changed }
 
 /// <summary>What differs for a vote in both snapshots.</summary>
-public enum ReasonChange { Category, Ballot, Stance, Weight }
+/// <param name="Rules">Category, ballot, position and weight are the same, but the two rule sets count it differently.</param>
+public enum ReasonChange { Category, Ballot, Stance, Weight, Rules }
 
 /// <summary>How one snapshot treated a vote for a state: the category, the ballot it used and the position.</summary>
 public sealed record ReasonSideDto(LineCategory Category, Ballot? Ballot, Stance Stance, short Weight);
@@ -147,7 +148,12 @@ public sealed record StateMovementDto(
     double? ScoreB, int? RankB, ScoreBasisDto? BasisB, double? ScoreChange, int? RankChange,
     IReadOnlyList<MovementReasonDto> Reasons);
 
-public sealed record SnapshotComparisonDto(SnapshotRefDto A, SnapshotRefDto B, IReadOnlyList<StateMovementDto> States);
+/// <summary>
+/// <c>RuleSetsDiffer</c> is the warning that the movement mixes a change of rules with a change of data. Every weight in the
+/// states and their reasons is in points of 1 ÷ <c>WeightUnit</c> of a weight, the finest unit of the two rule sets.
+/// </summary>
+public sealed record SnapshotComparisonDto(
+    SnapshotRefDto A, SnapshotRefDto B, bool RuleSetsDiffer, int WeightUnit, IReadOnlyList<StateMovementDto> States);
 
 /// <summary>What changed a value: a person setting a position, an import row, or a conflict decision.</summary>
 public enum ChangeOriginKind { Position, Import, Decision }

@@ -86,29 +86,42 @@ internal static class SnapshotQueries
         CancellationToken ct)
     {
         var names = await db.MemberStates.AsNoTracking().ToDictionaryAsync(s => s.Code, s => s.Name, ct);
+        // Each side is read under the rule set it was scored under; a stored id no rule set has reads as the default's rules.
+        var (rulesA, rulesB) = (RulesOf(a), RulesOf(b));
+        var unit = rulesA.WeightUnit * rulesB.WeightUnit / Gcd(rulesA.WeightUnit, rulesB.WeightUnit);
         var (resultsA, resultsB) = (await StoredAsync(db, a.Id, ct), await StoredAsync(db, b.Id, ct));
-        var reasons = ReasonsFor(await StoredLinesAsync(db, a.Id, ct), await StoredLinesAsync(db, b.Id, ct));
+        var reasons = ReasonsFor(await StoredLinesAsync(db, a.Id, ct), rulesA, await StoredLinesAsync(db, b.Id, ct), rulesB, unit);
 
         var states = resultsA.Keys.Union(resultsB.Keys).Select(code =>
         {
             var (resultA, resultB) = (resultsA.GetValueOrDefault(code), resultsB.GetValueOrDefault(code));
             var (scoreA, scoreB) = (resultA?.Score, resultB?.Score);
             var (rankA, rankB) = (resultA?.Rank, resultB?.Rank);
-            return new StateMovementDto(code, names[code], scoreA, rankA, BasisOf(resultA), scoreB, rankB, BasisOf(resultB),
+            return new StateMovementDto(code, names[code], scoreA, rankA, BasisOf(resultA, unit / rulesA.WeightUnit), scoreB, rankB,
+                BasisOf(resultB, unit / rulesB.WeightUnit),
                 scoreA is { } sa && scoreB is { } sb ? sb - sa : null,
                 rankA is { } ra && rankB is { } rb ? ra - rb : null, reasons[code].ToList());
         });
-        return new SnapshotComparisonDto(a, b, states
+        return new SnapshotComparisonDto(a, b, a.RuleSet.Id != b.RuleSet.Id, unit, states
             .OrderBy(s => s.RankB is null).ThenBy(s => s.RankB).ThenBy(s => s.StateCode, StringComparer.Ordinal)
             .ToList());
     }
+
+    private static RuleSet RulesOf(SnapshotRefDto snapshot) => RuleSets.TryGet(snapshot.RuleSet.Id, out var rules) ? rules : RuleSets.Default;
+
+    private static int Gcd(int a, int b) => b == 0 ? a : Gcd(b, a % b);
 
     private sealed record StoredLine(
         long VoteId, string AssemblyVoteId, DateOnly VoteDate, string Title, string StateCode, LineCategory Category, Ballot? Ballot,
         Stance Stance, short Weight)
     {
-        public int Matched => Category == LineCategory.Match ? Weight : 0;
-        public int Counted => Category is LineCategory.Match or LineCategory.Mismatch ? Weight : 0;
+        /// <summary>Matched and counted weight this line adds under <paramref name="rules"/>, in points of 1 ÷ <paramref name="unit"/> of a weight.</summary>
+        public (int Matched, int Counted) Points(RuleSet rules, int unit)
+        {
+            var (matched, counted) = rules.Points(Category, Weight);
+            return (matched * (unit / rules.WeightUnit), counted * (unit / rules.WeightUnit));
+        }
+
         public ReasonSideDto Side => new(Category, Ballot, Stance, Weight);
     }
 
@@ -132,29 +145,31 @@ internal static class SnapshotQueries
     /// vote id like the breakdown. A vote that only moved between abstain, absent, non-member and no data
     /// changes no score and is not a reason.
     /// </summary>
-    private static ILookup<string, MovementReasonDto> ReasonsFor(List<StoredLine> linesA, List<StoredLine> linesB)
+    private static ILookup<string, MovementReasonDto> ReasonsFor(
+        List<StoredLine> linesA, RuleSet rulesA, List<StoredLine> linesB, RuleSet rulesB, int unit)
     {
         var inA = linesA.ToDictionary(l => (l.VoteId, l.StateCode));
         var inB = linesB.ToDictionary(l => (l.VoteId, l.StateCode));
         return inA.Keys.Union(inB.Keys)
             .Select(key => (key.StateCode, Date: (inB.GetValueOrDefault(key) ?? inA[key]).VoteDate,
-                Reason: ReasonFor(inA.GetValueOrDefault(key), inB.GetValueOrDefault(key))))
+                Reason: ReasonFor(inA.GetValueOrDefault(key), rulesA, inB.GetValueOrDefault(key), rulesB, unit)))
             .Where(r => r.Reason is not null)
             .OrderBy(r => r.Date).ThenBy(r => r.Reason!.Vote.AssemblyVoteId, StringComparer.Ordinal)
             .ToLookup(r => r.StateCode, r => r.Reason!);
     }
 
     /// <summary>Why a state's weights differ on one vote, or null when A and B give it the same matched and counted weight.</summary>
-    private static MovementReasonDto? ReasonFor(StoredLine? a, StoredLine? b)
+    private static MovementReasonDto? ReasonFor(StoredLine? a, RuleSet rulesA, StoredLine? b, RuleSet rulesB, int unit)
     {
-        var matchedChange = (b?.Matched ?? 0) - (a?.Matched ?? 0);
-        var countedChange = (b?.Counted ?? 0) - (a?.Counted ?? 0);
+        var (pointsA, pointsB) = (a?.Points(rulesA, unit) ?? (0, 0), b?.Points(rulesB, unit) ?? (0, 0));
+        var matchedChange = pointsB.Matched - pointsA.Matched;
+        var countedChange = pointsB.Counted - pointsA.Counted;
         if (matchedChange == 0 && countedChange == 0) return null;
 
         var line = (b ?? a)!;
         var kind = a is null ? ReasonKind.OnlyInB : b is null ? ReasonKind.OnlyInA : ReasonKind.Changed;
         return new MovementReasonDto(new VoteRefDto(line.VoteId, line.AssemblyVoteId), line.Title, kind,
-            a is not null && b is not null ? ChangesBetween(a, b) : [], a?.Side, b?.Side, matchedChange, countedChange);
+            a is not null && b is not null ? ChangesBetween(a, b) is { Count: > 0 } changes ? changes : [ReasonChange.Rules] : [], a?.Side, b?.Side, matchedChange, countedChange);
     }
 
     private static List<ReasonChange> ChangesBetween(StoredLine a, StoredLine b)
@@ -172,8 +187,9 @@ internal static class SnapshotQueries
         await db.Jobs.CountAsync(j => j.SnapshotId != null && snapshotIds.Contains(j.SnapshotId.Value) && j.State == JobState.Done, ct)
             == snapshotIds.Count;
 
-    private static ScoreBasisDto? BasisOf(StateResult? result) =>
-        result is null ? null : new ScoreBasisDto(result.CountableVotes, result.MatchedWeight, result.CountedWeight);
+    /// <summary>The basis in points of the comparison's unit; <paramref name="scale"/> is that unit ÷ the snapshot's own.</summary>
+    private static ScoreBasisDto? BasisOf(StateResult? result, int scale) =>
+        result is null ? null : new ScoreBasisDto(result.CountableVotes, result.MatchedWeight * scale, result.CountedWeight * scale);
 
     /// <summary>A snapshot's stored results by state code, each with its countable votes counted from the stored lines.</summary>
     private static async Task<Dictionary<string, StateResult>> StoredAsync(MeridianDbContext db, long snapshotId, CancellationToken ct)
@@ -188,9 +204,13 @@ internal static class SnapshotQueries
     }
 
     /// <summary>The snapshot's name and time, or null when there is none.</summary>
-    public static Task<SnapshotRefDto?> RefAsync(MeridianDbContext db, long snapshotId, CancellationToken ct) =>
-        db.Snapshots.AsNoTracking().Where(s => s.Id == snapshotId)
-            .Select(s => new SnapshotRefDto(s.Id, s.Name, s.RecordedAt)).SingleOrDefaultAsync(ct);
+    public static async Task<SnapshotRefDto?> RefAsync(MeridianDbContext db, long snapshotId, CancellationToken ct)
+    {
+        var snapshot = await db.Snapshots.AsNoTracking().Where(s => s.Id == snapshotId)
+            .Select(s => new { s.Id, s.Name, s.RecordedAt, s.ScoringRulesVersion }).SingleOrDefaultAsync(ct);
+        return snapshot is null ? null
+            : new SnapshotRefDto(snapshot.Id, snapshot.Name, snapshot.RecordedAt, RuleSetDto.Stored(snapshot.ScoringRulesVersion));
+    }
 
     /// <summary>Ranked states by rank then code, then the n/a states by code; or just one state.</summary>
     public static async Task<List<SnapshotResultDto>> ResultsAsync(MeridianDbContext db, long snapshotId, string? stateCode,

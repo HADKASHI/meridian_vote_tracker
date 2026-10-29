@@ -13,7 +13,24 @@ public readonly record struct Treatment(bool Counts, int Credit, int Unit)
 /// It decides only how abstentions and absences count; a non-member or a member with no data never does.
 /// </summary>
 /// <param name="WeightUnit">Matched and counted weight are stored in points of 1 ÷ this unit of a weight.</param>
-public sealed record RuleSet(string Id, string Name, string Description, int WeightUnit, Treatment Abstention, Treatment Absence);
+public sealed record RuleSet(string Id, string Name, string Description, int WeightUnit, Treatment Abstention, Treatment Absence)
+{
+    /// <summary>
+    /// What a line of this category adds to matched and counted weight, in points of 1 ÷ <see cref="WeightUnit"/>.
+    /// The one place that says how a category counts, so scoring and the comparison's reasons cannot disagree.
+    /// </summary>
+    public (int Matched, int Counted) Points(LineCategory category, int weight) => category switch
+    {
+        LineCategory.Match => (weight * WeightUnit, weight * WeightUnit),
+        LineCategory.Mismatch => (0, weight * WeightUnit),
+        LineCategory.Abstain => Of(Abstention, weight),
+        LineCategory.Absent => Of(Absence, weight),
+        _ => (0, 0),
+    };
+
+    private static (int, int) Of(Treatment treatment, int weight) =>
+        treatment.Counts ? (weight * treatment.Credit, weight * treatment.Unit) : (0, 0);
+}
 
 /// <summary>Every known rule set. A rule set is never edited once a snapshot has used it; a change is a new one.</summary>
 public static class RuleSets

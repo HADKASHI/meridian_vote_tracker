@@ -231,6 +231,24 @@ public sealed class AlignmentScoringTests
         Assert.Equal(["alignment-2026.1", "abstain-as-miss", "abstain-half-credit", "strict"], RuleSets.All.Select(r => r.Id));
     }
 
+    [Theory]
+    [InlineData("alignment-2026.1", LineCategory.Match, 3, 3, 3)]
+    [InlineData("alignment-2026.1", LineCategory.Mismatch, 3, 0, 3)]
+    [InlineData("alignment-2026.1", LineCategory.Abstain, 3, 0, 0)]
+    [InlineData("abstain-as-miss", LineCategory.Abstain, 3, 0, 3)]
+    [InlineData("abstain-as-miss", LineCategory.Absent, 3, 0, 0)]
+    [InlineData("abstain-half-credit", LineCategory.Match, 3, 6, 6)]
+    [InlineData("abstain-half-credit", LineCategory.Abstain, 3, 3, 6)]
+    [InlineData("abstain-half-credit", LineCategory.Absent, 3, 0, 0)]
+    [InlineData("strict", LineCategory.Absent, 3, 0, 3)]
+    [InlineData("strict", LineCategory.NonMember, 3, 0, 0)]
+    [InlineData("strict", LineCategory.NoData, 3, 0, 0)]
+    public void Rule_set_points_say_what_each_category_adds_in_the_rule_sets_unit(
+        string ruleSetId, LineCategory category, int weight, int matched, int counted)
+    {
+        Assert.Equal((matched, counted), RuleSets.Get(ruleSetId).Points(category, weight));
+    }
+
     [Fact]
     public void The_scoring_rules_version_is_fixed()
     {

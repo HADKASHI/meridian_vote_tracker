@@ -3563,7 +3563,8 @@
           "category",
           "ballot",
           "stance",
-          "weight"
+          "weight",
+          "rules"
         ]
       },
       "ReasonKind": {
@@ -3749,6 +3750,8 @@
         "required": [
           "a",
           "b",
+          "ruleSetsDiffer",
+          "weightUnit",
           "states"
         ],
         "type": "object",
@@ -3758,6 +3761,13 @@
           },
           "b": {
             "$ref": "#/components/schemas/SnapshotRefDto"
+          },
+          "ruleSetsDiffer": {
+            "type": "boolean"
+          },
+          "weightUnit": {
+            "type": "integer",
+            "format": "int32"
           },
           "states": {
             "type": "array",
@@ -3940,7 +3950,8 @@
         "required": [
           "id",
           "name",
-          "createdAt"
+          "createdAt",
+          "ruleSet"
         ],
         "type": "object",
         "properties": {
@@ -3954,6 +3965,9 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "ruleSet": {
+            "$ref": "#/components/schemas/RuleSetDto"
           }
         }
       },

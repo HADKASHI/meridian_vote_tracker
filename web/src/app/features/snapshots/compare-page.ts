@@ -9,7 +9,7 @@ import { JobState, MovementReasonDto, ReasonSideDto, ScoreBasisDto } from '../..
 import { compareSnapshotsResource, listSnapshotsResource } from '../../api/snapshots/snapshots.resource';
 import { LoadState } from '../../shared/ui/load-state';
 import { PageHeader } from '../../shared/ui/page-header';
-import { formatScore, scoreBasis } from '../../shared/ui/score';
+import { formatScore, formatWeight, scoreBasis } from '../../shared/ui/score';
 import { categoryLabel } from './selection';
 
 /** "3 · 50.0", or n/a when the state has no rank in that snapshot. */
@@ -18,8 +18,8 @@ export function rankAndScore(rank: number | null, score: number | null): string 
 }
 
 /** What the score rests on, or nothing when the snapshot has no result for the state. */
-export function basisOf(basis: ScoreBasisDto | null): string {
-  return basis ? scoreBasis(basis) : '';
+export function basisOf(basis: ScoreBasisDto | null, unit = 1): string {
+  return basis ? scoreBasis(basis, unit) : '';
 }
 
 /** The score change with its sign, or no movement when either snapshot has no score. */
@@ -35,11 +35,12 @@ export function rankMovement(change: number | null): string {
   return change > 0 ? `▲ up ${change}` : change < 0 ? `▼ down ${-change}` : '= unchanged';
 }
 
-const signed = (n: number): string => (n < 0 ? `−${-n}` : `+${n}`);
+const signed = (points: number, unit: number): string =>
+  points < 0 ? `−${formatWeight(-points, unit)}` : `+${formatWeight(points, unit)}`;
 const ballotWord = (side: ReasonSideDto): string => side.ballot?.toUpperCase() ?? 'none';
 
 /** What differed for one vote between A and B, in words, and what it did to the state's weights. */
-export function reasonText(reason: MovementReasonDto): string {
+export function reasonText(reason: MovementReasonDto, unit = 1): string {
   const { a, b } = reason;
   let what: string;
   if (a === null || b === null) {
@@ -58,11 +59,13 @@ export function reasonText(reason: MovementReasonDto): string {
             return `position ${a.stance} → ${b.stance}`;
           case 'weight':
             return `weight ${a.weight} → ${b.weight}`;
+          case 'rules':
+            return 'counted differently by the two rule sets';
         }
       })
       .join(', ');
   }
-  return `${what} · matched weight ${signed(reason.matchedChange)} · counted weight ${signed(reason.countedChange)}`;
+  return `${what} · matched weight ${signed(reason.matchedChange, unit)} · counted weight ${signed(reason.countedChange, unit)}`;
 }
 
 /** Every state's rank and score in two snapshots and how far it moved, read from what they stored. */
@@ -72,6 +75,14 @@ export function reasonText(reason: MovementReasonDto): string {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (comparison.hasValue() && comparison.value(); as c) {
+      <p class="rule-sets" data-testid="rule-sets">
+        Scored under — {{ c.a.name }}: {{ c.a.ruleSet.name }} · {{ c.b.name }}: {{ c.b.ruleSet.name }}
+      </p>
+      @if (c.ruleSetsDiffer) {
+        <section class="notice" data-tone="warning" data-testid="rule-set-warning">
+          These snapshots were scored under different rule sets, so the movement mixes a change of rules with a change of data.
+        </section>
+      }
       <div class="table-scroll">
         <table mat-table [dataSource]="c.states" data-testid="movement">
           <ng-container matColumnDef="state">
@@ -84,7 +95,7 @@ export function reasonText(reason: MovementReasonDto): string {
                 @if (isOpen(s.stateCode)) {
                   <ul class="reasons" [attr.data-testid]="'reasons-' + s.stateCode">
                     @for (r of s.reasons; track r.vote.voteId) {
-                      <li>{{ r.vote.assemblyVoteId }} {{ r.title }}: {{ reasonText(r) }}</li>
+                      <li>{{ r.vote.assemblyVoteId }} {{ r.title }}: {{ reasonText(r, c.weightUnit) }}</li>
                     }
                   </ul>
                 }
@@ -96,13 +107,13 @@ export function reasonText(reason: MovementReasonDto): string {
           <ng-container matColumnDef="a">
             <th mat-header-cell *matHeaderCellDef>Rank · score in {{ c.a.name }}</th>
             <td mat-cell *matCellDef="let s" class="num">
-              {{ rankAndScore(s.rankA, s.scoreA) }} <span class="basis">{{ basisOf(s.basisA) }}</span>
+              {{ rankAndScore(s.rankA, s.scoreA) }} <span class="basis">{{ basisOf(s.basisA, c.weightUnit) }}</span>
             </td>
           </ng-container>
           <ng-container matColumnDef="b">
             <th mat-header-cell *matHeaderCellDef>Rank · score in {{ c.b.name }}</th>
             <td mat-cell *matCellDef="let s" class="num">
-              {{ rankAndScore(s.rankB, s.scoreB) }} <span class="basis">{{ basisOf(s.basisB) }}</span>
+              {{ rankAndScore(s.rankB, s.scoreB) }} <span class="basis">{{ basisOf(s.basisB, c.weightUnit) }}</span>
             </td>
           </ng-container>
           <ng-container matColumnDef="score">
@@ -124,6 +135,10 @@ export function reasonText(reason: MovementReasonDto): string {
     }
   `,
   styles: `
+    .rule-sets {
+      color: var(--mat-sys-on-surface-variant);
+      font: var(--mat-sys-body-small);
+    }
     .num {
       font-variant-numeric: tabular-nums;
     }
