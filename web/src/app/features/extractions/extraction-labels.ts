@@ -31,6 +31,9 @@ export function statusTone(status: ExtractionStatus): string {
   }
 }
 
+/** How often a sheet being read is asked about again, on the list and on the sheet itself. */
+export const READING_POLL_MS = 1000;
+
 /** Sheets still to deal with: being read, waiting, or failed. */
 export const OPEN_STATUSES: ExtractionStatus[] = [ExtractionStatus.extracting, ExtractionStatus.needs_review, ExtractionStatus.failed];
 

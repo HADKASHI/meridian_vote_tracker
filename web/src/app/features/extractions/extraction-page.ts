@@ -16,7 +16,7 @@ import { ProblemBanner } from '../../shared/problem/problem-banner';
 import { JobStateBadge } from '../../shared/ui/job-state-badge';
 import { LoadState } from '../../shared/ui/load-state';
 import { ReviewCounts } from '../../shared/ui/review-counts';
-import { BALLOT_CHOICES, ballotLabel, isBlocking, statusLabel, statusTone, TOTAL_COLUMNS, TotalKey, totalOf } from './extraction-labels';
+import { BALLOT_CHOICES, ballotLabel, isBlocking, READING_POLL_MS, statusLabel, statusTone, TOTAL_COLUMNS, TotalKey, totalOf } from './extraction-labels';
 import { ExtractionsInbox } from './extractions-inbox';
 
 /** The longest comment the API takes. */
@@ -439,7 +439,7 @@ export class ExtractionPage {
   private previewed = '';
 
   constructor() {
-    pollWhile(this.resource, 1000, () => this.extraction()?.status === ExtractionStatus.extracting);
+    pollWhile(this.resource, READING_POLL_MS, () => this.extraction()?.status === ExtractionStatus.extracting);
     effect(() => {
       const e = this.extraction();
       if (!e || !this.reviewable(e) || !e.canApprove || this.hasPending()) {

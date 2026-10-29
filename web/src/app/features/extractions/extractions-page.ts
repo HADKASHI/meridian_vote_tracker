@@ -9,7 +9,7 @@ import { LoadState } from '../../shared/ui/load-state';
 import { PageHeader } from '../../shared/ui/page-header';
 import { ReviewCounts } from '../../shared/ui/review-counts';
 import { ReviewTabs } from '../../shared/ui/review-tabs';
-import { statusLabel, statusTone } from './extraction-labels';
+import { READING_POLL_MS, statusLabel, statusTone } from './extraction-labels';
 import { ExtractionsInbox, toFilter } from './extractions-inbox';
 
 /** The Extractions tab of the Review inbox: scanned voting sheets, the upload that starts one, and the open sheet beside the list. */
@@ -195,7 +195,7 @@ export class ExtractionsPage {
   constructor() {
     // The route's query param is the filter; the list keeps asking while a sheet is being read.
     this.inbox.bind(computed(() => toFilter(this.state())));
-    pollWhile(this.inbox.list, 1000, this.inbox.reading);
+    pollWhile(this.inbox.list, READING_POLL_MS, this.inbox.reading);
   }
 
   protected upload(picker: HTMLInputElement): void {
