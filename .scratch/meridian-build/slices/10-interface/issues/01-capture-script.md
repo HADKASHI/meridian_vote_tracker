@@ -4,10 +4,10 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] One command brings the stack up with synthetic data only (no file from `candidate_data/`) and captures every screen of the slice's lane
-- [ ] The original and revision CSVs are committed, synthetic, and produce new, unchanged, duplicate, invalid, contradiction and conflict rows plus an incomplete-vote warning
-- [ ] Each capture is taken at 1280 px and 390 px, in light and dark, with the page's sideways overflow reported
-- [ ] The "before" screenshots are committed under `docs/screens/before/`
-- [ ] The script lives outside the Angular build, lint and Vitest run, and CI is unchanged
+- [x] One command brings the stack up with synthetic data only (no file from `candidate_data/`) and captures every screen of the slice's lane
+- [x] The original and revision CSVs are committed, synthetic, and produce new, unchanged, duplicate, invalid, contradiction and conflict rows plus an incomplete-vote warning
+- [x] Each capture is taken at 1280 px and 390 px, in light and dark, with the page's sideways overflow reported
+- [x] The "before" screenshots are committed under `docs/screens/before/`
+- [x] The script lives outside the Angular build, lint and Vitest run, and CI is unchanged
