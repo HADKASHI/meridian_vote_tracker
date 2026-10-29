@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 
 namespace Meridian.Extractions;
 
@@ -17,12 +18,18 @@ namespace Meridian.Extractions;
 public static class ExtractionsModule
 {
     /// <summary>
-    /// The worker side: the job handler, and a stand-in sheet reader that a real one replaces
-    /// (<c>services.AddSingleton&lt;IVoteSheetReader, …&gt;()</c> after this call wins).
+    /// The worker side: the job handler, and the sheet reader. Document Intelligence reads sheets when
+    /// <c>DocumentIntelligence:Endpoint</c> and <c>:Key</c> are set; otherwise a sheet fails once, saying so. A reader
+    /// registered after this call (a test's fake) replaces both.
     /// </summary>
     public static IServiceCollection AddExtractionsJobs(this IServiceCollection services)
     {
-        services.TryAddScoped<IVoteSheetReader, NotConfiguredSheetReader>();
+        services.AddOptions<DocumentIntelligenceOptions>().BindConfiguration("DocumentIntelligence");
+        services.AddHttpClient<DocumentIntelligenceSheetReader>();
+        services.TryAddScoped<IVoteSheetReader>(provider =>
+            provider.GetRequiredService<IOptions<DocumentIntelligenceOptions>>().Value.IsConfigured
+                ? provider.GetRequiredService<DocumentIntelligenceSheetReader>()
+                : new NotConfiguredSheetReader());
         return services.AddMeridianBlobStorage().AddJobHandler<ExtractionJobHandler>();
     }
 

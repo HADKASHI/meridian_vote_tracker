@@ -74,6 +74,11 @@ services:
     <<: *backend
     entrypoint: ["dotnet", "/app/worker/Meridian.Worker.dll"]
     depends_on: *after-migrate
+    # Only the worker calls Document Intelligence; both are empty unless set in .env.
+    environment:
+      <<: *backend-env
+      DocumentIntelligence__Endpoint: ${DOCINTEL_ENDPOINT:-}
+      DocumentIntelligence__Key: ${DOCINTEL_KEY:-}
     # Its liveness is the job heartbeat; a stop lets it finish the vote it is committing.
     stop_grace_period: 30s
     # Parsing holds the whole export in memory: a 190 MB file peaked at 2.8 GiB in this container, so the

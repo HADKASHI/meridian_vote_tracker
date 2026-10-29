@@ -1,5 +1,4 @@
 using Meridian.Domain.Sheets;
-using Meridian.Platform.Jobs;
 
 namespace Meridian.Extractions;
 
@@ -21,9 +20,9 @@ public sealed class SheetReaderException(string message, bool permanent) : Excep
     public bool Permanent => permanent;
 }
 
-/// <summary>Stands in until a real reader is configured, so a queued sheet fails with a clear reason and nothing crashes.</summary>
+/// <summary>Stands in until a reader is configured, so a queued sheet fails once with a clear reason and nothing crashes; Retry works after configuring.</summary>
 internal sealed class NotConfiguredSheetReader : IVoteSheetReader
 {
     public Task<SheetRead> ReadAsync(Stream pdf, CancellationToken cancellationToken) =>
-        throw new JobFailedException("No voting sheet reader is configured.");
+        throw new SheetReaderException("No voting sheet reader is configured.", permanent: true);
 }
