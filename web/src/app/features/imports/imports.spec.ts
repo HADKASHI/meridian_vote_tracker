@@ -54,8 +54,8 @@ describe('imports feature', () => {
     expect(text).toContain('q1.csv');
     expect(text).toContain('dana');
     expect(text).toContain('done');
-    expect(text).toContain('5 new');
-    expect(text).toContain('2 invalid');
+    const chips = [...harness.routeNativeElement!.querySelectorAll('[data-testid=imports-table] app-outcome-chip')];
+    expect(chips.map((c) => c.textContent!.replace(/\s+/g, ' ').trim())).toEqual(['new 5', 'invalid 2']);
   });
 
   it('uploads the chosen file and opens its report', async () => {

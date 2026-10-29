@@ -11,13 +11,14 @@ import { Problem, toProblem } from '../../shared/problem/problem';
 import { ProblemBanner } from '../../shared/problem/problem-banner';
 import { JobStateBadge } from '../../shared/ui/job-state-badge';
 import { LoadState } from '../../shared/ui/load-state';
+import { OutcomeChip } from '../../shared/ui/outcome-chip';
 import { PageHeader } from '../../shared/ui/page-header';
-import { countsSummary } from './import-counts';
+import { outcomesWithRows } from './import-counts';
 
 /** Every import, newest first, and the upload that starts a new one. */
 @Component({
   selector: 'app-imports-page',
-  imports: [MatTableModule, MatButtonModule, DatePipe, RouterLink, JobStateBadge, ProblemBanner, PageHeader, LoadState],
+  imports: [MatTableModule, MatButtonModule, DatePipe, RouterLink, JobStateBadge, ProblemBanner, PageHeader, LoadState, OutcomeChip],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-page-header heading="Imports">
@@ -58,8 +59,16 @@ import { countsSummary } from './import-counts';
             </ng-container>
             <ng-container matColumnDef="outcomes">
               <th mat-header-cell *matHeaderCellDef>Outcomes</th>
-              <td mat-cell *matCellDef="let i" [class.rejected]="i.rejectedReason">
-                {{ i.rejectedReason ? 'Rejected: ' + i.rejectedReason : summary(i.counts) }}
+              <td mat-cell *matCellDef="let i" [class.rejected]="i.rejectedReason" class="outcomes">
+                @if (i.rejectedReason) {
+                  Rejected: {{ i.rejectedReason }}
+                } @else {
+                  @for (o of withRows(i.counts); track o) {
+                    <app-outcome-chip [outcome]="o" [count]="i.counts[o]" />
+                  } @empty {
+                    <span class="muted">No rows yet</span>
+                  }
+                }
               </td>
             </ng-container>
             <tr mat-header-row *matHeaderRowDef="columns"></tr>
@@ -81,6 +90,13 @@ import { countsSummary } from './import-counts';
     .nowrap {
       white-space: nowrap;
     }
+    .outcomes {
+      min-width: 200px;
+    }
+    .outcomes app-outcome-chip {
+      display: inline-block;
+      margin: 2px 4px 2px 0;
+    }
     .rejected {
       color: var(--mat-sys-error);
     }
@@ -93,7 +109,7 @@ export class ImportsPage {
   protected readonly imports = listImportsResource(signal({ page: 1, pageSize: 50 }));
   protected readonly uploading = signal(false);
   protected readonly problem = signal<Problem | null>(null);
-  protected readonly summary = countsSummary;
+  protected readonly withRows = outcomesWithRows;
   private readonly active = computed(() =>
     (this.imports.hasValue() ? this.imports.value()?.items ?? [] : []).some(
       (i) => i.job.state === JobState.queued || i.job.state === JobState.running,
