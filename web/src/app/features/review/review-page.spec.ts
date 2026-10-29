@@ -61,6 +61,8 @@ describe('Review inbox', () => {
     await harness.fixture.whenStable();
 
     expect(rows(harness)).toEqual(['MA/2024/101 Country vote · BRA Y → A Import #2 Rejected']);
+    const current = harness.routeNativeElement!.querySelectorAll('nav[aria-label="Which conflicts"] [aria-current="true"]');
+    expect([...current].map((a) => a.textContent!.trim())).toEqual(['Decided']);
   });
 
   it('says so when nothing waits for review', async () => {

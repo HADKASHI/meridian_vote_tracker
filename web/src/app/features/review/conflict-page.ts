@@ -8,6 +8,7 @@ import { getConflictResource } from '../../api/conflicts/conflicts.resource';
 import { ConflictsService } from '../../api/conflicts/conflicts.service';
 import { AlreadyDecidedProblem, ConflictDecisionDto, ConflictDto, ConflictFilter, ConflictValueDto, Decision } from '../../api/model';
 import { ConflictCard } from '../../shared/problem/conflict-card';
+import { LoadState } from '../../shared/ui/load-state';
 import { ProblemBanner } from '../../shared/problem/problem-banner';
 import { isProblem, Problem, ProblemType, toProblem } from '../../shared/problem/problem';
 import { problemToFieldErrors } from '../../shared/problem/to-field-errors';
@@ -22,14 +23,15 @@ type CommentField = 'comment';
 /** The decision pane: both values with their origins, so the analyst decides on evidence. */
 @Component({
   selector: 'app-conflict-page',
-  imports: [DatePipe, RouterLink, MatButtonModule, MatFormFieldModule, MatInputModule, ProblemBanner, ConflictCard],
+  imports: [DatePipe, RouterLink, MatButtonModule, MatFormFieldModule, MatInputModule, ProblemBanner, ConflictCard, LoadState],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <article data-testid="decision-pane">
       <h2>Conflict #{{ conflictId() }}</h2>
       @if (conflict(); as c) {
         <p class="about">
-          <a [routerLink]="['/votes', c.vote.voteId]">{{ c.vote.assemblyVoteId }}</a> · {{ subject(c) }}
+          <a [routerLink]="['/votes', c.vote.voteId]">{{ c.vote.assemblyVoteId }}</a>
+          <span class="chip" [attr.data-tone]="c.subject === 'details' ? 'tertiary' : 'primary'">{{ subject(c) }}</span>
         </p>
         <div class="sides">
           <section data-testid="current">
@@ -41,14 +43,14 @@ type CommentField = 'comment';
               <p class="value">—</p>
             }
           </section>
-          <section data-testid="incoming">
+          <section data-testid="incoming" class="incoming">
             <h3>Incoming</h3>
             <p class="value">{{ value(c, c.incoming.value) }}</p>
             <p class="origin">{{ origin(c.incoming.origin) }}</p>
           </section>
         </div>
         @if (c.decision; as d) {
-          <section class="decided" data-testid="decision">
+          <section class="decided" data-testid="decision" role="status">
             <p>
               <strong>{{ decision(d.decision) }} by {{ d.decidedBy }}</strong> at {{ d.decidedAt | date: 'yyyy-MM-dd HH:mm' }}:
               <span class="value">{{ value(c, d.from) }} → {{ value(c, d.to) }}</span>
@@ -130,37 +132,69 @@ type CommentField = 'comment';
           </ul>
         }
       } @else if (resource.error()) {
-        <p>This conflict could not be loaded.</p>
+        <app-load-state kind="error" message="This conflict could not be loaded." />
+      } @else {
+        <app-load-state kind="loading" message="Loading the conflict" />
       }
     </article>
   `,
   styles: `
+    h2 {
+      font: var(--mat-sys-title-large);
+      margin: 0;
+    }
+    .about {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-block: 4px 16px;
+      font-family: var(--app-mono);
+    }
     .sides {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
     }
     .sides section {
       border: 1px solid var(--mat-sys-outline-variant);
-      border-radius: 8px;
-      padding: 8px 16px;
+      border-radius: 12px;
+      padding: 12px 16px;
+      background: var(--mat-sys-surface-container-low);
+      overflow-wrap: anywhere;
+    }
+    .sides .incoming {
+      border-color: var(--mat-sys-primary);
     }
     h3 {
       margin-block: 0 4px;
-      font-size: 0.95em;
-      opacity: 0.8;
+      font: var(--mat-sys-label-large);
+      color: var(--mat-sys-on-surface-variant);
     }
     .value {
-      font-family: monospace;
-      font-size: 1.1em;
+      font: var(--mat-sys-title-medium);
+      margin-block: 0 4px;
     }
     .origin,
     .not-applied {
-      opacity: 0.75;
-      font-size: 0.9em;
+      color: var(--mat-sys-on-surface-variant);
+      font: var(--mat-sys-body-small);
+      margin: 0;
     }
     .decided {
       margin-block-start: 16px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      background: var(--mat-sys-secondary-container);
+      color: var(--mat-sys-on-secondary-container);
+      overflow-wrap: anywhere;
+    }
+    .decided p {
+      margin-block: 0 4px;
+    }
+    .decided .value {
+      font: inherit;
+      font-family: var(--app-mono);
     }
     .decide {
       margin-block-start: 16px;
@@ -170,6 +204,7 @@ type CommentField = 'comment';
     }
     .actions {
       display: flex;
+      flex-wrap: wrap;
       gap: 8px;
       align-items: center;
       margin-block-start: 12px;
@@ -179,18 +214,26 @@ type CommentField = 'comment';
       margin-block: 4px 0;
     }
     .none-left {
-      opacity: 0.75;
+      color: var(--mat-sys-on-surface-variant);
     }
     .membership {
       margin-block-start: 12px;
     }
+    .membership h3 {
+      color: inherit;
+    }
     .membership p {
       margin-block: 2px;
+    }
+    .not-applied {
+      margin-block-start: 12px;
+      padding-inline-start: 20px;
     }
     blockquote {
       margin: 4px 0 0;
       padding-inline-start: 12px;
-      border-inline-start: 3px solid var(--mat-sys-outline-variant);
+      border-inline-start: 3px solid currentColor;
+      font-style: italic;
     }
   `,
 })

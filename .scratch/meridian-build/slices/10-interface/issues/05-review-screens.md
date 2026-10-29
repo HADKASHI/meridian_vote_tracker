@@ -4,11 +4,11 @@
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Filter chips with the active one marked; "Only some conflicts are shown" notice with Show all
-- [ ] Conflict list in a card, rows with subject chip and the from → to display, selected row marked, empty state
-- [ ] Decision pane: breadcrumb-free title with the vote link, value cards with origins, comment field and actions
-- [ ] Decided state and membership recalculation shown as a card; already-decided card in place of the buttons
-- [ ] List and pane stack below a tablet width; nothing scrolls sideways at 390 px
-- [ ] Existing review and conflict tests pass
+- [x] Filter chips with the active one marked; "Only some conflicts are shown" notice with Show all
+- [x] Conflict list in a card, rows with subject chip and the from → to display, selected row marked, empty state
+- [x] Decision pane: breadcrumb-free title with the vote link, value cards with origins, comment field and actions
+- [x] Decided state and membership recalculation shown as a card; already-decided card in place of the buttons
+- [x] List and pane stack below a tablet width; nothing scrolls sideways at 390 px
+- [x] Existing review and conflict tests pass

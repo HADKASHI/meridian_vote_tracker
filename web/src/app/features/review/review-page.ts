@@ -1,21 +1,24 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { ConflictFilter, ConflictListItemDto } from '../../api/model';
+import { LoadState } from '../../shared/ui/load-state';
+import { PageHeader } from '../../shared/ui/page-header';
 import { changeLabel, decisionLabel, subjectLabel } from './conflict-values';
 import { ReviewInbox, toFilter, toScope } from './review-inbox';
 
 /** The Review inbox: the conflict list beside the decision pane (the child route). */
 @Component({
   selector: 'app-review-page',
-  imports: [MatButtonModule, RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [RouterLink, RouterLinkActive, RouterOutlet, PageHeader, LoadState],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <h1>Review</h1>
+    <app-page-header heading="Review">
+      <p pageLead>A decision takes the incoming value or keeps the current one; one decision per conflict.</p>
+    </app-page-header>
     <nav class="filters" aria-label="Which conflicts">
       @for (f of filters; track f.value) {
-        <a mat-button [routerLink]="[]" [queryParams]="{ state: f.value }" queryParamsHandling="merge"
-          [class.active]="inbox.filter() === f.value">{{ f.label }}</a>
+        <a class="filter" [routerLink]="[]" [queryParams]="{ state: f.value }" queryParamsHandling="merge"
+          [attr.aria-current]="inbox.filter() === f.value ? 'true' : null">{{ f.label }}</a>
       }
       @if (inbox.narrowed()) {
         <span class="narrowed">
@@ -28,18 +31,19 @@ import { ReviewInbox, toFilter, toScope } from './review-inbox';
       <section class="list" aria-label="Conflicts">
         @if (inbox.list.hasValue()) {
           @if (inbox.items().length === 0) {
-            <p>No conflicts {{ inbox.filter() === 'pending' ? 'waiting for review' : 'here' }}.</p>
+            <p class="empty">No conflicts {{ inbox.filter() === 'pending' ? 'waiting for review' : 'here' }}.</p>
           }
           <ul>
             @for (item of inbox.items(); track item.id) {
               <li data-testid="inbox-item">
-                <a [routerLink]="[item.id]" [queryParams]="inbox.queryParams()" routerLinkActive="selected">
+                <a [routerLink]="[item.id]" [queryParams]="inbox.queryParams()" routerLinkActive="selected"
+                   [ariaCurrentWhenActive]="true">
                   <span class="vote">{{ item.vote.assemblyVoteId }}</span>
-                  <span class="subject">{{ subject(item) }}</span>
+                  <span class="subject chip" [attr.data-tone]="item.subject === 'details' ? 'tertiary' : 'primary'">{{ subject(item) }}</span>
                   <span class="change">{{ change(item) }}</span>
                   <span class="import">Import #{{ item.importId }}</span>
                   @if (item.decision) {
-                    <span class="decision">{{ decision(item.decision) }}</span>
+                    <span class="decision chip" data-tone="secondary">{{ decision(item.decision) }}</span>
                   }
                 </a>
               </li>
@@ -49,7 +53,9 @@ import { ReviewInbox, toFilter, toScope } from './review-inbox';
             <p class="more">Showing {{ inbox.items().length }} of {{ inbox.total() }}; decide these to see the rest.</p>
           }
         } @else if (inbox.list.error()) {
-          <p>The conflicts could not be loaded.</p>
+          <app-load-state kind="error" message="The conflicts could not be loaded." />
+        } @else {
+          <app-load-state kind="loading" message="Loading conflicts" />
         }
       </section>
       <section class="pane">
@@ -63,27 +69,51 @@ import { ReviewInbox, toFilter, toScope } from './review-inbox';
   styles: `
     .filters {
       display: flex;
-      gap: 4px;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-block-end: 16px;
+    }
+    .filter {
+      padding: 6px 14px;
+      border: 1px solid var(--mat-sys-outline-variant);
+      border-radius: 8px;
+      background: var(--mat-sys-surface);
+      color: var(--mat-sys-on-surface);
+      text-decoration: none;
+      font: var(--mat-sys-label-large);
+    }
+    .filter[aria-current='true'] {
+      background: var(--mat-sys-secondary-container);
+      color: var(--mat-sys-on-secondary-container);
+      border-color: transparent;
+    }
+    .filter[aria-current='true']::before {
+      content: '✓ ';
     }
     .narrowed {
-      align-self: center;
-      margin-inline-start: 12px;
-      opacity: 0.8;
-    }
-    .filters .active {
-      font-weight: 600;
-      text-decoration: underline;
+      color: var(--mat-sys-on-surface-variant);
     }
     .split {
       display: grid;
-      grid-template-columns: minmax(280px, 2fr) 3fr;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
       gap: 24px;
       align-items: start;
     }
-    @media (max-width: 800px) {
+    @media (max-width: 900px) {
       .split {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
       }
+    }
+    .list,
+    .pane {
+      background: var(--mat-sys-surface);
+      border: 1px solid var(--mat-sys-outline-variant);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .pane {
+      padding: 16px 20px;
     }
     ul {
       list-style: none;
@@ -92,29 +122,58 @@ import { ReviewInbox, toFilter, toScope } from './review-inbox';
     }
     li a {
       display: grid;
-      grid-template-columns: auto 1fr;
-      gap: 2px 12px;
-      padding: 8px 12px;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 4px 12px;
+      padding: 12px 16px;
       border-block-end: 1px solid var(--mat-sys-outline-variant);
       color: inherit;
       text-decoration: none;
     }
+    li:last-child a {
+      border-block-end: none;
+    }
+    li a:hover {
+      background: var(--mat-sys-surface-container);
+    }
+    /* The open conflict: a bar and a fill, not colour alone. */
     li a.selected {
       background: var(--mat-sys-secondary-container);
+      box-shadow: inset 4px 0 0 var(--mat-sys-primary);
     }
     .vote {
+      font-family: var(--app-mono);
       font-weight: 600;
+    }
+    .subject {
+      justify-self: start;
+    }
+    .import {
+      color: var(--mat-sys-on-surface-variant);
+      font: var(--mat-sys-label-medium);
+      grid-row: 1;
+      grid-column: 3;
+      justify-self: end;
     }
     .change {
       grid-column: 1 / -1;
-      font-family: monospace;
+      font-family: var(--app-mono);
+      overflow-wrap: anywhere;
     }
-    .import,
-    .decision,
+    .decision {
+      grid-column: 1 / -1;
+      justify-self: start;
+    }
+    .empty,
     .more,
     .hint {
-      opacity: 0.75;
-      font-size: 0.9em;
+      color: var(--mat-sys-on-surface-variant);
+      padding: 16px;
+      margin: 0;
+    }
+    .hint {
+      padding: 32px 0;
+      text-align: center;
     }
   `,
 })
