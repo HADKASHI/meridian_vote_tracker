@@ -1,10 +1,11 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { Router, RouterLink } from '@angular/router';
 import { MatTableModule } from '@angular/material/table';
 import { HttpErrorResponse } from '@angular/common/http';
-import { JobState, ScoreBasisDto } from '../../api/model';
+import { LineCategory, JobState, MovementReasonDto, ReasonSideDto, ScoreBasisDto } from '../../api/model';
 import { compareSnapshotsResource, listSnapshotsResource } from '../../api/snapshots/snapshots.resource';
 import { LoadState } from '../../shared/ui/load-state';
 import { PageHeader } from '../../shared/ui/page-header';
@@ -33,10 +34,44 @@ export function rankMovement(change: number | null): string {
   return change > 0 ? `▲ up ${change}` : change < 0 ? `▼ down ${-change}` : '= unchanged';
 }
 
+const CATEGORY_WORDS: Record<LineCategory, string> = {
+  match: 'match', mismatch: 'mismatch', abstain: 'abstain', absent: 'absent', non_member: 'non-member', no_data: 'no data',
+};
+
+const signed = (n: number): string => (n < 0 ? `−${-n}` : `+${n}`);
+const ballotWord = (side: ReasonSideDto): string => side.ballot?.toUpperCase() ?? 'none';
+
+/** What differed for one vote between A and B, in words, and what it did to the state's weights. */
+export function reasonText(reason: MovementReasonDto): string {
+  const { a, b } = reason;
+  let what: string;
+  if (a === null || b === null) {
+    const only = a === null ? 'B' : 'A';
+    const side = (a ?? b)!;
+    what = `only in ${only}, treated as ${CATEGORY_WORDS[side.category]}${side.ballot ? ` with ballot ${ballotWord(side)}` : ''}`;
+  } else {
+    what = reason.changes
+      .map((change) => {
+        switch (change) {
+          case 'category':
+            return `category ${CATEGORY_WORDS[a.category]} → ${CATEGORY_WORDS[b.category]}`;
+          case 'ballot':
+            return `ballot ${ballotWord(a)} → ${ballotWord(b)}`;
+          case 'stance':
+            return `position ${a.stance} → ${b.stance}`;
+          case 'weight':
+            return `weight ${a.weight} → ${b.weight}`;
+        }
+      })
+      .join(', ');
+  }
+  return `${what} · matched weight ${signed(reason.matchedChange)} · counted weight ${signed(reason.countedChange)}`;
+}
+
 /** Every state's rank and score in two snapshots and how far it moved, read from what they stored. */
 @Component({
   selector: 'app-snapshot-movement',
-  imports: [MatTableModule, LoadState],
+  imports: [MatButtonModule, MatTableModule, LoadState],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (comparison.hasValue() && comparison.value(); as c) {
@@ -44,7 +79,22 @@ export function rankMovement(change: number | null): string {
         <table mat-table [dataSource]="c.states" data-testid="movement">
           <ng-container matColumnDef="state">
             <th mat-header-cell *matHeaderCellDef>Member state</th>
-            <td mat-cell *matCellDef="let s">{{ s.stateName }} ({{ s.stateCode }})</td>
+            <td mat-cell *matCellDef="let s" class="state">
+              {{ s.stateName }} ({{ s.stateCode }})
+              @if (s.reasons.length > 0) {
+                <button type="button" mat-button [attr.data-testid]="'why-' + s.stateCode" [attr.aria-expanded]="isOpen(s.stateCode)"
+                  (click)="toggled.emit(s.stateCode)">Why ({{ s.reasons.length }})</button>
+                @if (isOpen(s.stateCode)) {
+                  <ul class="reasons" [attr.data-testid]="'reasons-' + s.stateCode">
+                    @for (r of s.reasons; track r.vote.voteId) {
+                      <li>{{ r.vote.assemblyVoteId }} {{ r.title }}: {{ reasonText(r) }}</li>
+                    }
+                  </ul>
+                }
+              } @else if (s.rankChange) {
+                <span class="note">Rank moved because other states’ scores moved.</span>
+              }
+            </td>
           </ng-container>
           <ng-container matColumnDef="a">
             <th mat-header-cell *matHeaderCellDef>Rank · score in {{ c.a.name }}</th>
@@ -80,6 +130,19 @@ export function rankMovement(change: number | null): string {
     .num {
       font-variant-numeric: tabular-nums;
     }
+    .state {
+      min-width: 200px;
+    }
+    .reasons {
+      margin: 4px 0 8px;
+      padding-inline-start: 20px;
+      font: var(--mat-sys-body-small);
+    }
+    .note {
+      display: block;
+      color: var(--mat-sys-on-surface-variant);
+      font: var(--mat-sys-body-small);
+    }
     .basis {
       display: block;
       color: var(--mat-sys-on-surface-variant);
@@ -90,7 +153,15 @@ export function rankMovement(change: number | null): string {
 export class SnapshotMovement {
   readonly a = input.required<number>();
   readonly b = input.required<number>();
+  /** The states whose reasons are open. */
+  readonly open = input<readonly string[]>([]);
+  readonly toggled = output<string>();
 
+  protected isOpen(code: string): boolean {
+    return this.open().includes(code);
+  }
+
+  protected readonly reasonText = reasonText;
   protected readonly columns = ['state', 'a', 'b', 'score', 'rank'];
   protected readonly comparison = compareSnapshotsResource(computed(() => ({ a: this.a(), b: this.b() })));
   protected readonly failure = computed(() => {
@@ -136,7 +207,7 @@ export class SnapshotMovement {
         @if (a() === b()) {
           <app-load-state kind="empty" message="Choose two different snapshots to compare." />
         } @else {
-          <app-snapshot-movement [a]="+a()!" [b]="+b()!" />
+          <app-snapshot-movement [a]="+a()!" [b]="+b()!" [open]="opened()" (toggled)="toggle($event)" />
         }
       } @else {
         <app-load-state kind="empty" message="Choose snapshot A and snapshot B to compare them." />
@@ -159,7 +230,10 @@ export class ComparePage {
   /** From <code>?a=</code> and <code>?b=</code>. */
   readonly a = input<string>();
   readonly b = input<string>();
+  /** From <code>?open=</code>: the states whose reasons are open, comma separated. */
+  readonly open = input<string>();
 
+  protected readonly opened = computed(() => (this.open() ?? '').split(',').filter(Boolean));
   private readonly router = inject(Router);
   protected readonly snapshots = listSnapshotsResource(computed(() => ({ page: 1, pageSize: 200 })));
   protected readonly calculated = computed(() =>
@@ -169,6 +243,12 @@ export class ComparePage {
     { key: 'a' as const, value: computed(() => this.a() ?? '') },
     { key: 'b' as const, value: computed(() => this.b() ?? '') },
   ];
+
+  protected toggle(code: string): void {
+    const now = this.opened();
+    const next = now.includes(code) ? now.filter((c) => c !== code) : [...now, code];
+    void this.router.navigate([], { queryParams: { open: next.join(',') || null }, queryParamsHandling: 'merge' });
+  }
 
   protected pick(side: 'a' | 'b', event: Event): void {
     const value = (event.target as HTMLSelectElement).value;

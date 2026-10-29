@@ -4,10 +4,10 @@
 
 **Blocked by:** 03 Say why a state moved between two snapshots
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Each state with reasons has a control that opens its list, reachable and operable by keyboard, and states with none show no control
-- [ ] Each reason shows the vote (assembly vote id and title) and what changed with both values, in words as well as arrows, using glossary terms
-- [ ] A state with a rank change but no score change says its rank moved because other states' scores moved
-- [ ] The opened states are held in the query string and survive a reload
-- [ ] Vitest specs with `HttpTestingController` cover a ballot change, a position change, a vote only in one snapshot, the rank-only case and the query string
+- [x] Each state with reasons has a control that opens its list, reachable and operable by keyboard, and states with none show no control
+- [x] Each reason shows the vote (assembly vote id and title) and what changed with both values, in words as well as arrows, using glossary terms
+- [x] A state with a rank change but no score change says its rank moved because other states' scores moved
+- [x] The opened states are held in the query string and survive a reload
+- [x] Vitest specs with `HttpTestingController` cover a ballot change, a position change, a vote only in one snapshot, the rank-only case and the query string

@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
-import { JobDto, SnapshotComparisonDto, SnapshotSummaryDto } from '../../api/model';
+import { JobDto, MovementReasonDto, SnapshotComparisonDto, SnapshotSummaryDto } from '../../api/model';
 import { ComparePage } from './compare-page';
 
 const job = (state: JobDto['state']): JobDto => ({
@@ -17,15 +17,31 @@ const list = {
   items: [summary(1, 'Q1 index'), summary(2, 'Q2 index'), summary(3, 'Still running', 'running')],
   total: 3, page: 1, pageSize: 200,
 };
+const ballotChanged: MovementReasonDto = {
+  vote: { voteId: 1, assemblyVoteId: 'MA/2024/001' }, title: 'Ocean Treaty', kind: 'changed', changes: ['category', 'ballot'],
+  a: { category: 'mismatch', ballot: 'n', stance: 'yes', weight: 2 }, b: { category: 'match', ballot: 'y', stance: 'yes', weight: 2 },
+  matchedChange: 2, countedChange: 0,
+};
+const onlyInB: MovementReasonDto = {
+  vote: { voteId: 2, assemblyVoteId: 'MA/2024/002' }, title: 'Space Debris', kind: 'only_in_b', changes: [],
+  a: null, b: { category: 'match', ballot: 'y', stance: 'yes', weight: 3 }, matchedChange: 3, countedChange: 3,
+};
+const positionChanged: MovementReasonDto = {
+  vote: { voteId: 3, assemblyVoteId: 'MA/2024/003' }, title: 'Deep Sea Mining', kind: 'changed',
+  changes: ['category', 'stance', 'weight'],
+  a: { category: 'match', ballot: 'y', stance: 'yes', weight: 2 }, b: { category: 'mismatch', ballot: 'y', stance: 'no', weight: 5 },
+  matchedChange: -2, countedChange: 3,
+};
+
 const comparison: SnapshotComparisonDto = {
   a: { id: 1, name: 'Q1 index', createdAt: '2024-04-02T09:00:00Z' },
   b: { id: 2, name: 'Q2 index', createdAt: '2024-07-02T09:00:00Z' },
   states: [
-    { stateCode: 'ARG', stateName: 'Argentina', scoreA: 50, rankA: 3, basisA: { countableVotes: 2, matchedWeight: 2, countedWeight: 4 }, scoreB: 80.04, rankB: 1, basisB: { countableVotes: 5, matchedWeight: 4, countedWeight: 5 }, scoreChange: 30.04, rankChange: 2 },
-    { stateCode: 'BRA', stateName: 'Brazil', scoreA: 90, rankA: 1, basisA: { countableVotes: 3, matchedWeight: 9, countedWeight: 10 }, scoreB: 70, rankB: 2, basisB: { countableVotes: 5, matchedWeight: 7, countedWeight: 10 }, scoreChange: -20, rankChange: -1 },
-    { stateCode: 'FRA', stateName: 'France', scoreA: 60, rankA: 2, basisA: { countableVotes: 1, matchedWeight: 3, countedWeight: 5 }, scoreB: 60, rankB: 3, basisB: { countableVotes: 2, matchedWeight: 6, countedWeight: 10 }, scoreChange: 0, rankChange: -1 },
-    { stateCode: 'JPN', stateName: 'Japan', scoreA: 40, rankA: 4, basisA: { countableVotes: 1, matchedWeight: 2, countedWeight: 5 }, scoreB: null, rankB: null, basisB: { countableVotes: 0, matchedWeight: 0, countedWeight: 0 }, scoreChange: null, rankChange: null },
-    { stateCode: 'CIV', stateName: 'Côte d’Ivoire', scoreA: null, rankA: null, basisA: { countableVotes: 0, matchedWeight: 0, countedWeight: 0 }, scoreB: null, rankB: null, basisB: { countableVotes: 0, matchedWeight: 0, countedWeight: 0 }, scoreChange: null, rankChange: null },
+    { stateCode: 'ARG', stateName: 'Argentina', scoreA: 50, rankA: 3, basisA: { countableVotes: 2, matchedWeight: 2, countedWeight: 4 }, scoreB: 80.04, rankB: 1, basisB: { countableVotes: 5, matchedWeight: 4, countedWeight: 5 }, scoreChange: 30.04, rankChange: 2, reasons: [ballotChanged, onlyInB] },
+    { stateCode: 'BRA', stateName: 'Brazil', scoreA: 90, rankA: 1, basisA: { countableVotes: 3, matchedWeight: 9, countedWeight: 10 }, scoreB: 70, rankB: 2, basisB: { countableVotes: 5, matchedWeight: 7, countedWeight: 10 }, scoreChange: -20, rankChange: -1, reasons: [positionChanged] },
+    { stateCode: 'FRA', stateName: 'France', scoreA: 60, rankA: 2, basisA: { countableVotes: 1, matchedWeight: 3, countedWeight: 5 }, scoreB: 60, rankB: 3, basisB: { countableVotes: 2, matchedWeight: 6, countedWeight: 10 }, scoreChange: 0, rankChange: -1, reasons: [] },
+    { stateCode: 'JPN', stateName: 'Japan', scoreA: 40, rankA: 4, basisA: { countableVotes: 1, matchedWeight: 2, countedWeight: 5 }, scoreB: null, rankB: null, basisB: { countableVotes: 0, matchedWeight: 0, countedWeight: 0 }, scoreChange: null, rankChange: null, reasons: [] },
+    { stateCode: 'CIV', stateName: 'Côte d’Ivoire', scoreA: null, rankA: null, basisA: { countableVotes: 0, matchedWeight: 0, countedWeight: 0 }, scoreB: null, rankB: null, basisB: { countableVotes: 0, matchedWeight: 0, countedWeight: 0 }, scoreChange: null, rankChange: null, reasons: [] },
   ],
 };
 
@@ -42,10 +58,11 @@ describe('ComparePage', () => {
     TestBed.tick();
   }
 
-  async function open(query: { a?: string; b?: string }) {
+  async function open(query: { a?: string; b?: string; open?: string }) {
     const fixture = TestBed.createComponent(ComparePage);
     if (query.a) fixture.componentRef.setInput('a', query.a);
     if (query.b) fixture.componentRef.setInput('b', query.b);
+    if (query.open) fixture.componentRef.setInput('open', query.open);
     TestBed.tick();
     http.expectOne((r) => r.url === '/api/snapshots').flush(list);
     await settle();
@@ -74,12 +91,62 @@ describe('ComparePage', () => {
     await settle();
 
     expect(rows(page)).toEqual([
-      ['Argentina (ARG)', '3 · 50.0 2 countable votes · 2 of 4 weight matched', '1 · 80.0 5 countable votes · 4 of 5 weight matched', '+30.0', '▲ up 2'],
-      ['Brazil (BRA)', '1 · 90.0 3 countable votes · 9 of 10 weight matched', '2 · 70.0 5 countable votes · 7 of 10 weight matched', '−20.0', '▼ down 1'],
-      ['France (FRA)', '2 · 60.0 1 countable vote · 3 of 5 weight matched', '3 · 60.0 2 countable votes · 6 of 10 weight matched', '0.0', '▼ down 1'],
+      ['Argentina (ARG) Why (2)', '3 · 50.0 2 countable votes · 2 of 4 weight matched', '1 · 80.0 5 countable votes · 4 of 5 weight matched', '+30.0', '▲ up 2'],
+      ['Brazil (BRA) Why (1)', '1 · 90.0 3 countable votes · 9 of 10 weight matched', '2 · 70.0 5 countable votes · 7 of 10 weight matched', '−20.0', '▼ down 1'],
+      ['France (FRA) Rank moved because other states’ scores moved.', '2 · 60.0 1 countable vote · 3 of 5 weight matched', '3 · 60.0 2 countable votes · 6 of 10 weight matched', '0.0', '▼ down 1'],
       ['Japan (JPN)', '4 · 40.0 1 countable vote · 2 of 5 weight matched', 'n/a nothing countable', 'no movement', 'no movement'],
       ['Côte d’Ivoire (CIV)', 'n/a nothing countable', 'n/a nothing countable', 'no movement', 'no movement'],
     ]);
+  });
+
+  const loaded = async (query: { open?: string }) => {
+    const page = await open({ a: '1', b: '2', ...query });
+    http.expectOne((r) => r.url === '/api/snapshots/compare').flush(comparison);
+    await settle();
+    return page;
+  };
+  const reasonLines = (page: HTMLElement, code: string) =>
+    [...page.querySelectorAll(`[data-testid="reasons-${code}"] li`)].map((li) => li.textContent?.replace(/\s+/g, ' ').trim());
+
+  it('offers the reasons only for states that have some, as a keyboard-operable control', async () => {
+    const page = await loaded({});
+
+    const controls = [...page.querySelectorAll('button[data-testid^="why-"]')];
+    expect(controls.map((c) => c.getAttribute('data-testid'))).toEqual(['why-ARG', 'why-BRA']);
+    expect(controls[0].getAttribute('aria-expanded')).toBe('false');
+    expect(page.querySelector('[data-testid="reasons-ARG"]')).toBeNull();
+  });
+
+  it('lists each reason with the vote, what differed on both sides and its effect on the weights', async () => {
+    const page = await loaded({ open: 'ARG,BRA' });
+
+    expect(page.querySelector('button[data-testid="why-ARG"]')?.getAttribute('aria-expanded')).toBe('true');
+    expect(reasonLines(page, 'ARG')).toEqual([
+      'MA/2024/001 Ocean Treaty: category mismatch → match, ballot N → Y · matched weight +2 · counted weight +0',
+      'MA/2024/002 Space Debris: only in B, treated as match with ballot Y · matched weight +3 · counted weight +3',
+    ]);
+    expect(reasonLines(page, 'BRA')).toEqual([
+      'MA/2024/003 Deep Sea Mining: category match → mismatch, position yes → no, weight 2 → 5 · matched weight −2 · counted weight +3',
+    ]);
+  });
+
+  it('says a rank-only movement is because other states moved, where there are no reasons', async () => {
+    const page = await loaded({});
+
+    const france = [...page.querySelectorAll('[data-testid="movement"] tbody tr')].find((r) => r.textContent?.includes('France'));
+    expect(france?.textContent).toContain('Rank moved because other states’ scores moved.');
+    expect(page.querySelector('button[data-testid="why-FRA"]')).toBeNull();
+  });
+
+  it('keeps the opened states in the query string', async () => {
+    const page = await loaded({ open: 'ARG' });
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+
+    (page.querySelector('button[data-testid="why-BRA"]') as HTMLButtonElement).click();
+    expect(navigate).toHaveBeenLastCalledWith([], expect.objectContaining({ queryParams: { open: 'ARG,BRA' }, queryParamsHandling: 'merge' }));
+
+    (page.querySelector('button[data-testid="why-ARG"]') as HTMLButtonElement).click();
+    expect(navigate).toHaveBeenLastCalledWith([], expect.objectContaining({ queryParams: { open: null }, queryParamsHandling: 'merge' }));
   });
 
   it('puts the choices in the query string', async () => {
