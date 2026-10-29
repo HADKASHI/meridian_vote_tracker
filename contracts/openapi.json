@@ -1069,6 +1069,40 @@
         }
       }
     },
+    "/api/rule-sets": {
+      "get": {
+        "tags": [
+          "Snapshots"
+        ],
+        "summary": "The known rule sets, the default first. Only the admin may create a snapshot under another.",
+        "operationId": "listRuleSets",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RuleSetDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/snapshots/preview": {
       "post": {
         "tags": [
@@ -2040,6 +2074,12 @@
               {
                 "$ref": "#/components/schemas/SnapshotSelectionDto"
               }
+            ]
+          },
+          "ruleSet": {
+            "type": [
+              "null",
+              "string"
             ]
           }
         }
@@ -3562,6 +3602,34 @@
           "admin"
         ]
       },
+      "RuleSetDto": {
+        "required": [
+          "id",
+          "name",
+          "description",
+          "weightUnit",
+          "isDefault"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "weightUnit": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isDefault": {
+            "type": "boolean"
+          }
+        }
+      },
       "ScoreBasisDto": {
         "required": [
           "countableVotes",
@@ -3715,6 +3783,7 @@
           "note",
           "selection",
           "scoringRulesVersion",
+          "ruleSet",
           "createdBy",
           "createdAt",
           "job",
@@ -3743,6 +3812,9 @@
           },
           "scoringRulesVersion": {
             "type": "string"
+          },
+          "ruleSet": {
+            "$ref": "#/components/schemas/RuleSetDto"
           },
           "createdBy": {
             "type": "string"

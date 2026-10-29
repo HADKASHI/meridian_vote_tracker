@@ -20,15 +20,19 @@ public sealed record ScoredSnapshot(IReadOnlyList<ScoredLine> Lines, IReadOnlyLi
 
 /// <summary>
 /// The Alignment Index (docs/adr/0006-scoring-rules.md): score = 100 × matched weight ÷
-/// counted weight over a member's yes and no ballots. Pure, so every rule is unit-tested.
+/// counted weight over a member's yes and no ballots, with how abstentions and absences count
+/// decided by the rule set (docs/adr/0007-rule-sets-and-evidence-metrics.md). Weights are
+/// integer points of 1 ÷ the rule set's weight unit. Pure, so every rule is unit-tested.
 /// </summary>
 public static class AlignmentScoring
 {
-    /// <summary>Recorded on every snapshot; change it whenever a rule changes.</summary>
-    public const string RulesVersion = "alignment-2026.1";
+    /// <summary>The default rule set's id, recorded on snapshots scored without a choice.</summary>
+    public const string RulesVersion = RuleSets.DefaultId;
 
-    public static ScoredSnapshot Score(IEnumerable<ScoringFact> facts)
+    public static ScoredSnapshot Score(IEnumerable<ScoringFact> facts, RuleSet? ruleSet = null)
     {
+        ruleSet ??= RuleSets.Default;
+        var unit = ruleSet.WeightUnit;
         var lines = new List<ScoredLine>();
         var totals = new Dictionary<string, (int Matched, int Counted, int Countable)>(StringComparer.Ordinal);
         foreach (var fact in facts)
@@ -38,14 +42,20 @@ public static class AlignmentScoring
             var (matched, counted, countable) = totals.GetValueOrDefault(fact.StateCode);
             totals[fact.StateCode] = category switch
             {
-                LineCategory.Match => (matched + fact.Weight, counted + fact.Weight, countable + 1),
-                LineCategory.Mismatch => (matched, counted + fact.Weight, countable + 1),
+                LineCategory.Match => (matched + fact.Weight * unit, counted + fact.Weight * unit, countable + 1),
+                LineCategory.Mismatch => (matched, counted + fact.Weight * unit, countable + 1),
+                LineCategory.Abstain => Counted(ruleSet.Abstention, fact.Weight, matched, counted, countable),
+                LineCategory.Absent => Counted(ruleSet.Absence, fact.Weight, matched, counted, countable),
                 _ => (matched, counted, countable),
             };
         }
 
         return new ScoredSnapshot(lines, Rank(totals));
     }
+
+    /// <summary>An abstention or an absence adds what the rule set says; it is never a countable vote.</summary>
+    private static (int, int, int) Counted(Treatment treatment, short weight, int matched, int counted, int countable) =>
+        treatment.Counts ? (matched + weight * treatment.Credit, counted + weight * treatment.Unit, countable) : (matched, counted, countable);
 
     /// <summary>
     /// Rules 1–4: only a member's yes or no is countable. Membership comes first, so a

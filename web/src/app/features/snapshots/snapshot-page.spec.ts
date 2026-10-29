@@ -12,6 +12,7 @@ const job: JobDto = {
 };
 const snapshot: SnapshotDto = {
   id: 42, name: 'Q1 2024 index', note: null, scoringRulesVersion: 'alignment-2026.1',
+  ruleSet: { id: 'alignment-2026.1', name: 'Alignment 2026.1 (default)', description: '', weightUnit: 1, isDefault: true },
   selection: { from: '2024-01-01', to: '2024-03-31', excludedVoteIds: [7] },
   createdBy: 'dana', createdAt: '2024-04-02T09:00:00Z', job, voteCount: 2, warnings: [], publications: [],
   results: [

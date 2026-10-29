@@ -30,11 +30,11 @@ public sealed class SnapshotJobHandler(MeridianDbContext db, ILogger<SnapshotJob
         }
 
         var snapshot = await db.Snapshots.AsNoTracking().SingleAsync(s => s.Id == snapshotId, cancellationToken);
-        // The header is insert-only and names the rules; never score it under others.
-        if (snapshot.ScoringRulesVersion != AlignmentScoring.RulesVersion)
+        // The header is insert-only and names the rule set; never score it under another, and refuse one this worker does not know.
+        if (!RuleSets.TryGet(snapshot.ScoringRulesVersion, out var ruleSet))
             throw new JobFailedException(
-                $"The snapshot was created under scoring rules {snapshot.ScoringRulesVersion}, but this worker scores " +
-                $"with {AlignmentScoring.RulesVersion}. Create the snapshot again.");
+                $"The snapshot was created under scoring rules {snapshot.ScoringRulesVersion}, which this worker does not know. " +
+                $"It scores with {string.Join(", ", RuleSets.All.Select(r => r.Id))}. Create the snapshot again.");
         var selected = SnapshotSelection.Resolve(db, SnapshotJson.ReadSelection(snapshot.Selection));
         var votes = await selected.OrderBy(v => v.VoteId).ToListAsync(cancellationToken);
         if (votes.Count == 0)
@@ -44,7 +44,7 @@ public sealed class SnapshotJobHandler(MeridianDbContext db, ILogger<SnapshotJob
 
         var warnings = await SnapshotSelection.WarningsAsync(db, selected, calculating: true, cancellationToken);
         var (facts, revisions) = await ReadFactsAsync(selected, votes, cancellationToken);
-        var scored = AlignmentScoring.Score(facts);
+        var scored = AlignmentScoring.Score(facts, ruleSet);
 
         db.ChangeTracker.AutoDetectChangesEnabled = false;
         db.SnapshotVotes.AddRange(votes.Select(v => new SnapshotVote

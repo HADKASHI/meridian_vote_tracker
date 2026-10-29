@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Meridian.Domain;
+using Meridian.Domain.Scoring;
 using Meridian.Platform.Contracts;
 using Meridian.Platform.Jobs;
 
@@ -44,11 +45,31 @@ public sealed class SnapshotSelectionDto : IValidatableObject
     }
 }
 
-public sealed class CreateSnapshotRequest
+public sealed class CreateSnapshotRequest : IValidatableObject
 {
     [Required(AllowEmptyStrings = false), MaxLength(200)] public string? Name { get; init; }
     [MaxLength(2000)] public string? Note { get; init; }
     [Required] public SnapshotSelectionDto? Selection { get; init; }
+
+    /// <summary>The id of a rule set; omitted means the default. Only the admin may choose another.</summary>
+    public string? RuleSet { get; init; }
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (RuleSet is not null && !RuleSets.TryGet(RuleSet, out _))
+            yield return new ValidationResult($"{RuleSet} is not a known rule set.", [nameof(RuleSet)]);
+    }
+}
+
+/// <summary>A rule set (ADR 0007). Weights in results are points of 1 ÷ <c>WeightUnit</c> of a weight.</summary>
+public sealed record RuleSetDto(string Id, string Name, string Description, int WeightUnit, bool IsDefault)
+{
+    public static RuleSetDto Of(RuleSet ruleSet) =>
+        new(ruleSet.Id, ruleSet.Name, ruleSet.Description, ruleSet.WeightUnit, ruleSet.Id == RuleSets.DefaultId);
+
+    /// <summary>A snapshot's rule set by the id it stored; an id no rule set has (a fixture-built snapshot) reads as the default's rules.</summary>
+    public static RuleSetDto Stored(string id) =>
+        RuleSets.TryGet(id, out var known) ? Of(known) : new RuleSetDto(id, id, "Not a known rule set; read as the default's rules.", 1, false);
 }
 
 public enum SnapshotWarningKind { PendingConflicts, IncompleteVote, ImportRunning }
@@ -77,7 +98,7 @@ public sealed record SnapshotSummaryDto(
     IReadOnlyList<PublicationDto> Publications);
 
 public sealed record SnapshotDto(
-    long Id, string Name, string? Note, SnapshotSelectionDto Selection, string ScoringRulesVersion,
+    long Id, string Name, string? Note, SnapshotSelectionDto Selection, string ScoringRulesVersion, RuleSetDto RuleSet,
     string CreatedBy, DateTimeOffset CreatedAt, JobDto Job, int VoteCount,
     IReadOnlyList<SnapshotResultDto> Results, IReadOnlyList<SnapshotWarningDto> Warnings,
     IReadOnlyList<PublicationDto> Publications);

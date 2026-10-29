@@ -29,7 +29,7 @@ internal static class SnapshotQueries
 
         return new SnapshotDto(
             snapshot.Id, snapshot.Name, snapshot.Note, SnapshotJson.ReadSelection(snapshot.Selection),
-            snapshot.ScoringRulesVersion, snapshot.CreatedBy, snapshot.RecordedAt, job, voteCount,
+            snapshot.ScoringRulesVersion, RuleSetDto.Stored(snapshot.ScoringRulesVersion), snapshot.CreatedBy, snapshot.RecordedAt, job, voteCount,
             await ResultsAsync(db, snapshotId, stateCode: null, ct),
             warnings.Select(w => SnapshotJson.ReadWarning(SnakeCaseEnumConverter<SnapshotWarningKind>.FromName(w.Kind),
                 w.VoteId is { } id ? new VoteRefDto(id, w.AssemblyVoteId!) : null, w.Detail)).ToList(),
