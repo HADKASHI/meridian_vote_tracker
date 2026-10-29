@@ -8,6 +8,7 @@ import { getConflictResource } from '../../api/conflicts/conflicts.resource';
 import { ConflictsService } from '../../api/conflicts/conflicts.service';
 import { AlreadyDecidedProblem, ConflictDecisionDto, ConflictDto, ConflictFilter, ConflictValueDto, Decision } from '../../api/model';
 import { ConflictCard } from '../../shared/problem/conflict-card';
+import { FromTo } from '../../shared/ui/from-to';
 import { LoadState } from '../../shared/ui/load-state';
 import { ProblemBanner } from '../../shared/problem/problem-banner';
 import { isProblem, Problem, ProblemType, toProblem } from '../../shared/problem/problem';
@@ -23,7 +24,7 @@ type CommentField = 'comment';
 /** The decision pane: both values with their origins, so the analyst decides on evidence. */
 @Component({
   selector: 'app-conflict-page',
-  imports: [DatePipe, RouterLink, MatButtonModule, MatFormFieldModule, MatInputModule, ProblemBanner, ConflictCard, LoadState],
+  imports: [DatePipe, RouterLink, MatButtonModule, MatFormFieldModule, MatInputModule, ProblemBanner, ConflictCard, LoadState, FromTo],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <article data-testid="decision-pane">
@@ -53,7 +54,7 @@ type CommentField = 'comment';
           <section class="decided" data-testid="decision" role="status">
             <p>
               <strong>{{ decision(d.decision) }} by {{ d.decidedBy }}</strong> at {{ d.decidedAt | date: 'yyyy-MM-dd HH:mm' }}:
-              <span class="value">{{ value(c, d.from) }} → {{ value(c, d.to) }}</span>
+              <app-from-to class="value" [from]="value(c, d.from)" [to]="value(c, d.to)" />
             </p>
             @if (d.comment) {
               <blockquote>{{ d.comment }}</blockquote>
@@ -87,7 +88,7 @@ type CommentField = 'comment';
             <p>
               <strong>{{ winner.decidedBy }} {{ decision(winner.decision).toLowerCase() }}</strong>
               at {{ winner.decidedAt | date: 'yyyy-MM-dd HH:mm:ss' }}:
-              <span class="value">{{ value(c, winner.from) }} → {{ value(c, winner.to) }}</span>
+              <app-from-to class="value" [from]="value(c, winner.from)" [to]="value(c, winner.to)" />
             </p>
             @if (winner.comment) {
               <blockquote>{{ winner.comment }}</blockquote>

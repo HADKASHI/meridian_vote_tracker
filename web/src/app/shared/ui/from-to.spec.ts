@@ -9,8 +9,7 @@ describe('FromTo', () => {
     await fixture.whenStable();
     const element = fixture.nativeElement as HTMLElement;
 
-    expect(element.querySelector('[aria-hidden="true"]')?.textContent).toBe('→');
-    expect(element.textContent?.replace(/\s+/g, ' ').trim()).toBe('Y → to A');
-    expect(element.querySelector('.sr-only')?.textContent?.trim()).toBe('to');
+    expect(element.textContent?.replace(/\s+/g, ' ').trim()).toBe('Y → A');
+    expect(element.querySelector('[role="img"]')?.getAttribute('aria-label')).toBe('to');
   });
 });

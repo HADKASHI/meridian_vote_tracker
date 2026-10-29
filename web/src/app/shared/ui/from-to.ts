@@ -4,7 +4,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 @Component({
   selector: 'app-from-to',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<span class="from">{{ from() }}</span>&ngsp;<span class="arrow" aria-hidden="true">→</span><span class="sr-only">&ngsp;to&ngsp;</span><strong class="to">{{ to() }}</strong>`,
+  template: `<span class="from">{{ from() }}</span>&ngsp;<span class="arrow" role="img" aria-label="to">→</span>&ngsp;<strong class="to">{{ to() }}</strong>`,
   styles: `
     :host {
       overflow-wrap: anywhere;
@@ -13,7 +13,6 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
       color: var(--mat-sys-on-surface-variant);
     }
     .arrow {
-      margin-inline-end: 4px;
       color: var(--mat-sys-on-surface-variant);
     }
   `,
