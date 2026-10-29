@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Meridian.Domain.Scoring;
 
 /// <summary>How a ballot that is neither yes nor no counts: not at all, or as <c>Credit</c> of <c>Unit</c> points matched.</summary>
@@ -51,9 +53,9 @@ public static class RuleSets
             1, Treatment.Miss(1), Treatment.Miss(1)),
     ];
 
-    public static bool TryGet(string id, out RuleSet ruleSet)
+    public static bool TryGet(string id, [NotNullWhen(true)] out RuleSet? ruleSet)
     {
-        ruleSet = All.FirstOrDefault(r => r.Id == id)!;
+        ruleSet = All.FirstOrDefault(r => r.Id == id);
         return ruleSet is not null;
     }
 
