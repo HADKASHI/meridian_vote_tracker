@@ -239,11 +239,11 @@ export class SnapshotPage {
   protected readonly filter = signal<ConfidenceFilter>('all');
   protected readonly order = signal<ConfidenceOrder>('rank');
   protected readonly shown = computed(() => narrow(this.snapshot.hasValue() ? (this.snapshot.value()?.results ?? []) : [], this.filter(), this.order()));
-  protected readonly emptyMessage = computed(() =>
-    this.filter() === 'none'
-      ? 'Every member state has a confidence band.'
-      : `No member state has ${confidenceLabel(this.filter() as 'high' | 'medium' | 'low')} confidence.`,
-  );
+  protected readonly emptyMessage = computed(() => {
+    const filter = this.filter();
+    if (filter === 'none') return 'Every member state has a confidence band.';
+    return `No member state has ${filter[0].toUpperCase()}${filter.slice(1)} confidence.`;
+  });
   protected readonly percent = percent;
   protected readonly confidenceLabel = confidenceLabel;
   protected readonly isLowEvidence = isLowEvidence;
