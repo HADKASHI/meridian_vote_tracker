@@ -6,7 +6,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (messages().length > 0) {
-      <div class="banner" role="alert">
+      <div class="notice" data-tone="error" role="alert">
         @for (message of messages(); track $index) {
           <p>{{ message }}</p>
         }
@@ -17,16 +17,16 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
     }
   `,
   styles: `
-    .banner {
-      border-inline-start: 4px solid var(--mat-sys-error);
-      background: var(--mat-sys-error-container);
-      color: var(--mat-sys-on-error-container);
-      padding: 8px 16px;
-      margin-block: 8px;
+    .notice {
+      margin-block: 12px;
+    }
+    p {
+      margin-block: 0 4px;
     }
     .reference {
-      font-family: monospace;
-      opacity: 0.8;
+      font-family: var(--app-mono);
+      font-size: 0.85em;
+      margin: 4px 0 0;
     }
   `,
 })

@@ -14,7 +14,7 @@ describe('routes', () => {
 
   const screens: [url: string, heading: string, detail?: string][] = [
     ['/imports', 'Imports'],
-    ['/imports/12', 'Import report', 'Import #12'],
+    ['/imports/12', 'Import #12'],
     ['/review', 'Review'],
     ['/review/7', 'Review', 'Conflict #7'],
     ['/votes', 'Votes'],

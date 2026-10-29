@@ -7,6 +7,8 @@ import { JobState, PublicationDto } from '../../api/model';
 import { listSnapshotsResource } from '../../api/snapshots/snapshots.resource';
 import { pollWhile } from '../../shared/http/poll';
 import { JobStateBadge } from '../../shared/ui/job-state-badge';
+import { LoadState } from '../../shared/ui/load-state';
+import { PageHeader } from '../../shared/ui/page-header';
 import { publicationBadge } from './selection';
 
 const PAGE_SIZE = 50;
@@ -14,18 +16,22 @@ const PAGE_SIZE = 50;
 /** SNP: every snapshot, newest first, with its vote count and publication badge. */
 @Component({
   selector: 'app-snapshots-page',
-  imports: [DatePipe, MatButtonModule, MatTableModule, RouterLink, JobStateBadge],
+  imports: [DatePipe, MatButtonModule, MatTableModule, RouterLink, JobStateBadge, PageHeader, LoadState],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="heading">
-      <h1>Snapshots</h1>
-      <a mat-flat-button routerLink="/snapshots/new">New snapshot</a>
-    </div>
+    <app-page-header heading="Snapshots">
+      <p pageLead>Each snapshot saves an Alignment Index over chosen votes and never changes; an admin publishes one per quarter.</p>
+      <a pageActions mat-flat-button routerLink="/snapshots/new">New snapshot</a>
+    </app-page-header>
     @if (snapshots.hasValue() && snapshots.value(); as page) {
+      @if (page.items.length === 0) {
+        <app-load-state kind="empty" message="No snapshots yet." />
+      } @else {
+      <div class="table-scroll">
       <table mat-table [dataSource]="page.items" data-testid="snapshots-table">
         <ng-container matColumnDef="name">
           <th mat-header-cell *matHeaderCellDef>Name</th>
-          <td mat-cell *matCellDef="let s"><a [routerLink]="['/snapshots', s.id]">{{ s.name }}</a></td>
+          <td mat-cell *matCellDef="let s" class="name"><a [routerLink]="['/snapshots', s.id]">{{ s.name }}</a></td>
         </ng-container>
         <ng-container matColumnDef="createdBy">
           <th mat-header-cell *matHeaderCellDef>By</th>
@@ -33,7 +39,7 @@ const PAGE_SIZE = 50;
         </ng-container>
         <ng-container matColumnDef="createdAt">
           <th mat-header-cell *matHeaderCellDef>Created</th>
-          <td mat-cell *matCellDef="let s">{{ s.createdAt | date: 'yyyy-MM-dd HH:mm' }}</td>
+          <td mat-cell *matCellDef="let s" class="nowrap">{{ s.createdAt | date: 'yyyy-MM-dd HH:mm' }}</td>
         </ng-container>
         <ng-container matColumnDef="votes">
           <th mat-header-cell *matHeaderCellDef>Votes</th>
@@ -47,15 +53,14 @@ const PAGE_SIZE = 50;
           <th mat-header-cell *matHeaderCellDef>Publication</th>
           <td mat-cell *matCellDef="let s">
             @if (badge(s.publications); as text) {
-              <span class="badge" [class.current]="text.startsWith('Published')">{{ text }}</span>
+              <span class="chip" [attr.data-tone]="text.startsWith('Published') ? 'primary' : 'outline'">{{ text }}</span>
             }
           </td>
         </ng-container>
         <tr mat-header-row *matHeaderRowDef="columns"></tr>
         <tr mat-row *matRowDef="let row; columns: columns"></tr>
       </table>
-      @if (page.items.length === 0) {
-        <p>No snapshots yet.</p>
+      </div>
       }
       @if (page.total > page.pageSize) {
         <nav class="pager">
@@ -66,22 +71,19 @@ const PAGE_SIZE = 50;
           </a>
         </nav>
       }
+    } @else if (snapshots.error()) {
+      <app-load-state kind="error" message="The snapshots could not be loaded." />
+    } @else {
+      <app-load-state kind="loading" message="Loading snapshots" />
     }
   `,
   styles: `
-    .heading {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+    .name {
+      min-width: 160px;
+      overflow-wrap: anywhere;
     }
-    .badge {
-      padding: 2px 8px;
-      border-radius: 12px;
-      background: var(--mat-sys-surface-container-high);
-    }
-    .badge.current {
-      background: var(--mat-sys-primary-container);
-      color: var(--mat-sys-on-primary-container);
+    .nowrap {
+      white-space: nowrap;
     }
     .pager {
       display: flex;

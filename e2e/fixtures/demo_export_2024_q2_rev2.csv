@@ -1,0 +1,68 @@
+assembly_vote_id,session,vote_date,resolution_title,country_code,ballot,country_name,published_at
+MA/2024/101,79,2024-04-03,Fisheries Subsidies and Coastal Communities,ARG,Y,Argentina,2024-06-01T09:00:00Z
+MA/2024/101,79,2024-04-03,Fisheries Subsidies and Coastal Communities,BRA,N,Brazil,2024-06-01T09:00:00Z
+MA/2024/101,79,2024-04-03,Fisheries Subsidies and Coastal Communities,CIV,N,Côte d'Ivoire,2024-06-01T09:00:00Z
+MA/2024/101,79,2024-04-03,Fisheries Subsidies and Coastal Communities,FRA,A,France,2024-06-01T09:00:00Z
+MA/2024/101,79,2024-04-03,Fisheries Subsidies and Coastal Communities,ISL,Y,Iceland,2024-06-01T09:00:00Z
+MA/2024/101,79,2024-04-03,Fisheries Subsidies and Coastal Communities,JPN,X,Japan,2024-06-01T09:00:00Z
+MA/2024/101,79,2024-04-03,Fisheries Subsidies and Coastal Communities,MNE,N,Montenegro,2024-06-01T09:00:00Z
+MA/2024/101,79,2024-04-03,Fisheries Subsidies and Coastal Communities,SSD,Y,South Sudan,2024-06-01T09:00:00Z
+MA/2024/101,79,2024-04-03,Fisheries Subsidies and Coastal Communities,TLS,Y,Timor-Leste,2024-06-01T09:00:00Z
+MA/2024/101,79,2024-04-03,Fisheries Subsidies and Coastal Communities,TUR,Y,Türkiye,2024-06-01T09:00:00Z
+MA/2024/102,79,2024-04-10,Rights of Persons with Disabilities,ARG,Y,Argentina,2024-06-01T09:00:00Z
+MA/2024/102,79,2024-04-10,Rights of Persons with Disabilities,BRA,N,Brazil,2024-06-01T09:00:00Z
+MA/2024/102,79,2024-04-10,Rights of Persons with Disabilities,CIV,A,Côte d'Ivoire,2024-06-01T09:00:00Z
+MA/2024/102,79,2024-04-10,Rights of Persons with Disabilities,FRA,Y,France,2024-06-01T09:00:00Z
+MA/2024/102,79,2024-04-10,Rights of Persons with Disabilities,ISL,X,Iceland,2024-06-01T09:00:00Z
+MA/2024/102,79,2024-04-10,Rights of Persons with Disabilities,JPN,N,Japan,2024-06-01T09:00:00Z
+MA/2024/102,79,2024-04-10,Rights of Persons with Disabilities,MNE,Y,Montenegro,2024-06-01T09:00:00Z
+MA/2024/102,79,2024-04-10,Rights of Persons with Disabilities,SSD,Y,South Sudan,2024-06-01T09:00:00Z
+MA/2024/102,79,2024-04-10,Rights of Persons with Disabilities,TLS,Y,Timor-Leste,2024-06-01T09:00:00Z
+MA/2024/102,79,2024-04-10,Rights of Persons with Disabilities,TUR,N,Türkiye,2024-06-01T09:00:00Z
+MA/2024/103,79,2024-04-17,Nuclear Disarmament Verification,ARG,N,Argentina,2024-06-01T09:00:00Z
+MA/2024/103,79,2024-04-17,Nuclear Disarmament Verification,BRA,A,Brazil,2024-06-01T09:00:00Z
+MA/2024/103,79,2024-04-17,Nuclear Disarmament Verification,CIV,Y,Côte d'Ivoire,2024-06-01T09:00:00Z
+MA/2024/103,79,2024-04-17,Nuclear Disarmament Verification,FRA,X,France,2024-06-01T09:00:00Z
+MA/2024/103,79,2024-04-17,Nuclear Disarmament Verification,ISL,N,Iceland,2024-06-01T09:00:00Z
+MA/2024/103,79,2024-04-17,Nuclear Disarmament Verification,JPN,Y,Japan,2024-06-01T09:00:00Z
+MA/2024/103,79,2024-04-17,Nuclear Disarmament Verification,MNE,Y,Montenegro,2024-06-01T09:00:00Z
+MA/2024/103,79,2024-04-17,Nuclear Disarmament Verification,SSD,Y,South Sudan,2024-06-01T09:00:00Z
+MA/2024/103,79,2024-04-17,Nuclear Disarmament Verification,TLS,N,Timor-Leste,2024-06-01T09:00:00Z
+MA/2024/103,79,2024-04-17,Nuclear Disarmament Verification,TUR,A,Türkiye,2024-06-01T09:00:00Z
+MA/2024/104,79,2024-04-24,Protection of Cultural Heritage and Regional Cooperation in Armed Conflict,ARG,A,Argentina,2024-06-01T09:00:00Z
+MA/2024/104,79,2024-04-24,Protection of Cultural Heritage and Regional Cooperation in Armed Conflict,BRA,Y,Brazil,2024-06-01T09:00:00Z
+MA/2024/104,79,2024-04-24,Protection of Cultural Heritage and Regional Cooperation in Armed Conflict,CIV,X,Côte d'Ivoire,2024-06-01T09:00:00Z
+MA/2024/104,79,2024-04-24,Protection of Cultural Heritage and Regional Cooperation in Armed Conflict,FRA,N,France,2024-06-01T09:00:00Z
+MA/2024/104,79,2024-04-24,Protection of Cultural Heritage and Regional Cooperation in Armed Conflict,ISL,Y,Iceland,2024-06-01T09:00:00Z
+MA/2024/104,79,2024-04-24,Protection of Cultural Heritage and Regional Cooperation in Armed Conflict,JPN,Y,Japan,2024-06-01T09:00:00Z
+MA/2024/104,79,2024-04-24,Protection of Cultural Heritage and Regional Cooperation in Armed Conflict,MNE,Y,Montenegro,2024-06-01T09:00:00Z
+MA/2024/104,79,2024-04-24,Protection of Cultural Heritage and Regional Cooperation in Armed Conflict,SSD,N,South Sudan,2024-06-01T09:00:00Z
+MA/2024/104,79,2024-04-24,Protection of Cultural Heritage and Regional Cooperation in Armed Conflict,TLS,A,Timor-Leste,2024-06-01T09:00:00Z
+MA/2024/104,79,2024-04-24,Protection of Cultural Heritage and Regional Cooperation in Armed Conflict,TUR,Y,Türkiye,2024-06-01T09:00:00Z
+MA/2024/105,79,2024-05-02,Global Health and Foreign Policy: Revised,ARG,Y,Argentina,2024-06-01T09:00:00Z
+MA/2024/105,79,2024-05-02,Global Health and Foreign Policy: Revised,BRA,X,Brazil,2024-06-01T09:00:00Z
+MA/2024/105,79,2024-05-02,Global Health and Foreign Policy: Revised,CIV,N,Côte d'Ivoire,2024-06-01T09:00:00Z
+MA/2024/105,79,2024-05-02,Global Health and Foreign Policy: Revised,FRA,Y,France,2024-06-01T09:00:00Z
+MA/2024/105,79,2024-05-02,Global Health and Foreign Policy: Revised,ISL,Y,Iceland,2024-06-01T09:00:00Z
+MA/2024/105,79,2024-05-02,Global Health and Foreign Policy: Revised,JPN,Y,Japan,2024-06-01T09:00:00Z
+MA/2024/105,79,2024-05-02,Global Health and Foreign Policy: Revised,MNE,N,Montenegro,2024-06-01T09:00:00Z
+MA/2024/105,79,2024-05-02,Global Health and Foreign Policy: Revised,SSD,A,South Sudan,2024-06-01T09:00:00Z
+MA/2024/105,79,2024-05-02,Global Health and Foreign Policy: Revised,TLS,Y,Timor-Leste,2024-06-01T09:00:00Z
+MA/2024/105,79,2024-05-02,Global Health and Foreign Policy: Revised,TUR,X,Türkiye,2024-06-01T09:00:00Z
+MA/2024/106,79,2024-05-09,Sustainable Tourism in Small Island States,ARG,X,Argentina,2024-06-01T09:00:00Z
+MA/2024/106,79,2024-05-09,Sustainable Tourism in Small Island States,BRA,N,Brazil,2024-06-01T09:00:00Z
+MA/2024/106,79,2024-05-09,Sustainable Tourism in Small Island States,CIV,Y,Côte d'Ivoire,2024-06-01T09:00:00Z
+MA/2024/106,79,2024-05-09,Sustainable Tourism in Small Island States,FRA,Y,France,2024-06-01T09:00:00Z
+MA/2024/106,79,2024-05-09,Sustainable Tourism in Small Island States,ISL,Y,Iceland,2024-06-01T09:00:00Z
+MA/2024/106,79,2024-05-09,Sustainable Tourism in Small Island States,JPN,N,Japan,2024-06-01T09:00:00Z
+MA/2024/106,79,2024-05-09,Sustainable Tourism in Small Island States,MNE,A,Montenegro,2024-06-01T09:00:00Z
+MA/2024/107,79,2024-05-16,Oceans and the Law of the Sea,ARG,Y,Argentina,2024-06-01T09:00:00Z
+MA/2024/107,79,2024-05-16,Oceans and the Law of the Sea,BRA,Y,Brazil,2024-06-01T09:00:00Z
+MA/2024/107,79,2024-05-16,Oceans and the Law of the Sea,CIV,N,Côte d'Ivoire,2024-06-01T09:00:00Z
+MA/2024/107,79,2024-05-16,Oceans and the Law of the Sea,FRA,A,France,2024-06-01T09:00:00Z
+MA/2024/107,79,2024-05-16,Oceans and the Law of the Sea,ISL,Y,Iceland,2024-06-01T09:00:00Z
+MA/2024/107,79,2024-05-16,Oceans and the Law of the Sea,JPN,X,Japan,2024-06-01T09:00:00Z
+MA/2024/107,79,2024-05-16,Oceans and the Law of the Sea,MNE,N,Montenegro,2024-06-01T09:00:00Z
+MA/2024/107,79,2024-05-16,Oceans and the Law of the Sea,SSD,Y,South Sudan,2024-06-01T09:00:00Z
+MA/2024/107,79,2024-05-16,Oceans and the Law of the Sea,TLS,Y,Timor-Leste,2024-06-01T09:00:00Z
+MA/2024/107,79,2024-05-16,Oceans and the Law of the Sea,TUR,Y,Türkiye,2024-06-01T09:00:00Z

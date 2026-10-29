@@ -2,17 +2,21 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { listPublicationsResource } from '../../api/snapshots/snapshots.resource';
+import { LoadState } from '../../shared/ui/load-state';
+import { PageHeader } from '../../shared/ui/page-header';
 
 /** SNP-05: each reporting quarter's official index, and every publication it replaced. */
 @Component({
   selector: 'app-publications-page',
-  imports: [DatePipe, RouterLink],
+  imports: [DatePipe, RouterLink, PageHeader, LoadState],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <h1>Publications</h1>
+    <app-page-header heading="Publications">
+      <p pageLead>Each reporting quarter's official index, and every publication it replaced with the reason.</p>
+    </app-page-header>
     @if (quarters.hasValue() && quarters.value(); as list) {
       @for (quarter of list; track quarter.quarter) {
-        <section class="quarter" [attr.data-quarter]="quarter.quarter">
+        <section class="surface-card quarter" [attr.data-quarter]="quarter.quarter">
           <h2>{{ quarter.quarter }}</h2>
           <p class="current">
             Official index:
@@ -37,20 +41,35 @@ import { listPublicationsResource } from '../../api/snapshots/snapshots.resource
           }
         </section>
       } @empty {
-        <p>No snapshot has been published yet.</p>
+        <app-load-state kind="empty" message="No snapshot has been published yet." />
       }
+    } @else if (quarters.error()) {
+      <app-load-state kind="error" message="The publications could not be loaded." />
+    } @else {
+      <app-load-state kind="loading" message="Loading publications" />
     }
   `,
   styles: `
     .quarter {
-      border: 1px solid var(--mat-sys-outline-variant);
-      border-radius: 12px;
-      padding: 8px 16px;
-      margin-block: 12px;
       max-width: 860px;
+      overflow-wrap: anywhere;
+    }
+    h2 {
+      font: var(--mat-sys-title-large);
+      margin-block: 0 8px;
+    }
+    .current {
+      margin-block: 0 8px;
+    }
+    .chain {
+      margin: 0;
+      padding-inline-start: 20px;
+    }
+    .chain li {
+      margin-block: 4px;
     }
     .superseded {
-      opacity: 0.75;
+      color: var(--mat-sys-on-surface-variant);
     }
   `,
 })

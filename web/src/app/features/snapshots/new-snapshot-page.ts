@@ -8,6 +8,7 @@ import { Router } from '@angular/router';
 import { NoPositionProblem, SnapshotPreviewDto } from '../../api/model';
 import { SnapshotsService } from '../../api/snapshots/snapshots.service';
 import { ProblemBanner } from '../../shared/problem/problem-banner';
+import { PageHeader } from '../../shared/ui/page-header';
 import { isProblem, ProblemType, toProblem } from '../../shared/problem/problem';
 import { problemToFieldErrors } from '../../shared/problem/to-field-errors';
 import { PreviewDialog, PreviewDialogData } from './preview-dialog';
@@ -18,12 +19,13 @@ type Field = 'name' | 'note' | 'from' | 'to' | 'sessions' | 'voteIds';
 /** SNP-01: name a snapshot, choose its votes, preview them, then calculate. */
 @Component({
   selector: 'app-new-snapshot-page',
-  imports: [MatButtonModule, MatButtonToggleModule, MatFormFieldModule, MatInputModule, ProblemBanner],
+  imports: [MatButtonModule, MatButtonToggleModule, MatFormFieldModule, MatInputModule, ProblemBanner, PageHeader],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <h1>New snapshot</h1>
-    <p class="lead">Choose votes, preview, then calculate. Calculation runs as a job.</p>
-    <form class="card" (submit)="$event.preventDefault(); preview()">
+    <app-page-header heading="New snapshot" [back]="{ label: 'Snapshots', link: '/snapshots' }">
+      <p pageLead>Choose votes, preview, then calculate. Calculation runs as a job.</p>
+    </app-page-header>
+    <form class="surface-card form" (submit)="$event.preventDefault(); preview()">
       <mat-form-field>
         <mat-label>Name</mat-label>
         <input matInput name="name" [value]="name()" (input)="name.set(value($event))" />
@@ -80,7 +82,7 @@ type Field = 'name' | 'note' | 'from' | 'to' | 'sessions' | 'voteIds';
       }
 
       @if (form().removed.length > 0) {
-        <p data-testid="removed-votes">
+        <p class="notice removed" data-testid="removed-votes">
           Removed: {{ removedLabel() }}
           <button mat-button type="button" (click)="patch({ removed: [] })">Put them back</button>
         </p>
@@ -95,30 +97,42 @@ type Field = 'name' | 'note' | 'from' | 'to' | 'sessions' | 'voteIds';
       </mat-form-field>
 
       <app-problem-banner [messages]="formErrors()" [traceId]="traceId()" />
-      <div>
+      <div class="submit">
         <button mat-flat-button type="submit" [disabled]="busy()">Preview…</button>
       </div>
     </form>
   `,
   styles: `
-    .card {
+    .form {
       display: flex;
       flex-direction: column;
       gap: 8px;
       max-width: 640px;
-      border: 1px solid var(--mat-sys-outline-variant);
-      border-radius: 12px;
-      padding: 16px;
+      padding: 20px;
     }
     .row {
       display: flex;
-      gap: 16px;
+      flex-wrap: wrap;
+      gap: 0 16px;
+    }
+    .row mat-form-field {
+      flex: 1 1 200px;
     }
     .label {
-      font-size: 0.9em;
+      font: var(--mat-sys-label-large);
+      color: var(--mat-sys-on-surface-variant);
     }
-    .lead {
-      opacity: 0.8;
+    mat-button-toggle-group {
+      align-self: flex-start;
+      margin-block-end: 12px;
+      max-width: 100%;
+      overflow-x: auto;
+    }
+    .removed {
+      margin: 0;
+    }
+    .submit {
+      margin-block-start: 8px;
     }
     .field-error {
       color: var(--mat-sys-error);

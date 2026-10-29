@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTableModule } from '@angular/material/table';
 import { RouterLink } from '@angular/router';
 import { listJobsResource } from '../../api/jobs/jobs.resource';
@@ -7,15 +8,19 @@ import { JobDto, JobState } from '../../api/model';
 import { pollWhile } from '../../shared/http/poll';
 import { jobProgress } from '../../shared/ui/job-progress';
 import { JobStateBadge } from '../../shared/ui/job-state-badge';
+import { PageHeader } from '../../shared/ui/page-header';
 
 /** Every job: kind, state, place in queue, progress and failure reason. */
 @Component({
   selector: 'app-jobs-page',
-  imports: [MatTableModule, DatePipe, RouterLink, JobStateBadge],
+  imports: [MatTableModule, MatProgressBarModule, DatePipe, RouterLink, JobStateBadge, PageHeader],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <h1>Jobs</h1>
+    <app-page-header heading="Jobs">
+      <p pageLead>Imports and snapshot calculations run here in the background, oldest first.</p>
+    </app-page-header>
     @if (jobs.hasValue() && jobs.value(); as page) {
+      <div class="table-scroll">
       <table mat-table [dataSource]="page.items" data-testid="jobs-table">
         <ng-container matColumnDef="job">
           <th mat-header-cell *matHeaderCellDef>Job</th>
@@ -33,7 +38,13 @@ import { JobStateBadge } from '../../shared/ui/job-state-badge';
         </ng-container>
         <ng-container matColumnDef="progress">
           <th mat-header-cell *matHeaderCellDef>Progress</th>
-          <td mat-cell *matCellDef="let job">{{ progress(job) }}</td>
+          <td mat-cell *matCellDef="let job" class="progress">
+            {{ progress(job) }}
+            @if (job.state === 'running') {
+              <mat-progress-bar [mode]="job.votesTotal ? 'determinate' : 'indeterminate'"
+                [value]="job.votesTotal ? (100 * job.votesDone) / job.votesTotal : 0" aria-label="Job progress" />
+            }
+          </td>
         </ng-container>
         <ng-container matColumnDef="startedBy">
           <th mat-header-cell *matHeaderCellDef>By</th>
@@ -46,9 +57,28 @@ import { JobStateBadge } from '../../shared/ui/job-state-badge';
         <tr mat-header-row *matHeaderRowDef="columns"></tr>
         <tr mat-row *matRowDef="let row; columns: columns"></tr>
       </table>
+      </div>
       @if (page.items.length === 0) {
-        <p>No jobs yet.</p>
+        <p class="surface-card muted">No jobs yet. Uploading a file or calculating a snapshot starts one.</p>
       }
+    } @else if (jobs.error()) {
+      <p class="surface-card" role="alert">The jobs could not be loaded.</p>
+    } @else {
+      <mat-progress-bar mode="indeterminate" aria-label="Loading jobs" />
+    }
+  `,
+  styles: `
+    .progress {
+      min-width: 160px;
+    }
+    .progress mat-progress-bar {
+      margin-block-start: 4px;
+    }
+    td {
+      white-space: nowrap;
+    }
+    td.progress {
+      white-space: normal;
     }
   `,
 })

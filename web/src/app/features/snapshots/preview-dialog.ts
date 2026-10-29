@@ -27,12 +27,12 @@ export interface PreviewDialogData {
           {{ data.label() }} · <strong>{{ preview.voteCount }} {{ preview.voteCount === 1 ? 'vote' : 'votes' }}</strong>
         </p>
         @if (preview.noPosition.length > 0) {
-          <section class="blocked" role="alert" data-testid="preview-blocked">
+          <section class="notice" data-tone="error" role="alert" data-testid="preview-blocked">
             <h3>
               {{ preview.noPosition.length }} {{ preview.noPosition.length === 1 ? 'vote has' : 'votes have' }} no position,
               so this snapshot can't be calculated
             </h3>
-            <ul>
+            <ul class="votes">
               @for (vote of preview.noPosition; track vote.voteId) {
                 <li><a [routerLink]="['/votes', vote.voteId]">{{ vote.assemblyVoteId }}</a></li>
               }
@@ -41,18 +41,20 @@ export interface PreviewDialogData {
               Ask the admin to set positions (<a routerLink="/positions">Positions</a>), or remove them from this
               selection. Removal is recorded with the selection.
             </p>
-            <button mat-stroked-button type="button" [disabled]="data.busy()" (click)="data.removeBlocked()">
-              Remove these votes
-            </button>
-            <button mat-stroked-button type="button" [disabled]="data.busy()" (click)="data.checkAgain()">
-              Check again
-            </button>
+            <div class="actions">
+              <button mat-stroked-button type="button" [disabled]="data.busy()" (click)="data.removeBlocked()">
+                Remove these votes
+              </button>
+              <button mat-stroked-button type="button" [disabled]="data.busy()" (click)="data.checkAgain()">
+                Check again
+              </button>
+            </div>
           </section>
         } @else {
-          <p class="ready" data-testid="preview-ready">Every selected vote has a position.</p>
+          <p class="notice" data-testid="preview-ready">Every selected vote has a position.</p>
         }
         @if (preview.warnings.length > 0) {
-          <section class="warnings" data-testid="preview-warnings">
+          <section class="notice" data-tone="warning" data-testid="preview-warnings">
             <h3>Warnings (kept on the snapshot, never block)</h3>
             <ul>
               @for (warning of preview.warnings; track $index) {
@@ -81,43 +83,33 @@ export interface PreviewDialogData {
   `,
   styles: `
     .summary {
-      opacity: 0.8;
+      color: var(--mat-sys-on-surface-variant);
+      margin-block: 0 12px;
     }
-    .blocked,
-    .warnings,
-    .ready {
-      border-inline-start: 4px solid;
-      border-radius: 8px;
-      padding: 8px 16px;
-      margin-block: 8px;
-    }
-    .blocked {
-      border-color: var(--mat-sys-error);
-      background: var(--mat-sys-error-container);
-      color: var(--mat-sys-on-error-container);
-    }
-    .blocked button {
-      margin-inline-end: 8px;
-    }
-    .warnings {
-      border-color: var(--mat-sys-tertiary);
-      background: var(--mat-sys-tertiary-container);
-      color: var(--mat-sys-on-tertiary-container);
-    }
-    .ready {
-      border-color: var(--mat-sys-primary);
+    .notice {
+      margin-block: 0 12px;
     }
     h3 {
-      margin-block: 4px;
-      font-size: 1em;
+      margin-block: 0 4px;
+      font: var(--mat-sys-title-small);
+    }
+    .votes {
+      columns: 2 9rem;
+      font-family: var(--app-mono);
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
     }
     .hint {
-      font-size: 0.85em;
-      opacity: 0.8;
+      font: var(--mat-sys-body-small);
     }
     .end {
       text-align: end;
       padding-inline: 24px;
+      color: var(--mat-sys-on-surface-variant);
+      margin-block: 0 16px;
     }
   `,
 })

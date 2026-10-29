@@ -1,0 +1,12 @@
+{
+  "name": "meridian-e2e",
+  "private": true,
+  "description": "Development-only browser scripts against the compose stack; never run in CI.",
+  "type": "module",
+  "scripts": {
+    "screens": "node screens.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0"
+  }
+}

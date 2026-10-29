@@ -6,6 +6,8 @@ import { MatTableModule } from '@angular/material/table';
 import { Router, RouterLink } from '@angular/router';
 import { listPositionsResource } from '../../api/positions/positions.resource';
 import { PositionDto, PositionWorklistItemDto } from '../../api/model';
+import { LoadState } from '../../shared/ui/load-state';
+import { PageHeader } from '../../shared/ui/page-header';
 import { PositionEditor } from './position-editor';
 import { positionLabel, setByName } from './position-label';
 import { CurrentUser } from '../../core/identity/current-user';
@@ -13,24 +15,33 @@ import { CurrentUser } from '../../core/identity/current-user';
 /** The positions worklist: every vote with its stance and weight, votes without a position first. */
 @Component({
   selector: 'app-positions-page',
-  imports: [MatTableModule, MatPaginatorModule, MatSlideToggleModule, DatePipe, RouterLink, PositionEditor],
+  imports: [MatTableModule, MatPaginatorModule, MatSlideToggleModule, DatePipe, RouterLink, PositionEditor, PageHeader, LoadState],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <h1>Positions</h1>
-    <mat-slide-toggle [checked]="noPosition()" (change)="navigate({ noPosition: $event.checked || null, page: null })">
-      No position only
-    </mat-slide-toggle>
+    <app-page-header heading="Positions">
+      <p pageLead>What the Institute wanted in each vote and how much it counts. Votes without a position come first;
+        only an admin sets them.</p>
+    </app-page-header>
+    <div class="toolbar surface-card">
+      <mat-slide-toggle [checked]="noPosition()" (change)="navigate({ noPosition: $event.checked || null, page: null })">
+        No position only
+      </mat-slide-toggle>
+    </div>
     @if (positions.hasValue() && positions.value(); as result) {
+      @if (result.items.length === 0) {
+        <app-load-state kind="empty" [message]="noPosition() ? 'Every vote has a position.' : 'No votes yet.'" />
+      } @else {
+      <div class="table-scroll">
       <table mat-table [dataSource]="result.items" [trackBy]="byVote" data-testid="positions-table">
         <ng-container matColumnDef="vote">
           <th mat-header-cell *matHeaderCellDef>Vote</th>
-          <td mat-cell *matCellDef="let item">
+          <td mat-cell *matCellDef="let item" class="nowrap">
             <a [routerLink]="['/votes', item.vote.voteId]">{{ item.vote.assemblyVoteId }}</a>
           </td>
         </ng-container>
         <ng-container matColumnDef="date">
           <th mat-header-cell *matHeaderCellDef>Date</th>
-          <td mat-cell *matCellDef="let item">{{ item.voteDate }}</td>
+          <td mat-cell *matCellDef="let item" class="nowrap">{{ item.voteDate }}</td>
         </ng-container>
         <ng-container matColumnDef="session">
           <th mat-header-cell *matHeaderCellDef>Session</th>
@@ -38,31 +49,29 @@ import { CurrentUser } from '../../core/identity/current-user';
         </ng-container>
         <ng-container matColumnDef="title">
           <th mat-header-cell *matHeaderCellDef>Title</th>
-          <td mat-cell *matCellDef="let item">{{ item.title }}</td>
+          <td mat-cell *matCellDef="let item" class="title">{{ item.title }}</td>
         </ng-container>
         <ng-container matColumnDef="position">
           <th mat-header-cell *matHeaderCellDef>Position</th>
-          <td mat-cell *matCellDef="let item" data-testid="position">
+          <td mat-cell *matCellDef="let item" data-testid="position" class="position">
             @if (item.position; as position) {
-              {{ describe(position) }}
-              <span class="set-by">· {{ setBy(position) }}, {{ position.setAt | date: 'yyyy-MM-dd HH:mm' }}</span>
+              <strong>{{ describe(position) }}</strong>
+              <span class="set-by">{{ setBy(position) }}, {{ position.setAt | date: 'yyyy-MM-dd HH:mm' }}</span>
             } @else {
-              <span class="none">No position</span>
+              <span class="chip" data-tone="error">No position</span>
             }
           </td>
         </ng-container>
         <ng-container matColumnDef="edit">
           <th mat-header-cell *matHeaderCellDef>Set stance and weight</th>
-          <td mat-cell *matCellDef="let item">
+          <td mat-cell *matCellDef="let item" class="edit">
             <app-position-editor [voteId]="item.vote.voteId" [position]="item.position" (saved)="positions.reload()" />
           </td>
         </ng-container>
         <tr mat-header-row *matHeaderRowDef="columns"></tr>
         <tr mat-row *matRowDef="let row; columns: columns"></tr>
       </table>
-      @if (result.items.length === 0) {
-        <p>{{ noPosition() ? 'Every vote has a position.' : 'No votes yet.' }}</p>
-      }
+      </div>
       <mat-paginator
         [length]="result.total"
         [pageIndex]="result.page - 1"
@@ -70,15 +79,41 @@ import { CurrentUser } from '../../core/identity/current-user';
         [pageSizeOptions]="[25, 50, 100]"
         (page)="onPage($event)"
       />
+      }
+    } @else if (positions.error()) {
+      <app-load-state kind="error" message="The positions could not be loaded." />
+    } @else {
+      <app-load-state kind="loading" message="Loading positions" />
     }
   `,
   styles: `
-    .none {
-      font-style: italic;
-      opacity: 0.8;
+    .toolbar {
+      padding-block: 12px;
+    }
+    .nowrap {
+      white-space: nowrap;
+    }
+    .title {
+      min-width: 200px;
+    }
+    .position {
+      min-width: 140px;
     }
     .set-by {
-      opacity: 0.7;
+      display: block;
+      color: var(--mat-sys-on-surface-variant);
+      font: var(--mat-sys-body-small);
+    }
+    .edit {
+      min-width: 300px;
+      padding-block: 8px;
+    }
+    /* On a phone the worklist keeps what the editing needs; the date and session are on the vote page. */
+    @media (max-width: 600px) {
+      .mat-column-date,
+      .mat-column-session {
+        display: none;
+      }
     }
   `,
 })

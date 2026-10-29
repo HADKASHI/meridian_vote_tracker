@@ -50,8 +50,8 @@ describe('SnapshotPage', () => {
     const rows = [...page.querySelectorAll('[data-testid="ranking"] tr')].map((r) =>
       [...r.querySelectorAll('td')].map((c) => c.textContent?.trim()),
     );
-    expect(rows[1]).toEqual(['1', 'Argentina (ARG)', '66.7', '2 countable votes, 2 of 3 weight matched']);
-    expect(rows[2]).toEqual(['–', 'Japan (JPN)', 'n/a', 'nothing countable']);
+    expect(rows[1]).toEqual(['1', 'Argentina (ARG)', '66.7 2 countable votes · 2 of 3 weight matched']);
+    expect(rows[2]).toEqual(['–', 'Japan (JPN)', 'n/a nothing countable']);
     expect(page.querySelector('[data-testid="snapshot-meta"]')?.textContent).toContain(
       '2024-01-01 → 2024-03-31, minus 1 removed vote',
     );

@@ -1,20 +1,39 @@
 <mat-toolbar class="header">
-  <a class="brand" routerLink="/review">Meridian Vote Tracker</a>
-  <nav>
-    <a mat-button routerLink="/review" routerLinkActive="active">
-      <span [matBadge]="shell.pendingConflicts()" [matBadgeHidden]="shell.pendingConflicts() === 0"
-        matBadgeOverlap="false" aria-label="Review" data-testid="review-badge">Review</span>
-    </a>
-    <a mat-button routerLink="/imports" routerLinkActive="active">Imports</a>
-    <a mat-button routerLink="/votes" routerLinkActive="active">Votes</a>
-    <a mat-button routerLink="/positions" routerLinkActive="active">Positions</a>
-    <a mat-button routerLink="/snapshots" routerLinkActive="active">Snapshots</a>
-    <a mat-button routerLink="/publications" routerLinkActive="active">Publications</a>
+  <a class="brand" routerLink="/review">Meridian<span class="brand-rest"> Vote Tracker</span></a>
+  <nav aria-label="Main" class="nav-wide">
+    <ng-container *ngTemplateOutlet="links" />
   </nav>
   <span class="spacer"></span>
   <app-jobs-indicator />
   <app-user-switcher />
+  <button mat-icon-button class="nav-menu-button" type="button" [matMenuTriggerFor]="navMenu"
+    [attr.aria-label]="shell.pendingConflicts() > 0 ? 'Navigation, ' + shell.pendingConflicts() + ' conflicts pending' : 'Navigation'"
+    [matBadge]="shell.pendingConflicts()" [matBadgeHidden]="shell.pendingConflicts() === 0" matBadgeSize="small">
+    <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="currentColor" d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z" /></svg>
+  </button>
 </mat-toolbar>
-<main>
+<mat-menu #navMenu="matMenu">
+  @for (link of navLinks; track link.path) {
+    <a mat-menu-item [routerLink]="link.path" routerLinkActive="active" ariaCurrentWhenActive="page">
+      {{ link.label }}
+      @if (link.path === '/review' && shell.pendingConflicts() > 0) {
+        <span class="menu-count">· {{ shell.pendingConflicts() }} pending</span>
+      }
+    </a>
+  }
+</mat-menu>
+<ng-template #links>
+  @for (link of navLinks; track link.path) {
+    <a mat-button [routerLink]="link.path" routerLinkActive="active" ariaCurrentWhenActive="page">
+      @if (link.path === '/review') {
+        <span [matBadge]="shell.pendingConflicts()" [matBadgeHidden]="shell.pendingConflicts() === 0"
+          matBadgeOverlap="false" [attr.aria-label]="reviewLabel()" data-testid="review-badge">Review</span>
+      } @else {
+        {{ link.label }}
+      }
+    </a>
+  }
+</ng-template>
+<main class="page">
   <router-outlet />
 </main>

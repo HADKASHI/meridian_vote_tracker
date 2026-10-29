@@ -9,6 +9,8 @@ import { MatTableModule } from '@angular/material/table';
 import { Router, RouterLink } from '@angular/router';
 import { searchVotesResource } from '../../api/votes/votes.resource';
 import { SearchVotesParams } from '../../api/model';
+import { LoadState } from '../../shared/ui/load-state';
+import { PageHeader } from '../../shared/ui/page-header';
 import { positionLabel } from './vote-labels';
 
 /** The search as it lives in the URL: every filter and the page are query params. */
@@ -37,25 +39,27 @@ export function searchParams(query: VoteQuery, pageSize: number): SearchVotesPar
   selector: 'app-votes-page',
   imports: [
     FormsModule, RouterLink, MatButtonModule, MatCheckboxModule, MatFormFieldModule, MatInputModule,
-    MatPaginatorModule, MatTableModule,
+    MatPaginatorModule, MatTableModule, PageHeader, LoadState,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <h1>Votes</h1>
-    <form class="filters" (ngSubmit)="search()">
-      <mat-form-field>
+    <app-page-header heading="Votes">
+      <p pageLead>Find any vote by its assembly vote id or title, session, date range, or votes still without a position.</p>
+    </app-page-header>
+    <form class="filters surface-card" (ngSubmit)="search()" role="search" aria-label="Search votes">
+      <mat-form-field class="wide" subscriptSizing="dynamic">
         <mat-label>Assembly vote id or title</mat-label>
         <input matInput name="q" [(ngModel)]="form().q" data-testid="votes-q" />
       </mat-form-field>
-      <mat-form-field class="narrow">
+      <mat-form-field class="narrow" subscriptSizing="dynamic">
         <mat-label>Session</mat-label>
         <input matInput name="session" type="number" min="1" [(ngModel)]="form().session" />
       </mat-form-field>
-      <mat-form-field class="narrow">
+      <mat-form-field class="narrow" subscriptSizing="dynamic">
         <mat-label>From</mat-label>
         <input matInput name="from" type="date" [(ngModel)]="form().from" />
       </mat-form-field>
-      <mat-form-field class="narrow">
+      <mat-form-field class="narrow" subscriptSizing="dynamic">
         <mat-label>To</mat-label>
         <input matInput name="to" type="date" [(ngModel)]="form().to" />
       </mat-form-field>
@@ -64,10 +68,14 @@ export function searchParams(query: VoteQuery, pageSize: number): SearchVotesPar
     </form>
 
     @if (votes.hasValue() && votes.value(); as result) {
+      @if (result.items.length === 0) {
+        <app-load-state kind="empty" message="No votes match." />
+      } @else {
+      <div class="table-scroll">
       <table mat-table [dataSource]="result.items" data-testid="votes-table">
         <ng-container matColumnDef="vote">
           <th mat-header-cell *matHeaderCellDef>Vote</th>
-          <td mat-cell *matCellDef="let vote"><a [routerLink]="['/votes', vote.id]">{{ vote.assemblyVoteId }}</a></td>
+          <td mat-cell *matCellDef="let vote" class="nowrap"><a [routerLink]="['/votes', vote.id]">{{ vote.assemblyVoteId }}</a></td>
         </ng-container>
         <ng-container matColumnDef="session">
           <th mat-header-cell *matHeaderCellDef>Session</th>
@@ -75,22 +83,26 @@ export function searchParams(query: VoteQuery, pageSize: number): SearchVotesPar
         </ng-container>
         <ng-container matColumnDef="date">
           <th mat-header-cell *matHeaderCellDef>Date</th>
-          <td mat-cell *matCellDef="let vote">{{ vote.voteDate }}</td>
+          <td mat-cell *matCellDef="let vote" class="nowrap">{{ vote.voteDate }}</td>
         </ng-container>
         <ng-container matColumnDef="title">
           <th mat-header-cell *matHeaderCellDef>Title</th>
-          <td mat-cell *matCellDef="let vote">{{ vote.title }}</td>
+          <td mat-cell *matCellDef="let vote" class="title">{{ vote.title }}</td>
         </ng-container>
         <ng-container matColumnDef="position">
           <th mat-header-cell *matHeaderCellDef>Position</th>
-          <td mat-cell *matCellDef="let vote">{{ position(vote.position) }}</td>
+          <td mat-cell *matCellDef="let vote" class="nowrap">
+            @if (vote.position) {
+              {{ position(vote.position) }}
+            } @else {
+              <span class="chip" data-tone="outline">{{ position(vote.position) }}</span>
+            }
+          </td>
         </ng-container>
         <tr mat-header-row *matHeaderRowDef="columns"></tr>
         <tr mat-row *matRowDef="let row; columns: columns"></tr>
       </table>
-      @if (result.items.length === 0) {
-        <p>No votes match.</p>
-      }
+      </div>
       <mat-paginator
         [length]="result.total"
         [pageIndex]="result.page - 1"
@@ -98,17 +110,37 @@ export function searchParams(query: VoteQuery, pageSize: number): SearchVotesPar
         [hidePageSize]="true"
         (page)="goToPage($event)"
       />
+      }
+    } @else if (votes.error()) {
+      <app-load-state kind="error" message="The votes could not be loaded." />
+    } @else {
+      <app-load-state kind="loading" message="Searching votes" />
     }
   `,
   styles: `
     .filters {
       display: flex;
       flex-wrap: wrap;
-      gap: 0 12px;
-      align-items: baseline;
+      gap: 12px;
+      align-items: center;
+    }
+    .wide {
+      flex: 1 1 260px;
     }
     .narrow {
-      width: 160px;
+      flex: 1 1 140px;
+      max-width: 200px;
+    }
+    @media (max-width: 600px) {
+      .narrow {
+        max-width: none;
+      }
+    }
+    .nowrap {
+      white-space: nowrap;
+    }
+    .title {
+      min-width: 220px;
     }
   `,
 })
