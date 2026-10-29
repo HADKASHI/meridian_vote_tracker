@@ -76,6 +76,11 @@ services:
     depends_on: *after-migrate
     # Its liveness is the job heartbeat; a stop lets it finish the vote it is committing.
     stop_grace_period: 30s
+    # Parsing holds the whole export in memory: a 190 MB file peaked at 2.8 GiB in this container, so the
+    # largest accepted file (200 MB) needs about 3.1 GiB (ADR 5). .NET caps its heap at 75% of this limit,
+    # so 5g leaves a 3.75 GiB heap. The Docker engine (Docker Desktop: its memory setting) must be able
+    # to give the worker this much, beside the other services.
+    mem_limit: 5g
     restart: unless-stopped
 
   web:
