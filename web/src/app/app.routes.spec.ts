@@ -16,7 +16,7 @@ describe('routes', () => {
     ['/imports', 'Imports'],
     ['/imports/12', 'Import report', 'Import #12'],
     ['/review', 'Review'],
-    ['/review/7', 'Conflict', 'Conflict #7'],
+    ['/review/7', 'Review', 'Conflict #7'],
     ['/votes', 'Votes'],
     ['/votes/101?tab=timeline', 'Vote', 'Vote #101 · timeline'],
     ['/positions', 'Positions'],

@@ -518,6 +518,16 @@
               }
             }
           },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Unauthorized",
             "content": {
@@ -536,6 +546,7 @@
         "tags": [
           "Conflicts"
         ],
+        "summary": "The decision pane: both values with their origins, the decision and losing attempts.",
         "operationId": "getConflict",
         "parameters": [
           {
@@ -1527,7 +1538,8 @@
           "decidedAt",
           "comment",
           "from",
-          "to"
+          "to",
+          "membership"
         ],
         "type": "object",
         "properties": {
@@ -1560,6 +1572,16 @@
           },
           "to": {
             "$ref": "#/components/schemas/ConflictValueDto"
+          },
+          "membership": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MembershipRecalculationDto"
+              }
+            ]
           }
         }
       },
@@ -1714,7 +1736,10 @@
             "$ref": "#/components/schemas/ConflictValueDto"
           },
           "revisionId": {
-            "type": "integer",
+            "type": [
+              "null",
+              "integer"
+            ],
             "format": "int64"
           },
           "origin": {
@@ -2409,6 +2434,35 @@
           "crlf",
           "mixed"
         ]
+      },
+      "MembershipRecalculationDto": {
+        "required": [
+          "approvedStateCodes",
+          "noLongerCountedStateCodes",
+          "openedConflictIds"
+        ],
+        "type": "object",
+        "properties": {
+          "approvedStateCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "noLongerCountedStateCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "openedConflictIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        }
       },
       "NoPositionProblem": {
         "required": [
