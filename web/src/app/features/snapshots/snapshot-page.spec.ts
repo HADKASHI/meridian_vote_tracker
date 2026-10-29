@@ -16,8 +16,10 @@ const snapshot: SnapshotDto = {
   selection: { from: '2024-01-01', to: '2024-03-31', excludedVoteIds: [7] },
   createdBy: 'dana', createdAt: '2024-04-02T09:00:00Z', job, voteCount: 2, warnings: [], publications: [],
   results: [
-    { stateCode: 'ARG', stateName: 'Argentina', matchedWeight: 2, countedWeight: 3, countableVotes: 2, score: 200 / 3, rank: 1 },
-    { stateCode: 'JPN', stateName: 'Japan', matchedWeight: 0, countedWeight: 0, countableVotes: 0, score: null, rank: null },
+    { stateCode: 'ARG', stateName: 'Argentina', matchedWeight: 2, countedWeight: 3, countableVotes: 2, score: 200 / 3, rank: 1,
+      completeness: 1, abstentionRate: 0, missingData: 0, confidence: 'low' },
+    { stateCode: 'JPN', stateName: 'Japan', matchedWeight: 0, countedWeight: 0, countableVotes: 0, score: null, rank: null,
+      completeness: 0, abstentionRate: 0.5, missingData: 0.5, confidence: null },
   ],
 };
 

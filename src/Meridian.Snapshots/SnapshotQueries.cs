@@ -197,22 +197,34 @@ internal static class SnapshotQueries
         CancellationToken ct)
     {
         var results = db.SnapshotResults.Where(r => r.SnapshotId == snapshotId);
-        if (stateCode is not null) results = results.Where(r => r.StateCode == stateCode);
+        var lines = db.SnapshotLines.Where(l => l.SnapshotId == snapshotId);
+        if (stateCode is not null)
+        {
+            results = results.Where(r => r.StateCode == stateCode);
+            lines = lines.Where(l => l.StateCode == stateCode);
+        }
+
         var rows = await (
                 from r in results
                 join s in db.MemberStates on r.StateCode equals s.Code
-                select new
-                {
-                    r.StateCode, s.Name, r.MatchedWeight, r.CountedWeight, r.Rank,
-                    Countable = db.SnapshotLines.Count(l => l.SnapshotId == snapshotId && l.StateCode == r.StateCode
-                        && (l.Category == LineCategory.Match || l.Category == LineCategory.Mismatch)),
-                })
+                select new { r.StateCode, s.Name, r.MatchedWeight, r.CountedWeight, r.Rank })
             .AsNoTracking().ToListAsync(ct);
+        var counts = (await lines.GroupBy(l => new { l.StateCode, l.Category })
+                .Select(g => new { g.Key.StateCode, g.Key.Category, Lines = g.Count() }).AsNoTracking().ToListAsync(ct))
+            .ToLookup(c => c.StateCode);
 
         return rows
             .OrderBy(r => r.Rank is null).ThenBy(r => r.Rank).ThenBy(r => r.StateCode, StringComparer.Ordinal)
-            .Select(r => new SnapshotResultDto(r.StateCode, r.Name, r.MatchedWeight, r.CountedWeight, r.Countable,
-                new StateResult(r.StateCode, r.MatchedWeight, r.CountedWeight, r.Countable, r.Rank).Score, r.Rank))
+            .Select(r =>
+            {
+                int Of(LineCategory category) => counts[r.StateCode].Where(c => c.Category == category).Sum(c => c.Lines);
+                var evidence = EvidenceMetrics.From(new LineCounts(Of(LineCategory.Match), Of(LineCategory.Mismatch),
+                    Of(LineCategory.Abstain), Of(LineCategory.Absent), Of(LineCategory.NoData)));
+                var countable = Of(LineCategory.Match) + Of(LineCategory.Mismatch);
+                return new SnapshotResultDto(r.StateCode, r.Name, r.MatchedWeight, r.CountedWeight, countable,
+                    new StateResult(r.StateCode, r.MatchedWeight, r.CountedWeight, countable, r.Rank).Score, r.Rank,
+                    evidence.Completeness, evidence.AbstentionRate, evidence.MissingData, evidence.Confidence);
+            })
             .ToList();
     }
 }

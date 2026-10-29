@@ -85,9 +85,15 @@ public sealed record SnapshotPreviewDto(int VoteCount, IReadOnlyList<VoteRefDto>
 
 public sealed record SnapshotCreatedDto(long SnapshotId, long JobId);
 
-/// <summary>One state's result. Score is 100 × matched ÷ counted, null (n/a) when nothing was countable.</summary>
+/// <summary>
+/// One state's result. Score is 100 × matched ÷ counted, null (n/a) when nothing was countable. The evidence is a share (0–1)
+/// of the votes the state was a member for, derived from the stored lines and the same under every rule set (ADR 0007):
+/// completeness is yes and no ballots, abstention rate is abstentions, missing data is votes with no data. They are null when
+/// the state was never a member, and <c>Confidence</c> is null when nothing was countable.
+/// </summary>
 public sealed record SnapshotResultDto(
-    string StateCode, string StateName, int MatchedWeight, int CountedWeight, int CountableVotes, double? Score, int? Rank);
+    string StateCode, string StateName, int MatchedWeight, int CountedWeight, int CountableVotes, double? Score, int? Rank,
+    double? Completeness, double? AbstentionRate, double? MissingData, Confidence? Confidence);
 
 public sealed record PublicationDto(
     long Id, long SnapshotId, string SnapshotName, string Quarter, string PublishedBy, DateTimeOffset PublishedAt,
