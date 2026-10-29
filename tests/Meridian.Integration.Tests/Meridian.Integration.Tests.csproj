@@ -16,5 +16,6 @@
   <ItemGroup>
     <Using Include="Xunit" />
     <None Include="..\data\member_states.csv" Link="data\member_states.csv" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Imports\Files\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
