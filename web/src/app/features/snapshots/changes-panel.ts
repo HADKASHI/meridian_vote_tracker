@@ -41,7 +41,7 @@ const LISTED = 20;
                 <li>
                   <a [routerLink]="['/votes', v.vote.voteId]">{{ v.vote.assemblyVoteId }}</a>
                   {{ v.old.stance }}, weight {{ v.old.weight }} → <strong>{{ v.new.stance }}, weight {{ v.new.weight }}</strong>
-                  by {{ origin(v.changedBy) }}
+                  by {{ origin(v.changedBy) }} on {{ v.at | date: 'yyyy-MM-dd' }}
                 </li>
               }
             </ul>
@@ -55,7 +55,7 @@ const LISTED = 20;
               @for (v of c.countryVotesChanged.votes; track $index) {
                 <li>
                   <a [routerLink]="['/votes', v.vote.voteId]">{{ v.vote.assemblyVoteId }}</a> {{ v.stateCode }}
-                  {{ ballot(v.old) }} → <strong>{{ ballot(v.new) }}</strong> by {{ origin(v.changedBy) }}
+                  {{ ballot(v.old) }} → <strong>{{ ballot(v.new) }}</strong> by {{ origin(v.changedBy) }} on {{ v.at | date: 'yyyy-MM-dd' }}
                 </li>
               }
             </ul>
@@ -71,7 +71,7 @@ const LISTED = 20;
                   <a [routerLink]="['/votes', v.vote.voteId]">{{ v.vote.assemblyVoteId }}</a> @for (d of differences(v.old, v.new); track d.field; let last = $last) {
                     {{ d.field }} {{ d.from }} → <strong>{{ d.to }}</strong>{{ last ? '' : ',' }}
                   }
-                  by {{ origin(v.changedBy) }}
+                  by {{ origin(v.changedBy) }} on {{ v.at | date: 'yyyy-MM-dd' }}
                 </li>
               }
             </ul>
@@ -102,7 +102,7 @@ const LISTED = 20;
                   <a [routerLink]="['/votes', v.vote.voteId]">{{ v.vote.assemblyVoteId }}</a> @for (d of differences(v.old, v.new); track d.field; let last = $last) {
                     {{ d.field }} {{ d.from }} → <strong>{{ d.to }}</strong>{{ last ? '' : ',' }}
                   }
-                  by {{ origin(v.changedBy) }}
+                  by {{ origin(v.changedBy) }} on {{ v.at | date: 'yyyy-MM-dd' }}
                 </li>
               }
             </ul>

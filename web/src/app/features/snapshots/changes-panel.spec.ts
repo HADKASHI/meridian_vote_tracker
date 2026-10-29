@@ -80,9 +80,9 @@ describe('ChangesPanel', () => {
     const page = await open(changed);
 
     expect(text(page, 'drift-position')).toContain('Positions changed (1)');
-    expect(text(page, 'drift-position')).toContain('MA/2024/001 yes, weight 2 → no, weight 5 by lena (set position)');
+    expect(text(page, 'drift-position')).toContain('MA/2024/001 yes, weight 2 → no, weight 5 by lena (set position) on 2024-05-01');
     expect(text(page, 'drift-country-votes')).toContain('Country votes changed (2)');
-    expect(text(page, 'drift-country-votes')).toContain('MA/2024/001 BRA N → Y by omar (decision #7)');
+    expect(text(page, 'drift-country-votes')).toContain('MA/2024/001 BRA N → Y by omar (decision #7) on 2024-05-02');
     expect(text(page, 'drift-country-votes')).toContain('MA/2024/001 FRA none → A by dana (import #12)');
     expect(text(page, 'drift-details')).toContain('MA/2024/002 date 2024-02-10 → 2024-04-02 by omar (decision #8)');
     expect(text(page, 'drift-now-selected')).toContain('Now selected, not in the snapshot (2)');
