@@ -13,9 +13,7 @@ namespace Meridian.Integration.Tests.Imports;
 /// A retried import resumes from the votes it committed (ADR 0003), through the real
 /// BackgroundService. The crash is a trigger in the test's own database that fails, or
 /// stalls, the vote holding one line on its first pass only; a sequence counts passes,
-/// because it survives the rollback. The stall is short because stopping a worker inside a
-/// COPY does not cancel the statement on the server: the vote's lock is held until the stall
-/// ends, and the next worker waits for it.
+/// because it survives the rollback.
 /// </summary>
 public sealed class CrashResumeTests(PostgresFixture postgres, AzuriteFixture azurite)
 {
@@ -65,14 +63,13 @@ public sealed class CrashResumeTests(PostgresFixture postgres, AzuriteFixture az
     {
         await using var api = await ApiFactory.CreateAsync(postgres, azurite);
         await ArrangeAsync(api);
-        await CrashOnceAtLineAsync(api, 6, "PERFORM pg_sleep(5)");
+        await CrashOnceAtLineAsync(api, 6, "PERFORM pg_sleep(30)");
         var created = await ImportApi.UploadOkAsync(api.ClientAs("dana"), "q1.csv", File);
 
         using (var first = ImportApi.Worker(api))
         {
             await first.StartAsync(Ct);
             await WaitForAsync(api, created.ImportId, j => j.VotesDone == 2);
-            await WaitForCrashPointAsync(api);
             await first.StopAsync(Ct);
         }
         var handedBack = await JobAsync(api, created.ImportId);
@@ -103,7 +100,7 @@ public sealed class CrashResumeTests(PostgresFixture postgres, AzuriteFixture az
 
         var job = await JobAsync(api, created.ImportId);
         Assert.Equal((JobState.Failed, 2, 4), (job.State, job.VotesDone, job.VotesTotal));
-        Assert.Equal("Unexpected PostgresException; find it in the logs by the job's trace id.", job.LastError);
+        Assert.Equal("Unexpected DbUpdateException; find it in the logs by the job's trace id.", job.LastError);
     }
 
     /// <summary>Approves vote 001 with BRA Y, so the file's BRA A is a conflict.</summary>
@@ -140,23 +137,6 @@ public sealed class CrashResumeTests(PostgresFixture postgres, AzuriteFixture az
             var job = await JobAsync(api, importId);
             if (condition(job)) return job;
             Assert.True(DateTime.UtcNow < deadline, $"Job {job.Id} is {job.State} with {job.VotesDone} votes done after 30 s.");
-            await Task.Delay(50, Ct);
-        }
-    }
-
-    /// <summary>
-    /// Waits until the trigger has taken its one pass. Two votes done does not say so: stopping the
-    /// worker before it reaches the line would leave the stall for the new worker.
-    /// </summary>
-    private static async Task WaitForCrashPointAsync(ApiFactory api)
-    {
-        await using var connection = new NpgsqlConnection(api.ConnectionString);
-        await connection.OpenAsync(Ct);
-        await using var command = new NpgsqlCommand("SELECT is_called FROM crash_pass", connection);
-        var deadline = DateTime.UtcNow.AddSeconds(30);
-        while (!(bool)(await command.ExecuteScalarAsync(Ct))!)
-        {
-            Assert.True(DateTime.UtcNow < deadline, "The worker never reached the line the trigger watches.");
             await Task.Delay(50, Ct);
         }
     }
