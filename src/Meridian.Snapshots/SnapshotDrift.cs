@@ -1,4 +1,5 @@
 using Meridian.Data;
+using Meridian.Data.Entities;
 using Meridian.Platform.Contracts;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,9 +14,50 @@ internal static class SnapshotDrift
     /// <summary>How many votes of each kind are listed; the count is always the real one.</summary>
     private const int Listed = 20;
 
-    public static async Task<SnapshotChangesDto> ChangesAsync(MeridianDbContext db, long snapshotId, CancellationToken ct) =>
-        new(DateTimeOffset.UtcNow, await PositionsAsync(db, snapshotId, ct),
-            await CountryVotesAsync(db, snapshotId, ct), await DetailsAsync(db, snapshotId, ct));
+    public static async Task<SnapshotChangesDto> ChangesAsync(MeridianDbContext db, long snapshotId, CancellationToken ct)
+    {
+        var json = await db.Snapshots.AsNoTracking().Where(s => s.Id == snapshotId).Select(s => s.Selection).SingleAsync(ct);
+        var selected = SnapshotSelection.Resolve(db, SnapshotJson.ReadSelection(json));
+        return new SnapshotChangesDto(DateTimeOffset.UtcNow, await PositionsAsync(db, snapshotId, ct),
+            await CountryVotesAsync(db, snapshotId, ct), await DetailsAsync(db, snapshotId, ct),
+            await NowSelectedAsync(db, snapshotId, selected, ct), await NoLongerSelectedAsync(db, snapshotId, selected, ct));
+    }
+
+    /// <summary>Votes the saved selection matches today that the snapshot does not hold.</summary>
+    private static async Task<NowSelectedDto> NowSelectedAsync(MeridianDbContext db, long snapshotId,
+        IQueryable<CurrentVote> selected, CancellationToken ct)
+    {
+        var added = selected.Where(v => !db.SnapshotVotes.Any(sv => sv.SnapshotId == snapshotId && sv.VoteId == v.VoteId));
+        var count = await added.CountAsync(ct);
+        var rows = await added.OrderBy(v => v.AssemblyVoteId).Take(Listed).ToListAsync(ct);
+        return new NowSelectedDto(count, rows.Select(v => new NowSelectedVoteDto(
+            new VoteRefDto(v.VoteId, v.AssemblyVoteId), new DetailsValueDto(v.Session, v.VoteDate, v.Title),
+            v.Stance is { } stance ? new PositionValueDto(stance, v.Weight!.Value) : null)).ToList());
+    }
+
+    /// <summary>Votes the snapshot holds that the saved selection no longer matches, with the details that moved them out.</summary>
+    private static async Task<DetailsChangesDto> NoLongerSelectedAsync(MeridianDbContext db, long snapshotId,
+        IQueryable<CurrentVote> selected, CancellationToken ct)
+    {
+        var left =
+            from sv in db.SnapshotVotes
+            where sv.SnapshotId == snapshotId && !selected.Any(v => v.VoteId == sv.VoteId)
+            join current in db.VoteCurrents on sv.VoteId equals current.VoteId
+            join v in db.Votes on sv.VoteId equals v.Id
+            join old in db.VoteDetailsRevisions on sv.DetailsRevisionId equals old.Id
+            join now in db.VoteDetailsRevisions on current.DetailsRevisionId equals now.Id
+            select new { v.Id, v.AssemblyVoteId, Old = old, New = now };
+        var count = await left.CountAsync(ct);
+        var rows = await left.OrderBy(c => c.AssemblyVoteId).Take(Listed).AsNoTracking().ToListAsync(ct);
+        var origins = await OriginsAsync(db, rows.Select(r => r.New.OriginImportRowId), rows.Select(r => r.New.OriginDecisionId), ct);
+        return new DetailsChangesDto(count, rows.Select(c => DetailsChange(c.Id, c.AssemblyVoteId, c.Old, c.New, origins)).ToList());
+    }
+
+    private static DetailsChangeDto DetailsChange(long voteId, string assemblyVoteId, VoteDetailsRevision old,
+        VoteDetailsRevision now, Func<long?, long?, ChangeOriginDto> origins) =>
+        new(new VoteRefDto(voteId, assemblyVoteId), new DetailsValueDto(old.Session, old.VoteDate, old.Title),
+            new DetailsValueDto(now.Session, now.VoteDate, now.Title),
+            origins(now.OriginImportRowId, now.OriginDecisionId), now.RecordedAt);
 
     /// <summary>Votes whose position now has a different stance or weight than the one the snapshot used.</summary>
     private static async Task<PositionChangesDto> PositionsAsync(MeridianDbContext db, long snapshotId, CancellationToken ct)
@@ -81,11 +123,7 @@ internal static class SnapshotDrift
 
         var origins = await OriginsAsync(db, rows.Select(r => r.New.OriginImportRowId), rows.Select(r => r.New.OriginDecisionId), ct);
 
-        return new DetailsChangesDto(count, rows.Select(c => new DetailsChangeDto(
-            new VoteRefDto(c.Id, c.AssemblyVoteId), new DetailsValueDto(c.Old.Session, c.Old.VoteDate, c.Old.Title),
-            new DetailsValueDto(c.New.Session, c.New.VoteDate, c.New.Title),
-            origins(c.New.OriginImportRowId, c.New.OriginDecisionId),
-            c.New.RecordedAt)).ToList());
+        return new DetailsChangesDto(count, rows.Select(c => DetailsChange(c.Id, c.AssemblyVoteId, c.Old, c.New, origins)).ToList());
     }
 
     /// <summary>Resolves a revision's origin (an import row's import and uploader, or a decision and who made it).</summary>

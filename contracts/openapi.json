@@ -2820,6 +2820,51 @@
           }
         }
       },
+      "NowSelectedDto": {
+        "required": [
+          "count",
+          "votes"
+        ],
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "votes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NowSelectedVoteDto"
+            }
+          }
+        }
+      },
+      "NowSelectedVoteDto": {
+        "required": [
+          "vote",
+          "details",
+          "position"
+        ],
+        "type": "object",
+        "properties": {
+          "vote": {
+            "$ref": "#/components/schemas/VoteRefDto"
+          },
+          "details": {
+            "$ref": "#/components/schemas/DetailsValueDto"
+          },
+          "position": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PositionValueDto"
+              }
+            ]
+          }
+        }
+      },
       "OriginDto": {
         "required": [
           "kind",
@@ -3597,7 +3642,9 @@
           "readAt",
           "positionChanged",
           "countryVotesChanged",
-          "detailsChanged"
+          "detailsChanged",
+          "nowSelected",
+          "noLongerSelected"
         ],
         "type": "object",
         "properties": {
@@ -3612,6 +3659,12 @@
             "$ref": "#/components/schemas/CountryVoteChangesDto"
           },
           "detailsChanged": {
+            "$ref": "#/components/schemas/DetailsChangesDto"
+          },
+          "nowSelected": {
+            "$ref": "#/components/schemas/NowSelectedDto"
+          },
+          "noLongerSelected": {
             "$ref": "#/components/schemas/DetailsChangesDto"
           }
         }

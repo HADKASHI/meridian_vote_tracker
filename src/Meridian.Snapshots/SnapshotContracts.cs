@@ -151,12 +151,19 @@ public sealed record DetailsChangesDto(int Count, IReadOnlyList<DetailsChangeDto
 /// <summary>Each entry is one member state's ballot in one vote; <c>Count</c> counts those, not votes.</summary>
 public sealed record CountryVoteChangesDto(int Count, IReadOnlyList<CountryVoteChangeDto> Votes);
 
+/// <summary>A vote that now matches the snapshot's selection but is not in it, as it stands today.</summary>
+/// <param name="Position">Null when the vote has no position yet.</param>
+public sealed record NowSelectedVoteDto(VoteRefDto Vote, DetailsValueDto Details, PositionValueDto? Position);
+
+public sealed record NowSelectedDto(int Count, IReadOnlyList<NowSelectedVoteDto> Votes);
+
 /// <summary>
 /// What would differ if the snapshot were created now, read live from its stored revisions and today's
 /// values. It holds no score or rank and was not calculated.
 /// </summary>
 public sealed record SnapshotChangesDto(DateTimeOffset ReadAt, PositionChangesDto PositionChanged,
-    CountryVoteChangesDto CountryVotesChanged, DetailsChangesDto DetailsChanged);
+    CountryVoteChangesDto CountryVotesChanged, DetailsChangesDto DetailsChanged,
+    NowSelectedDto NowSelected, DetailsChangesDto NoLongerSelected);
 
 public sealed class PublishSnapshotRequest : IValidatableObject
 {

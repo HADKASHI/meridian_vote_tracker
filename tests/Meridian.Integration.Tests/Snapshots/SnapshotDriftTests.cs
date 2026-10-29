@@ -169,4 +169,74 @@ public sealed class SnapshotDriftTests(PostgresFixture postgres, AzuriteFixture 
         Assert.Equal(("import", "omar", late.Id), (origin.GetProperty("kind").GetString(), origin.GetProperty("by").GetString(),
             origin.GetProperty("importId").GetInt64()));
     }
+
+    [Fact]
+    public async Task A_new_vote_in_the_date_range_is_listed_and_a_vote_moved_out_of_it_is_listed_with_why()
+    {
+        await using var api = await ApiFactory.CreateAsync(postgres, azurite);
+        await using var fx = Meridian.Fixtures.Fixtures.For(api.ConnectionString);
+        var stays = await fx.VoteAsync("MA/2024/001", new DateOnly(2024, 1, 10));
+        var moves = await fx.VoteAsync("MA/2024/002", new DateOnly(2024, 2, 10), title: "Space Debris");
+        var removed = await fx.VoteAsync("MA/2024/003", new DateOnly(2024, 2, 11));
+        foreach (var vote in new[] { stays, moves, removed }) await fx.PositionAsync(vote, Stance.Yes, 1);
+        var snapshotId = await CreateAsync(api, new
+        {
+            from = "2024-01-01", to = "2024-03-31", excludedVoteIds = new[] { removed.Id },
+        });
+        await RunJobsAsync(api.ConnectionString);
+
+        var added = await fx.VoteAsync("MA/2024/004", new DateOnly(2024, 3, 1), session: 80, title: "Fisheries");
+        await fx.PositionAsync(added, Stance.No, 4);
+        var noPosition = await fx.VoteAsync("MA/2024/005", new DateOnly(2024, 3, 2));
+        await fx.VoteAsync("MA/2024/006", new DateOnly(2024, 6, 1));
+        await fx.PositionAsync(await fx.VoteAsync("MA/2024/007", new DateOnly(2023, 12, 31)), Stance.Yes, 1);
+        var decision = await fx.DecideAsync(await fx.DetailsConflictAsync(moves, new DateOnly(2024, 4, 2)), Decision.Accept, decidedBy: "omar");
+
+        var drift = await ChangesAsync(api, snapshotId);
+
+        var now = drift.GetProperty("nowSelected");
+        Assert.Equal(2, now.GetProperty("count").GetInt32());
+        var listed = now.GetProperty("votes").EnumerateArray().ToList();
+        Assert.Equal(["MA/2024/004", "MA/2024/005"], listed.Select(v => v.GetProperty("vote").GetProperty("assemblyVoteId").GetString()));
+        Assert.Equal(("Fisheries", "2024-03-01", 80), (listed[0].GetProperty("details").GetProperty("title").GetString(),
+            listed[0].GetProperty("details").GetProperty("voteDate").GetString(), listed[0].GetProperty("details").GetProperty("session").GetInt32()));
+        Assert.Equal(("no", 4), (listed[0].GetProperty("position").GetProperty("stance").GetString(), listed[0].GetProperty("position").GetProperty("weight").GetInt32()));
+        Assert.Equal(JsonValueKind.Null, listed[1].GetProperty("position").ValueKind);
+
+        var left = drift.GetProperty("noLongerSelected");
+        Assert.Equal(1, left.GetProperty("count").GetInt32());
+        var entry = Assert.Single(left.GetProperty("votes").EnumerateArray());
+        Assert.Equal("MA/2024/002", entry.GetProperty("vote").GetProperty("assemblyVoteId").GetString());
+        Assert.Equal(("2024-02-10", "2024-04-02"), (entry.GetProperty("old").GetProperty("voteDate").GetString(), entry.GetProperty("new").GetProperty("voteDate").GetString()));
+        Assert.Equal(("decision", "omar", decision.Id), (entry.GetProperty("changedBy").GetProperty("kind").GetString(),
+            entry.GetProperty("changedBy").GetProperty("by").GetString(), entry.GetProperty("changedBy").GetProperty("decisionId").GetInt64()));
+        Assert.Equal(noPosition.AssemblyVoteId, listed[1].GetProperty("vote").GetProperty("assemblyVoteId").GetString());
+    }
+
+    [Fact]
+    public async Task Sessions_and_explicit_lists_are_resolved_like_the_preview_resolves_them()
+    {
+        await using var api = await ApiFactory.CreateAsync(postgres, azurite);
+        await using var fx = Meridian.Fixtures.Fixtures.For(api.ConnectionString);
+        var inSession = await fx.VoteAsync("MA/2024/001", new DateOnly(2024, 1, 10), session: 79);
+        var leaves = await fx.VoteAsync("MA/2024/002", new DateOnly(2024, 1, 11), session: 79);
+        await fx.PositionAsync(inSession, Stance.Yes, 1);
+        await fx.PositionAsync(leaves, Stance.Yes, 1);
+        var bySession = await CreateAsync(api, new { sessions = new[] { 79 } }, "By session");
+        var byList = await CreateAsync(api, new { voteIds = new[] { inSession.Id, leaves.Id } }, "By list");
+        await RunJobsAsync(api.ConnectionString);
+        var joins = await fx.VoteAsync("MA/2024/003", new DateOnly(2024, 5, 1), session: 79);
+        await fx.PositionAsync(joins, Stance.No, 1);
+        await fx.DecideAsync(await fx.DetailsConflictAsync(leaves, session: 80), Decision.Accept);
+
+        var session = await ChangesAsync(api, bySession);
+        Assert.Equal(["MA/2024/003"], session.GetProperty("nowSelected").GetProperty("votes").EnumerateArray().Select(v => v.GetProperty("vote").GetProperty("assemblyVoteId").GetString()));
+        Assert.Equal(["MA/2024/002"], session.GetProperty("noLongerSelected").GetProperty("votes").EnumerateArray().Select(v => v.GetProperty("vote").GetProperty("assemblyVoteId").GetString()));
+
+        // A list names its votes: a new vote never joins it, and a vote whose details changed still belongs to it.
+        var list = await ChangesAsync(api, byList);
+        Assert.Equal(0, list.GetProperty("nowSelected").GetProperty("count").GetInt32());
+        Assert.Equal(0, list.GetProperty("noLongerSelected").GetProperty("count").GetInt32());
+        Assert.Equal(1, list.GetProperty("detailsChanged").GetProperty("count").GetInt32());
+    }
 }
