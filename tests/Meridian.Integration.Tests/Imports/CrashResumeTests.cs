@@ -70,6 +70,7 @@ public sealed class CrashResumeTests(PostgresFixture postgres, AzuriteFixture az
         {
             await first.StartAsync(Ct);
             await WaitForAsync(api, created.ImportId, j => j.VotesDone == 2);
+            await WaitForCrashPointAsync(api);
             await first.StopAsync(Ct);
         }
         var handedBack = await JobAsync(api, created.ImportId);
@@ -137,6 +138,24 @@ public sealed class CrashResumeTests(PostgresFixture postgres, AzuriteFixture az
             var job = await JobAsync(api, importId);
             if (condition(job)) return job;
             Assert.True(DateTime.UtcNow < deadline, $"Job {job.Id} is {job.State} with {job.VotesDone} votes done after 30 s.");
+            await Task.Delay(50, Ct);
+        }
+    }
+
+    /// <summary>
+    /// Waits until the trigger has taken its one pass. Two votes done does not say so: a worker stopped
+    /// before it reaches the line leaves the stall to the next worker, which then outlasts the test's wait
+    /// or the job's own timeout.
+    /// </summary>
+    private static async Task WaitForCrashPointAsync(ApiFactory api)
+    {
+        await using var connection = new NpgsqlConnection(api.ConnectionString);
+        await connection.OpenAsync(Ct);
+        await using var command = new NpgsqlCommand("SELECT is_called FROM crash_pass", connection);
+        var deadline = DateTime.UtcNow.AddSeconds(30);
+        while (!(bool)(await command.ExecuteScalarAsync(Ct))!)
+        {
+            Assert.True(DateTime.UtcNow < deadline, "The worker never reached the line the trigger watches.");
             await Task.Delay(50, Ct);
         }
     }

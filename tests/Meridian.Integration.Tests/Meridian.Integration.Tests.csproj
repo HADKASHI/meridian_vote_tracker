@@ -15,6 +15,7 @@
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />
+    <Compile Include="..\Meridian.Domain.Tests\Imports\SyntheticHistoricFile.cs" Link="Imports\SyntheticHistoricFile.cs" />
     <None Include="..\data\member_states.csv" Link="data\member_states.csv" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Imports\Files\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

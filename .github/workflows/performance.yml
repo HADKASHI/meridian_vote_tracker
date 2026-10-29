@@ -1,0 +1,24 @@
+name: Performance
+
+# The 5-minute budget for the ~1M-row historic import (brief section 9). Started by hand:
+# it takes several minutes and CI never runs the Performance category.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  historic-import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+      - run: dotnet build Meridian.slnx -warnaserror
+      - name: Import the synthetic historic file (fails above 5 minutes)
+        run: |
+          export PERFORMANCE_REPORT="$GITHUB_STEP_SUMMARY"
+          dotnet test --project tests/Meridian.Integration.Tests --no-build -- --filter-trait "Category=Performance"

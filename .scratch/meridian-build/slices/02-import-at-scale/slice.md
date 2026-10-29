@@ -1,6 +1,6 @@
 # Slice 2: Import at scale
 
-Status: ready-for-agent
+Status: done
 Blocked by: Slice 1
 Runs in parallel with: slices 3, 4, 5, 6, 10
 PR title: `Slice 2: Import at scale`
@@ -30,3 +30,7 @@ The generator's file, shaped like the historic audit (map ticket 17): 6,480 inte
 ## Tickets
 
 In `issues/` beside this file, one per ticket, written by `/to-tickets` from this brief. The rules for building, committing and opening the PR are in the `build-slice` skill.
+
+## Comments
+
+- Outcome: the `Performance` test, the generator and the manual workflow are in. The historic-sized file took 06:50 with the EF writer, over the 5-minute budget. The COPY fix (03:02) was built and then removed on the user's decision (2026-10-29): the EF writer and the existing 200 MB upload limit stay, and the miss is accepted. ADR 5 records it.
