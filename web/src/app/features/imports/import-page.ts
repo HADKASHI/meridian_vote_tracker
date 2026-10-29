@@ -70,7 +70,6 @@ import { ImportRows } from './import-rows';
               </li>
             }
           </ul>
-          <a [routerLink]="['/review']" [queryParams]="{ importId: r.id }">Review them →</a>
         </section>
       }
       @if (r.warnings.length > 0) {
