@@ -22,7 +22,23 @@ public sealed class PerformanceTests(PostgresFixture postgres, AzuriteFixture az
     [Fact]
     public async Task The_historic_sized_file_imports_within_five_minutes()
     {
-        var file = SyntheticHistoricFile.Generate();
+        var run = await ImportAsync(SyntheticHistoricFile.Generate(), "Historic-sized import");
+
+        Assert.True(run.Elapsed <= Budget, $"The import took {run.Elapsed:mm\\:ss}, over the {Budget:mm\\:ss} budget. {run.Report}");
+    }
+
+    /// <summary>
+    /// The largest file the API accepts (200 MB): what it asks of the worker. Reports time and
+    /// memory only; ADR 5 records the figures the worker's memory setting is based on.
+    /// </summary>
+    [Fact]
+    public async Task A_file_near_the_upload_limit_imports_and_reports_what_it_needs()
+    {
+        await ImportAsync(SyntheticHistoricFile.Generate(votes: 2 * SyntheticHistoricFile.HistoricVotes), "Import near the 200 MB limit");
+    }
+
+    private async Task<Run> ImportAsync(SyntheticHistoricFile file, string title)
+    {
         var member = Path.Combine(Path.GetTempPath(), $"meridian-perf-members-{Guid.NewGuid():N}.csv");
         await File.WriteAllTextAsync(member, file.MemberStatesCsv, Ct);
         var connectionString = await postgres.CreateEmptyDatabaseAsync();
@@ -43,20 +59,22 @@ public sealed class PerformanceTests(PostgresFixture postgres, AzuriteFixture az
         clock.Stop();
         var peak = sampler.Peak;
 
-        var report = $"Imported {import.Counts.New + import.Counts.Duplicate + import.Counts.Invalid:N0} rows in {clock.Elapsed:mm\\:ss\\.f} " +
-                     $"(budget {Budget:mm\\:ss}); peak working set {peak / 1_048_576:N0} MiB, {(peak - baseline) / 1_048_576:N0} MiB above the " +
-                     $"{baseline / 1_048_576:N0} MiB before the import.";
+        var report = $"Imported {import.Counts.New + import.Counts.Duplicate + import.Counts.Invalid:N0} rows ({file.Csv.Length / 1_048_576:N0} MiB) " +
+                     $"in {clock.Elapsed:mm\\:ss\\.f} (budget {Budget:mm\\:ss}); peak working set {peak / 1_048_576:N0} MiB, " +
+                     $"{(peak - baseline) / 1_048_576:N0} MiB above the {baseline / 1_048_576:N0} MiB before the import.";
         TestContext.Current.SendDiagnosticMessage(report);
         Console.WriteLine(report);
         // The manual workflow points this at the run summary.
         if (Environment.GetEnvironmentVariable("PERFORMANCE_REPORT") is { Length: > 0 } path)
-            await File.AppendAllTextAsync(path, $"### Historic-sized import{Environment.NewLine}{Environment.NewLine}{report}{Environment.NewLine}", Ct);
+            await File.AppendAllTextAsync(path, $"### {title}{Environment.NewLine}{Environment.NewLine}{report}{Environment.NewLine}{Environment.NewLine}", Ct);
 
         Assert.Equal(JobState.Done, import.Job.State);
         Assert.Equal(new OutcomeCountsDto(file.Expected.New, 0, file.Expected.Duplicate, file.Expected.Invalid, file.Expected.Contradiction, 0),
             import.Counts);
-        Assert.True(clock.Elapsed <= Budget, $"The import took {clock.Elapsed:mm\\:ss}, over the {Budget:mm\\:ss} budget. {report}");
+        return new Run(clock.Elapsed, report);
     }
+
+    private sealed record Run(TimeSpan Elapsed, string Report);
 
     /// <summary>Samples this process's working set while it lives; the API and worker run in-process.</summary>
     private sealed class PeakMemory : IDisposable
