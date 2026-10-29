@@ -68,12 +68,13 @@ public static partial class SheetMapper
         return null;
     }
 
+    /// <summary>The printed totals, or null when the footer is missing or a number in it is not a plausible count.</summary>
     private static SheetTotals? PrintedTotals(IReadOnlyList<string> lines) =>
         TotalsPattern().Match(string.Join(' ', lines)) is { Success: true } m
-            ? new SheetTotals(Int(m, "y"), Int(m, "n"), Int(m, "a"), Int(m, "x"))
-            : null;
-
-    private static int Int(Match m, string group) => int.Parse(m.Groups[group].Value);
+            && int.TryParse(m.Groups["y"].Value, out var yes) && int.TryParse(m.Groups["n"].Value, out var no)
+            && int.TryParse(m.Groups["a"].Value, out var abstentions) && int.TryParse(m.Groups["x"].Value, out var notVoting)
+                ? new SheetTotals(yes, no, abstentions, notVoting)
+                : null;
 
     [GeneratedRegex(@"Yes\s*:?\s*(?<y>\d+)\s+No\s*:?\s*(?<n>\d+)\s+Abstentions?\s*:?\s*(?<a>\d+)\s+Not\s+voting\s*:?\s*(?<x>\d+)", RegexOptions.IgnoreCase)]
     private static partial Regex TotalsPattern();

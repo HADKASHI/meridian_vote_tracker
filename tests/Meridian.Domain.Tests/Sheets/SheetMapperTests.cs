@@ -52,6 +52,17 @@ public sealed class SheetMapperTests
     }
 
     [Fact]
+    public void A_footer_number_too_big_to_be_a_count_is_an_unreadable_footer_not_a_crash()
+    {
+        var read = new SheetRead([new SheetPage(
+            ["Recorded totals: Yes: 99999999999999999999 No: 5 Abstentions: 1 Not voting: 2"], [])]);
+
+        var sheet = SheetMapper.Map(read);
+
+        Assert.Null(sheet.Printed);
+    }
+
+    [Fact]
     public void A_row_is_only_as_sure_as_its_least_certain_cell()
     {
         var read = SheetFixture.Build([Ballot.Y], null, tweak: (_, cells) => cells[2] = new("X", .41));
