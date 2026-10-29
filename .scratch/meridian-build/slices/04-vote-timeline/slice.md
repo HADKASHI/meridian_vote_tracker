@@ -1,6 +1,6 @@
 # Slice 4: Vote page and timeline
 
-Status: ready-for-agent
+Status: done
 Blocked by: Slice 0
 Runs in parallel with: slices 1, 2, 3, 5, 6, 7
 PR title: `Slice 4: Vote page and timeline`

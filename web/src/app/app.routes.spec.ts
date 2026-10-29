@@ -18,7 +18,7 @@ describe('routes', () => {
     ['/review', 'Review'],
     ['/review/7', 'Review', 'Conflict #7'],
     ['/votes', 'Votes'],
-    ['/votes/101?tab=timeline', 'Vote', 'Vote #101 · timeline'],
+    ['/votes/101?tab=timeline', 'Vote', 'Loading vote #101'],
     ['/positions', 'Positions'],
     ['/snapshots', 'Snapshots'],
     ['/snapshots/new', 'New snapshot'],
