@@ -12,6 +12,7 @@ import { LoadState } from '../../shared/ui/load-state';
 import { PageHeader } from '../../shared/ui/page-header';
 import { ScoreWithBasis } from '../../shared/ui/score';
 import { BreakdownPanel } from './breakdown-panel';
+import { ChangesPanel } from './changes-panel';
 import { PublishPanel } from './publish-panel';
 import { describeStoredSelection } from './selection';
 
@@ -19,7 +20,7 @@ import { describeStoredSelection } from './selection';
 @Component({
   selector: 'app-snapshot-page',
   imports: [
-    DatePipe, MatButtonModule, MatTableModule, MatProgressBarModule, RouterLink, JobStateBadge, BreakdownPanel, PublishPanel, PageHeader,
+    DatePipe, MatButtonModule, MatTableModule, MatProgressBarModule, RouterLink, JobStateBadge, BreakdownPanel, ChangesPanel, PublishPanel, PageHeader,
     LoadState, ScoreWithBasis,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -76,6 +77,7 @@ import { describeStoredSelection } from './selection';
             Compare with another snapshot
           </a>
         </p>
+        <app-changes-panel [snapshotId]="s.id" />
         <div class="results">
           <section aria-labelledby="ranking-heading">
             <h2 id="ranking-heading">Ranking</h2>
