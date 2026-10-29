@@ -187,3 +187,8 @@ h3 {
   margin-block: 4px;
   padding-inline-start: 20px;
 }
+// Buttons inside a notice take its text colour, so they keep their contrast on every tone.
+.notice .mat-mdc-outlined-button:not(:disabled) {
+  --mat-button-outlined-label-text-color: currentColor;
+  --mat-button-outlined-outline-color: currentColor;
+}

@@ -22,10 +22,10 @@ import { quarterOf } from './selection';
   imports: [DatePipe, MatButtonModule, MatFormFieldModule, MatInputModule, ConflictCard, ProblemBanner],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="panel" data-testid="publish-panel">
+    <section class="surface-card panel" data-testid="publish-panel">
       <h2>Publish</h2>
       <div class="row">
-        <mat-form-field>
+        <mat-form-field subscriptSizing="dynamic">
           <mat-label>Reporting quarter</mat-label>
           <input matInput name="quarter" [value]="quarter()" (input)="setQuarter($event)" [disabled]="!currentUser.isAdmin()" />
           <mat-hint>{{ fieldErrors()['quarter'] ?? 'Like 2024-Q1; not tied to the dates of the votes' }}</mat-hint>
@@ -76,19 +76,24 @@ import { quarterOf } from './selection';
   `,
   styles: `
     .panel {
-      border: 1px solid var(--mat-sys-outline-variant);
-      border-radius: 12px;
-      padding: 8px 16px 16px;
-      margin-block: 16px;
       max-width: 720px;
+    }
+    h2 {
+      font: var(--mat-sys-title-medium);
+      margin-block: 0 12px;
     }
     .row {
       display: flex;
-      gap: 16px;
+      flex-wrap: wrap;
+      gap: 8px 16px;
       align-items: baseline;
     }
+    .row mat-form-field {
+      flex: 1 1 220px;
+      max-width: 320px;
+    }
     .hint {
-      opacity: 0.8;
+      color: var(--mat-sys-on-surface-variant);
     }
     .reason {
       width: 100%;

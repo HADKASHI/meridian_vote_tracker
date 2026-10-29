@@ -19,7 +19,7 @@ export function scoreBasis(facts: Omit<ScoreFacts, 'score'>): string {
 @Component({
   selector: 'app-score',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<span class="score">{{ score() }}</span> <span class="basis">{{ basis() }}</span>`,
+  template: `<span class="score">{{ score() }}</span>&ngsp;<span class="basis">{{ basis() }}</span>`,
   styles: `
     :host {
       display: inline-flex;

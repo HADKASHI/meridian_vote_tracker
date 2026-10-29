@@ -4,10 +4,10 @@
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Snapshots list in a card with job-state and publication chips, pager and empty state
-- [ ] New snapshot form in a card; field errors as Material errors; preview dialog with blocking and warning blocks
-- [ ] Snapshot page: breadcrumb, meta, progress while calculating, warnings, publish panel, ranking with score and basis, breakdown with category chips; tables scroll inside their container
-- [ ] Publications page: a card per quarter with the official index and its superseded chain
-- [ ] Existing snapshot and publication tests pass
+- [x] Snapshots list in a card with job-state and publication chips, pager and empty state
+- [x] New snapshot form in a card; field errors as Material errors; preview dialog with blocking and warning blocks
+- [x] Snapshot page: breadcrumb, meta, progress while calculating, warnings, publish panel, ranking with score and basis, breakdown with category chips; tables scroll inside their container
+- [x] Publications page: a card per quarter with the official index and its superseded chain
+- [x] Existing snapshot and publication tests pass
