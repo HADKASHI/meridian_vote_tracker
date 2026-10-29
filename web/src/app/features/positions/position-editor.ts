@@ -65,12 +65,29 @@ import { positionLabel, setByName } from './position-label';
   styles: `
     .editor {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
       gap: 8px;
     }
+    mat-button-toggle-group {
+      --mat-button-toggle-height: 36px;
+    }
+    select {
+      height: 38px;
+      padding-inline: 10px 4px;
+      border: 1px solid var(--mat-sys-outline);
+      border-radius: 8px;
+      background: var(--mat-sys-surface);
+      color: var(--mat-sys-on-surface);
+      font: var(--mat-sys-body-medium);
+    }
+    select:disabled {
+      color: var(--mat-sys-on-surface-variant);
+      border-color: var(--mat-sys-outline-variant);
+    }
     .reason {
-      opacity: 0.7;
-      font-size: 0.9em;
+      color: var(--mat-sys-on-surface-variant);
+      font: var(--mat-sys-label-medium);
     }
   `,
 })
