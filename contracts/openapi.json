@@ -1224,7 +1224,7 @@
         "tags": [
           "Snapshots"
         ],
-        "summary": "Each state's rank and score movement between two snapshots (slice 7).",
+        "summary": "Each state's rank and score movement between two snapshots, read from what they stored.",
         "operationId": "compareSnapshots",
         "parameters": [
           {
@@ -1253,6 +1253,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SnapshotComparisonDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
                 }
               }
             }

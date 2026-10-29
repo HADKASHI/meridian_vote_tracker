@@ -77,6 +77,44 @@ internal static class SnapshotQueries
         return new SnapshotBreakdownDto(result, lines);
     }
 
+    /// <summary>
+    /// A and B side by side from their stored results; nothing is recalculated. Score change is B minus A;
+    /// rank change is A's rank minus B's, so a positive number means the state moved up. A state n/a in a
+    /// snapshot, or missing from it, has no score or rank there and no movement.
+    /// </summary>
+    public static async Task<SnapshotComparisonDto> CompareAsync(MeridianDbContext db, SnapshotRefDto a, SnapshotRefDto b,
+        CancellationToken ct)
+    {
+        var stored = await db.SnapshotResults.AsNoTracking()
+            .Where(r => r.SnapshotId == a.Id || r.SnapshotId == b.Id)
+            .Select(r => new { r.SnapshotId, r.StateCode, r.MatchedWeight, r.CountedWeight, r.Rank })
+            .ToListAsync(ct);
+        var names = await db.MemberStates.AsNoTracking().ToDictionaryAsync(s => s.Code, s => s.Name, ct);
+
+        StateResult? Find(long snapshotId, string code) => stored
+            .Where(r => r.SnapshotId == snapshotId && r.StateCode == code)
+            .Select(r => new StateResult(r.StateCode, r.MatchedWeight, r.CountedWeight, 0, r.Rank))
+            .SingleOrDefault();
+
+        var states = stored.Select(r => r.StateCode).Distinct().Select(code =>
+        {
+            var (resultA, resultB) = (Find(a.Id, code), Find(b.Id, code));
+            var (scoreA, scoreB) = (resultA?.Score, resultB?.Score);
+            var (rankA, rankB) = (resultA?.Rank, resultB?.Rank);
+            return new StateMovementDto(code, names[code], scoreA, rankA, scoreB, rankB,
+                scoreA is { } sa && scoreB is { } sb ? sb - sa : null,
+                rankA is { } ra && rankB is { } rb ? ra - rb : null);
+        });
+        return new SnapshotComparisonDto(a, b, states
+            .OrderBy(s => s.RankB is null).ThenBy(s => s.RankB).ThenBy(s => s.StateCode, StringComparer.Ordinal)
+            .ToList());
+    }
+
+    /// <summary>The snapshot's name and time, or null when there is none.</summary>
+    public static Task<SnapshotRefDto?> RefAsync(MeridianDbContext db, long snapshotId, CancellationToken ct) =>
+        db.Snapshots.AsNoTracking().Where(s => s.Id == snapshotId)
+            .Select(s => new SnapshotRefDto(s.Id, s.Name, s.RecordedAt)).SingleOrDefaultAsync(ct);
+
     /// <summary>Ranked states by rank then code, then the n/a states by code; or just one state.</summary>
     public static async Task<List<SnapshotResultDto>> ResultsAsync(MeridianDbContext db, long snapshotId, string? stateCode,
         CancellationToken ct)
