@@ -1,6 +1,6 @@
 # Slice 9: PDF extraction (bonus)
 
-Status: ready-for-agent
+Status: done
 Blocked by: Slice 8
 Runs in parallel with: nothing
 PR title: `Slice 9: PDF extraction (bonus)`
