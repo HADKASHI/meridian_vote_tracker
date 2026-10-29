@@ -2,7 +2,7 @@
 
 Status: ready-for-agent
 Blocked by: Slice 1
-Runs in parallel with: slices 3, 4, 5, 6, 7
+Runs in parallel with: slices 3, 4, 5, 6, 10
 PR title: `Slice 2: Import at scale`
 Requirements: the 5-minute budget for the historic file (brief section 9)
 User stories in the spec: 17

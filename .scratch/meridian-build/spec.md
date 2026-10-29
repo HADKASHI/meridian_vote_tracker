@@ -264,6 +264,7 @@ The build is cut into **slices**: vertical pieces (API, worker, screen and tests
 4. **Vote page and timeline** (HIS).
 5. **Positions and weights** (POS), with the stale-position race test.
 6. **Snapshots and publication** (SNP): preview, snapshot job handler, breakdown, publish and replace, the publication race test.
+10. **Interface**: one finished look across every screen, built from Angular Material and matched to the brief's Appendix B and the map ticket 19 prototype, with no behaviour change. Added after the first slices shipped screens that work but are barely designed; numbered 10, run before 7 and 8.
 7. **Extra: snapshot comparison.**
 8. **Finishing pass** (protected): clean-clone run, README, DECISIONS.md rewritten to ~1,000 words, AI_USAGE.md, skills trim, and a Playwright smoke test across the merged slices.
 9. **Bonus: PDF extraction**: designed first, then built, with a hard half-day limit.
@@ -274,18 +275,19 @@ The build is cut into **slices**: vertical pieces (API, worker, screen and tests
 |---|---|---|
 | 0 Walking skeleton | none | nothing |
 | 1 Import | 0 | 3, 4, 5, 6 |
-| 2 Import at scale | 1 | 3, 4, 5, 6, 7 |
-| 3 Conflicts | 0 | 1, 2, 4, 5, 6, 7 |
-| 4 Vote page and timeline | 0 | 1, 2, 3, 5, 6, 7 |
-| 5 Positions and weights | 0 | 1, 2, 3, 4, 6, 7 |
+| 2 Import at scale | 1 | 3, 4, 5, 6, 10 |
+| 3 Conflicts | 0 | 1, 2, 4, 5, 6 |
+| 4 Vote page and timeline | 0 | 1, 2, 3, 5, 6 |
+| 5 Positions and weights | 0 | 1, 2, 3, 4, 6 |
 | 6 Snapshots and publication | 0 | 1, 2, 3, 4, 5 |
-| 7 Snapshot comparison | 6 | 2, 3, 4, 5 |
-| 8 Finishing pass | 0–7 | nothing |
+| 10 Interface | 4, 5, 6 | 2 |
+| 7 Snapshot comparison | 6, 10 | 2 |
+| 8 Finishing pass | 0–7, 10 | nothing |
 | 9 PDF extraction | 8 | nothing |
 
 Slices 3, 4 and 6 arrange their data with slice 0's fixture builders, never with the importer, so they don't wait for slice 1. Once slice 1 is merged, any slice still open rebases and may add one end-to-end test through a real import.
 
-**Cut rule**: if time runs short, the PDF bonus goes first, then the comparison extra. The finishing pass is never cut.
+**Cut rule**: if time runs short, the PDF bonus goes first, then the comparison extra, then the interface slice. The finishing pass is never cut.
 
 ### Delivery
 
