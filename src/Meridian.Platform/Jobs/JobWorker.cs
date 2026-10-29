@@ -26,6 +26,11 @@ public sealed class JobWorker(JobProcessor processor, IOptions<JobOptions> optio
             {
                 logger.LogError(error, "Could not reach the job queue; retrying");
             }
+            catch (OperationCanceledException)
+            {
+                // Stopped mid-poll: still wait below for the running jobs to be handed back.
+                break;
+            }
 
             running.RemoveAll(t => t.IsCompleted);
             try { await Task.Delay(options.Value.PollInterval, stoppingToken); }

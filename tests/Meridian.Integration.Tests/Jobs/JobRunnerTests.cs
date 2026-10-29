@@ -191,6 +191,37 @@ public sealed class JobRunnerTests(PostgresFixture postgres, AzuriteFixture azur
     }
 
     [Fact]
+    public async Task A_worker_stopped_while_polling_the_queue_still_hands_its_job_back()
+    {
+        var connectionString = await postgres.CreateDatabaseAsync();
+        var jobId = await QueueImportJobAsync(connectionString);
+        var started = new TaskCompletionSource();
+        using var worker = WorkerHost.Build(connectionString, [new TestJobHandler(JobKind.Import, (_, ct) =>
+        {
+            started.TrySetResult();
+            return Task.Delay(Timeout.Infinite, ct);
+        })]);
+        await worker.StartAsync(Ct);
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(10), Ct);
+
+        // Holding the job table blocks the next poll's sweep, so the stop lands mid-query.
+        await using var connection = new Npgsql.NpgsqlConnection(connectionString);
+        await connection.OpenAsync(Ct);
+        await using var transaction = await connection.BeginTransactionAsync(Ct);
+        await using (var command = new Npgsql.NpgsqlCommand("LOCK TABLE job IN ACCESS EXCLUSIVE MODE", connection, transaction))
+            await command.ExecuteNonQueryAsync(Ct);
+        await Task.Delay(300, Ct);
+
+        var stopping = worker.StopAsync(Ct);
+        await Task.Delay(500, Ct);
+        Assert.False(stopping.IsCompleted, "The worker stopped before handing its job back.");
+        await transaction.RollbackAsync(Ct);
+        await stopping;
+
+        Assert.Equal(JobState.Queued, (await JobAsync(connectionString, jobId)).State);
+    }
+
+    [Fact]
     public async Task A_job_runs_in_the_trace_of_the_request_that_queued_it()
     {
         var connectionString = await postgres.CreateDatabaseAsync();
