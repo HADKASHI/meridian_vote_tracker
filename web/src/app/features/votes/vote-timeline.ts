@@ -17,7 +17,7 @@ import { describeEvent } from './timeline-labels';
       @for (event of events(); track event.historyId) {
         <li [attr.data-kind]="event.kind">
           <div class="meta">{{ event.at | date: 'yyyy-MM-dd HH:mm:ss' }} · {{ event.actor }}</div>
-          <div>{{ describe(event) }}</div>
+          <div class="what">{{ describe(event) }}</div>
           @if (event.comment) {
             <div class="comment">“{{ event.comment }}”</div>
           }
@@ -30,7 +30,7 @@ import { describeEvent } from './timeline-labels';
         </li>
       } @empty {
         @if (!page.isLoading()) {
-          <li>Nothing has happened to this vote yet.</li>
+          <li class="empty">Nothing has happened to this vote yet.</li>
         }
       }
     </ol>
@@ -48,18 +48,44 @@ import { describeEvent } from './timeline-labels';
   styles: `
     .timeline {
       list-style: none;
-      padding: 0;
+      margin: 0 0 16px;
+      padding: 0 0 0 20px;
+      border-inline-start: 2px solid var(--mat-sys-outline-variant);
     }
     .timeline li {
-      padding: 8px 0;
-      border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+      position: relative;
+      padding: 12px 16px;
+      margin-block-end: 12px;
+      background: var(--mat-sys-surface);
+      border: 1px solid var(--mat-sys-outline-variant);
+      border-radius: 12px;
+      overflow-wrap: anywhere;
+    }
+    /* A dot on the line for each event. */
+    .timeline li::before {
+      content: '';
+      position: absolute;
+      inset-inline-start: -28px;
+      inset-block-start: 18px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--mat-sys-primary);
+      border: 2px solid var(--mat-sys-surface-container-low);
+    }
+    .timeline li.empty::before {
+      background: var(--mat-sys-outline);
     }
     .meta {
-      opacity: 0.7;
-      font-size: 0.9em;
+      color: var(--mat-sys-on-surface-variant);
+      font: var(--mat-sys-label-medium);
+    }
+    .what {
+      margin-block: 2px;
     }
     .comment {
       font-style: italic;
+      margin-block: 4px;
     }
   `,
 })

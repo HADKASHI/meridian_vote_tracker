@@ -4,11 +4,11 @@
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Search filters in a card that wraps at 390 px; results table with empty and loading states and the paginator
-- [ ] Vote page with breadcrumb, details card, position, pending-conflicts notice linking to the inbox
-- [ ] Country votes table with the country vote, membership note and origin; scrolls inside its container
-- [ ] Timeline as a list of event cards with "Older"; empty state
-- [ ] Vote not found shows a finished empty state
-- [ ] Existing votes tests pass
+- [x] Search filters in a card that wraps at 390 px; results table with empty and loading states and the paginator
+- [x] Vote page with breadcrumb, details card, position, pending-conflicts notice linking to the inbox
+- [x] Country votes table with the country vote, membership note and origin; scrolls inside its container
+- [x] Timeline as a list of event cards with "Older"; empty state
+- [x] Vote not found shows a finished empty state
+- [x] Existing votes tests pass
