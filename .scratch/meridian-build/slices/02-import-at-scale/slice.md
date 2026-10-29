@@ -1,6 +1,6 @@
 # Slice 2: Import at scale
 
-Status: ready-for-agent
+Status: done
 Blocked by: Slice 1
 Runs in parallel with: slices 3, 4, 5, 6, 10
 PR title: `Slice 2: Import at scale`
