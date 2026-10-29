@@ -1,6 +1,7 @@
 using Meridian.Data;
 using Meridian.Data.Entities;
 using Meridian.Domain;
+using Meridian.Domain.Sheets;
 using Meridian.Platform.Problems;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -36,6 +37,11 @@ internal static class ExtractionDecisions
         _ => ProblemDetailsSetup.Problem(StatusCodes.Status409Conflict, ProblemTypes.NotReviewable, "Not ready for review",
             "Only a sheet that has been read and is waiting for review can be edited or decided."),
     };
+
+    /// <summary>The 409 for a sheet that still has issues that block approval (and so its preview).</summary>
+    public static ProblemHttpResult BlockedBy(SheetCheck check) =>
+        ProblemDetailsSetup.Problem(StatusCodes.Status409Conflict, ProblemTypes.HasBlockingIssues, "Issues remain",
+            $"{check.Issues.Count(i => i.Severity == SheetIssueSeverity.Blocking)} blocking issue(s) must be fixed or the sheet rejected before it can be approved.");
 
     private static ProblemHttpResult AlreadyDecided(Extraction x) =>
         ProblemDetailsSetup.Problem(StatusCodes.Status409Conflict, ProblemTypes.AlreadyDecided, "Already decided",

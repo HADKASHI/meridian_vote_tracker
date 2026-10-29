@@ -729,6 +729,68 @@
         }
       }
     },
+    "/api/extractions/{extractionId}/preview": {
+      "get": {
+        "tags": [
+          "Extractions"
+        ],
+        "summary": "What approving the sheet now would do, by the importer's own rules; nothing is written.",
+        "operationId": "previewExtraction",
+        "parameters": [
+          {
+            "name": "extractionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtractionPreviewDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtractionAlreadyDecidedProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/extractions/{extractionId}/approval": {
       "post": {
         "tags": [
@@ -2965,6 +3027,28 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "ExtractionPreviewDto": {
+        "required": [
+          "counts",
+          "voteExists",
+          "conflictStateCodes"
+        ],
+        "type": "object",
+        "properties": {
+          "counts": {
+            "$ref": "#/components/schemas/OutcomeCountsDto"
+          },
+          "voteExists": {
+            "type": "boolean"
+          },
+          "conflictStateCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },

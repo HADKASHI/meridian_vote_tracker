@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { ExtractionDto } from '../../api/model';
+import { ExtractionDto, ExtractionPreviewDto } from '../../api/model';
 import { flushReviewTabs } from '../../shared/ui/review-counts.testing';
 import extractionsRoutes from './extractions.routes';
 import { blocked, extraction, page, row, summary } from './extractions.testing';
@@ -26,14 +26,31 @@ describe('Extraction pane', () => {
   const listRequest = (r: { url: string; params: { get(name: string): string | null } }) =>
     r.url === '/api/extractions' && r.params.get('pageSize') === '200';
 
+  const noConflicts: ExtractionPreviewDto = { counts: { new: 2, unchanged: 0, duplicate: 0, invalid: 0, contradiction: 0, conflict: 0 }, voteExists: false, conflictStateCodes: [] };
+
+  /** A sheet that can be approved asks what approving would do; answers it, with `body` unless the test says otherwise. */
+  function answerPreview(body: ExtractionPreviewDto = noConflicts): void {
+    TestBed.tick();
+    http.match((r) => r.url.endsWith('/preview')).forEach((request) => request.flush(body));
+  }
+
+  /** The page asks for the preview once its effect has run, which is after the sheet arrives: answer it, then settle. */
+  async function settle(preview: ExtractionPreviewDto = noConflicts): Promise<void> {
+    answerPreview(preview);
+    await harness.fixture.whenStable();
+    answerPreview(preview);
+    await harness.fixture.whenStable();
+    TestBed.tick();
+  }
+
   /** Opens the sheet beside the list and answers the three calls that fill the page. */
-  async function open(body: ExtractionDto): Promise<HTMLElement> {
+  async function open(body: ExtractionDto, preview: ExtractionPreviewDto = noConflicts): Promise<HTMLElement> {
     harness = await RouterTestingHarness.create(`/review/extractions/${body.id}?state=open`);
     TestBed.tick();
     http.expectOne(listRequest).flush(page([summary({ id: body.id, status: body.status })]));
     flushReviewTabs(http);
     http.expectOne(`/api/extractions/${body.id}`).flush(body);
-    await harness.fixture.whenStable();
+    await settle(preview);
     return pane();
   }
 
@@ -47,8 +64,7 @@ describe('Extraction pane', () => {
     http.expectOne(`/api/extractions/${body.id}`).flush(body);
     http.expectOne(listRequest).flush(page([summary({ id: body.id, status: body.status })]));
     flushReviewTabs(http);
-    await harness.fixture.whenStable();
-    TestBed.tick();
+    await settle();
   }
 
   function choose(select: HTMLSelectElement, value: string): void {
@@ -241,5 +257,27 @@ describe('Extraction pane', () => {
     }));
 
     expect(byId('edits')!.textContent).toContain('omar changed choice of ARG: — → Y');
+  });
+
+  it('tells the analyst what approving would do, naming the states that would be in conflict', async () => {
+    await open(extraction(), {
+      counts: { new: 0, unchanged: 10, duplicate: 0, invalid: 0, contradiction: 0, conflict: 1 }, voteExists: true, conflictStateCodes: ['SSD'],
+    });
+
+    expect(byId('preview')!.textContent!.replace(/\s+/g, ' ')).toContain(
+      'Approving would give 0 new, 10 unchanged and 1 conflict (SSD) for you to decide; the approved values stay until you do.');
+  });
+
+  it('says that approving makes the vote when it has no approved data yet', async () => {
+    await open(extraction());
+
+    expect(byId('preview')!.textContent).toContain('Approving makes this vote: 2 new rows.');
+  });
+
+  it('asks nothing while an issue blocks, and not again for unsaved edits', async () => {
+    await open(blocked());
+
+    http.expectNone((r) => r.url.endsWith('/preview'));
+    expect(byId('preview')).toBeNull();
   });
 });

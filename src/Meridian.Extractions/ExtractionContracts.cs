@@ -1,5 +1,6 @@
 using Meridian.Domain;
 using Meridian.Domain.Sheets;
+using Meridian.Platform.Contracts;
 using Meridian.Platform.Jobs;
 
 namespace Meridian.Extractions;
@@ -48,3 +49,9 @@ public sealed record ApproveExtractionRequest(string? Comment);
 
 /// <param name="ImportId">The import the approval made; its report says which rows were new, unchanged or in conflict.</param>
 public sealed record ExtractionApprovedDto(ExtractionDecisionDto Decision, long ImportId);
+
+/// <summary>What approving the sheet now would do, by the importer's own rules; nothing is written to get it.</summary>
+/// <param name="Counts">How many rows would be new, unchanged, in conflict and so on.</param>
+/// <param name="VoteExists">False when the vote has no approved data yet, so every row would be new.</param>
+/// <param name="ConflictStateCodes">The states whose approved ballot the sheet disagrees with: one conflict each.</param>
+public sealed record ExtractionPreviewDto(OutcomeCountsDto Counts, bool VoteExists, IReadOnlyList<string> ConflictStateCodes);

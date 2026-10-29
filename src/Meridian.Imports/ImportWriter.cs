@@ -35,6 +35,19 @@ public sealed class ImportWriter(MeridianDbContext db)
         db.ChangeTracker.Clear();
     }
 
+    /// <summary>
+    /// What <paramref name="rows"/> would be judged as against what is approved now, with the same classifier and the
+    /// same read as <see cref="WriteVoteAsync"/>, but writing nothing and locking nothing: a preview.
+    /// </summary>
+    public async Task<(VoteVerdict Verdict, bool VoteExists)> ClassifyAsync(
+        string assemblyVoteId, IReadOnlyList<ExportRow> rows, MemberStates members, CancellationToken ct)
+    {
+        var voteId = await db.Votes.AsNoTracking().Where(v => v.AssemblyVoteId == assemblyVoteId)
+            .Select(v => (long?)v.Id).SingleOrDefaultAsync(ct);
+        var approved = voteId is { } id ? await ApprovedAsync(id, ct) : ApprovedVote.Nothing;
+        return (Classifier.Classify(rows, approved, members), voteId is not null);
+    }
+
     /// <summary>Creates the vote the first time its id is seen, then locks it: the per-vote lock.</summary>
     private async Task<long> LockVoteAsync(long importId, string assemblyVoteId, CancellationToken ct)
     {

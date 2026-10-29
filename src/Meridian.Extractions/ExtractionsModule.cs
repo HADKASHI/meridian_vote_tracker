@@ -92,6 +92,13 @@ public static class ExtractionsModule
             .ProducesProblem<ExtractionAlreadyDecidedProblem>(StatusCodes.Status409Conflict)
             .ForAnalysts();
 
+        extractions.MapGet("/{extractionId:long}/preview", ExtractionPreview.HandleAsync)
+            .WithName("previewExtraction")
+            .WithSummary("What approving the sheet now would do, by the importer's own rules; nothing is written.")
+            .ProducesProblems(StatusCodes.Status404NotFound)
+            .ProducesProblem<ExtractionAlreadyDecidedProblem>(StatusCodes.Status409Conflict)
+            .ForAnalysts();
+
         extractions.MapPost("/{extractionId:long}/approval", ExtractionApproval.ApproveAsync)
             .WithName("approveExtraction")
             .WithSummary("Approve a checked sheet: it is imported by the CSV's own rules. Exactly one of two simultaneous decisions applies.")

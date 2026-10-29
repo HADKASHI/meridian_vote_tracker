@@ -7,7 +7,6 @@ using Meridian.Domain.Sheets;
 using Meridian.Imports;
 using Meridian.Platform.Identity;
 using Meridian.Platform.Jobs;
-using Meridian.Platform.Problems;
 using Meridian.Platform.Storage;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -36,9 +35,7 @@ internal static class ExtractionApproval
         var sheet = ExtractionJson.Read<MappedSheet>(extraction.Sheet)!;
         var members = await db.LoadMemberStatesAsync(ct);
         var check = SheetValidator.Check(sheet, extraction.FileName, members);
-        if (!check.CanApprove)
-            return ProblemDetailsSetup.Problem(StatusCodes.Status409Conflict, ProblemTypes.HasBlockingIssues, "Issues remain",
-                $"{check.Issues.Count(i => i.Severity == SheetIssueSeverity.Blocking)} blocking issue(s) must be fixed or the sheet rejected before it can be approved.");
+        if (!check.CanApprove) return ExtractionDecisions.BlockedBy(check);
 
         var importId = await FileUploads.NextIdAsync(db, ct);
         var now = DateTimeOffset.UtcNow;

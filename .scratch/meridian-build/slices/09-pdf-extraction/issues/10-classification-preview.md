@@ -4,10 +4,12 @@
 
 **Blocked by:** Approve an extraction through the importer; Extractions tab in Review
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Requirements:** PDF-05 (stretch)
 
-- [ ] A read-only endpoint returns the counts using the pure classifier against current approved data and writes nothing
-- [ ] The detail shows the counts next to Approve
-- [ ] The corrigendum fixture previews one conflict
+- [x] A read-only endpoint returns the counts using the pure classifier against current approved data and writes nothing
+- [x] The detail shows the counts next to Approve
+- [x] The corrigendum fixture previews one conflict
+
+Not built: the page image beside the table (the stretch the ticket named). It stays as design in ADR 0008 and DECISIONS.md.

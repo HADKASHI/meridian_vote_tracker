@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, linkedSignal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, linkedSignal, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -7,7 +7,7 @@ import { RouterLink } from '@angular/router';
 import { getExtractionResource } from '../../api/extractions/extractions.resource';
 import { ExtractionsService } from '../../api/extractions/extractions.service';
 import {
-  Ballot, ExtractionAlreadyDecidedProblem, ExtractionDecisionDto, ExtractionDto, ExtractionStatus, SaveEditsRequest, SheetRow,
+  Ballot, ExtractionAlreadyDecidedProblem, ExtractionDecisionDto, ExtractionDto, ExtractionPreviewDto, ExtractionStatus, SaveEditsRequest, SheetRow,
 } from '../../api/model';
 import { pollWhile } from '../../shared/http/poll';
 import { isProblem, Problem, ProblemType, toProblem } from '../../shared/problem/problem';
@@ -240,6 +240,21 @@ interface RowEdits {
               <button mat-flat-button type="button" data-testid="approve" [disabled]="busy() || hasPending() || !e.canApprove" (click)="approve(e)">Approve</button>
               <button mat-stroked-button type="button" data-testid="reject" [disabled]="busy()" (click)="reject(e)">Reject</button>
             </div>
+            @if (preview(); as p) {
+              <p class="preview" data-testid="preview">
+                @if (!p.voteExists) {
+                  Approving makes this vote: {{ p.counts.new }} new rows.
+                } @else {
+                  Approving would give {{ p.counts.new }} new, {{ p.counts.unchanged }} unchanged and {{ p.counts.conflict }}
+                  {{ p.counts.conflict === 1 ? 'conflict' : 'conflicts' }}
+                  @if (p.conflictStateCodes.length > 0) {
+                    ({{ p.conflictStateCodes.join(', ') }}) for you to decide; the approved values stay until you do.
+                  } @else {
+                    .
+                  }
+                }
+              </p>
+            }
             @if (!e.canApprove) {
               <p class="muted" data-testid="why-not">Fix or reject what blocks approval first.</p>
             } @else if (hasPending()) {
@@ -335,6 +350,10 @@ interface RowEdits {
     .issues li {
       margin-block: 4px;
     }
+    .preview {
+      margin-block: 8px 0;
+      font: var(--mat-sys-body-medium);
+    }
     .muted {
       color: var(--mat-sys-on-surface-variant);
       font: var(--mat-sys-body-small);
@@ -415,8 +434,27 @@ export class ExtractionPage {
     () => Object.keys(this.rowEdits()).length + Object.keys(this.headerEdits()).length + Object.keys(this.printedEdits()).length > 0,
   );
 
+  /** What approving would do, asked once the sheet can be approved and has no unsaved edits. */
+  protected readonly preview = signal<ExtractionPreviewDto | null>(null);
+  private previewed = '';
+
   constructor() {
     pollWhile(this.resource, 1000, () => this.extraction()?.status === ExtractionStatus.extracting);
+    effect(() => {
+      const e = this.extraction();
+      if (!e || !this.reviewable(e) || !e.canApprove || this.hasPending()) {
+        this.preview.set(null);
+        this.previewed = '';
+        return;
+      }
+      const key = `${e.id}:${e.edits.length}`;
+      if (key === this.previewed) return;
+      this.previewed = key;
+      this.service.previewExtraction(e.id).subscribe({
+        next: (preview) => this.preview.set(preview),
+        error: () => this.preview.set(null),
+      });
+    });
   }
 
   protected reviewable(e: ExtractionDto): boolean {

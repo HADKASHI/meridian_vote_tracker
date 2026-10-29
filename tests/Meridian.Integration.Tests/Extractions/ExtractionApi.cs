@@ -47,6 +47,12 @@ public static class ExtractionApi
     public static Task<HttpResponseMessage> SaveEditsAsync(HttpClient client, long id, SaveEditsRequest request) =>
         client.PostAsJsonAsync($"/api/extractions/{id}/edits", request, ImportApi.Json, TestContext.Current.CancellationToken);
 
+    public static Task<HttpResponseMessage> PreviewAsync(HttpClient client, long id) =>
+        client.GetAsync($"/api/extractions/{id}/preview", TestContext.Current.CancellationToken);
+
+    public static async Task<ExtractionPreviewDto> PreviewOkAsync(HttpClient client, long id) =>
+        await ImportApi.GetAsync<ExtractionPreviewDto>(client, $"/api/extractions/{id}/preview");
+
     public static Task<HttpResponseMessage> ApproveAsync(HttpClient client, long id, string? comment = null) =>
         client.PostAsJsonAsync($"/api/extractions/{id}/approval", new ApproveExtractionRequest(comment), ImportApi.Json,
             TestContext.Current.CancellationToken);
