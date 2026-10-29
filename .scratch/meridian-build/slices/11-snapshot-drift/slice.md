@@ -1,6 +1,6 @@
 # Slice 11: Snapshot drift
 
-Status: ready-for-agent
+Status: done
 Blocked by: Slices 6 and 7
 Runs in parallel with: slice 8 (it touches only the snapshots feature)
 PR title: `Slice 11: Snapshot drift`

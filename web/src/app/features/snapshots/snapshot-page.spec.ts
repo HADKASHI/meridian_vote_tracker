@@ -97,4 +97,15 @@ describe('SnapshotPage', () => {
     expect(rows[2]).toEqual(['MA/2024/002', '2024-02-20', 'Space Debris', 'no, weight 1', '–', 'no data', 'none']);
     expect(page.querySelector('[data-testid="breakdown-result"]')?.textContent).toContain('Score 66.7');
   });
+
+  it('asks what changed since it was calculated, but only for a calculated snapshot', async () => {
+    await open(snapshot);
+    http.expectOne('/api/snapshots/42/changes');
+
+    await open({ ...snapshot, job: { ...job, state: 'running' } });
+    http.expectNone('/api/snapshots/42/changes');
+
+    await open({ ...snapshot, job: { ...job, state: 'failed', lastError: 'x' }, results: [], voteCount: 0 });
+    http.expectNone('/api/snapshots/42/changes');
+  });
 });
