@@ -1,6 +1,6 @@
 # Slice 10: Interface
 
-Status: ready-for-agent
+Status: done
 Blocked by: Slices 4, 5 and 6
 Runs in parallel with: slice 2
 PR title: `Slice 10: Interface`
