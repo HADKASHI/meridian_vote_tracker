@@ -26,9 +26,6 @@ public sealed record ScoredSnapshot(IReadOnlyList<ScoredLine> Lines, IReadOnlyLi
 /// </summary>
 public static class AlignmentScoring
 {
-    /// <summary>The default rule set's id, recorded on snapshots scored without a choice.</summary>
-    public const string RulesVersion = RuleSets.DefaultId;
-
     public static ScoredSnapshot Score(IEnumerable<ScoringFact> facts, RuleSet? ruleSet = null)
     {
         ruleSet ??= RuleSets.Default;

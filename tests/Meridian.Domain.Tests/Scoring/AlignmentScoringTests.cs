@@ -252,6 +252,6 @@ public sealed class AlignmentScoringTests
     [Fact]
     public void The_scoring_rules_version_is_fixed()
     {
-        Assert.Equal("alignment-2026.1", AlignmentScoring.RulesVersion);
+        Assert.Equal("alignment-2026.1", RuleSets.DefaultId);
     }
 }
