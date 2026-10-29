@@ -33,10 +33,13 @@ public sealed class EvidenceMetricsTests(PostgresFixture postgres, AzuriteFixtur
         return votes;
     }
 
+    /// <summary>Numbers the snapshots' names: every snapshot holds its own.</summary>
+    private static int _created;
+
     private static async Task<JsonElement> CalculatedAsync(ApiFactory api, string user, string? ruleSet)
     {
         var response = await api.ClientAs(user).PostAsJsonAsync("/api/snapshots",
-            new { name = "June 2020", selection = June2020, ruleSet }, Ct);
+            new { name = $"June 2020 #{Interlocked.Increment(ref _created)}", selection = June2020, ruleSet }, Ct);
         Assert.Equal(202, (int)response.StatusCode);
         var id = (await response.Content.ReadFromJsonAsync<JsonElement>(Ct)).GetProperty("snapshotId").GetInt64();
         await SnapshotCalculationTests.RunJobsAsync(api.ConnectionString);

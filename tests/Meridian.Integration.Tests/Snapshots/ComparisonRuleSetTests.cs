@@ -24,10 +24,13 @@ public sealed class ComparisonRuleSetTests(PostgresFixture postgres, AzuriteFixt
         await fx.PositionAsync(second, Stance.No, 2);
     }
 
+    /// <summary>Numbers the snapshots' names: every snapshot holds its own.</summary>
+    private static int _created;
+
     private static async Task<long> CalculatedAsync(ApiFactory api, string user, string? ruleSet)
     {
         var response = await api.ClientAs(user).PostAsJsonAsync("/api/snapshots",
-            new { name = ruleSet ?? "default", selection = Mid2020, ruleSet }, Ct);
+            new { name = $"{ruleSet ?? "default"} #{Interlocked.Increment(ref _created)}", selection = Mid2020, ruleSet }, Ct);
         var id = (await response.Content.ReadFromJsonAsync<JsonElement>(Ct)).GetProperty("snapshotId").GetInt64();
         await SnapshotCalculationTests.RunJobsAsync(api.ConnectionString);
         return id;
