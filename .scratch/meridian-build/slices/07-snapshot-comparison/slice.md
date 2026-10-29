@@ -1,6 +1,6 @@
 # Slice 7: Snapshot comparison
 
-Status: ready-for-agent
+Status: done
 Blocked by: Slices 6 and 10
 Runs in parallel with: slice 2
 PR title: `Slice 7: Snapshot comparison`
