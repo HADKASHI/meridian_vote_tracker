@@ -37,6 +37,7 @@ public sealed class SyntheticHistoricFileTests
 
         Assert.Equal(6_480, perVote.Count);
         Assert.All(perVote.Values, n => Assert.InRange(n, 147, 151));
+        Assert.Equal((147, 151), (perVote.Values.Min(), perVote.Values.Max()));
         Assert.Equal(150, codes.Count(c => c.Length == 3 && c != "XXX"));
         // Fully interleaved: no vote's rows sit side by side for long.
         Assert.True(neighbours < total / 100, $"{neighbours} neighbouring rows share a vote");

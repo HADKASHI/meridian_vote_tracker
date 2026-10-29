@@ -48,6 +48,8 @@ public sealed class SyntheticHistoricFile
         var placeholders = Pick(10);
         var badBallots = Pick(5);
         string[] bad = ["0", "?", "YES", "0", "?"];
+        // Two incomplete votes with no defects: the first misses 2 members, the second 3.
+        var thin = others.Skip(next).Where(v => v >= VotesPerYear).Take(2).ToList();
 
         var lines = new List<string>(Votes * Members);
         var expected = new ExpectedOutcomes(0, 30, 32, 0);
@@ -65,6 +67,7 @@ public sealed class SyntheticHistoricFile
             foreach (var code in codes)
             {
                 if (code == latecomer && date < joined && !beforeJoining.Contains(vote)) continue;
+                if (thin.IndexOf(vote) is >= 0 and var missing && codes.IndexOf(code) < missing + 2) continue;
                 var ballot = "YNAX"[random.Next(4)].ToString();
                 var shownCode = code;
                 if (code == target && placeholders.Contains(vote)) shownCode = "XXX";
