@@ -7,8 +7,11 @@ namespace Meridian.Domain.Tests.Imports;
 
 /// <summary>
 /// The synthetic stand-in for the historic file (map ticket 17), used by the Performance
-/// test. It is generated, never committed, so these tests pin its shape.
+/// test. It is generated, never committed, so these tests pin its shape. They build a 98 MiB
+/// file and classify a million rows, so they run on demand with the Performance category and
+/// not in CI.
 /// </summary>
+[Trait("Category", "Performance")]
 public sealed class SyntheticHistoricFileTests
 {
     private static readonly SyntheticHistoricFile File = SyntheticHistoricFile.Generate();
