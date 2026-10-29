@@ -87,12 +87,20 @@ public static class SnapshotsModule
             .WithName("listSnapshots")
             .ForAnalysts();
 
-        snapshots.MapGet("/compare", Results<Ok<SnapshotComparisonDto>, ProblemHttpResult> (long a, long b) =>
-                EndpointConventions.NotImplemented())
+        snapshots.MapGet("/compare", async Task<Results<Ok<SnapshotComparisonDto>, ProblemHttpResult>> (
+                    long a, long b, MeridianDbContext db, CancellationToken ct) =>
+            {
+                var (first, second) = (await SnapshotQueries.RefAsync(db, a, ct), await SnapshotQueries.RefAsync(db, b, ct));
+                if (first is null || second is null) return NotFound("snapshot");
+                if (!await SnapshotQueries.AllCalculatedAsync(db, [.. new HashSet<long> { a, b }], ct))
+                    return ProblemDetailsSetup.Problem(StatusCodes.Status400BadRequest, ProblemTypes.BadRequest,
+                        "Not calculated", "Only calculated snapshots can be compared.");
+                return TypedResults.Ok(await SnapshotQueries.CompareAsync(db, first, second, ct));
+            })
             .WithName("compareSnapshots")
-            .WithSummary("Each state's rank and score movement between two snapshots (slice 7).")
-            .ProducesProblems(StatusCodes.Status404NotFound)
-            .ForAnalysts().Stub();
+            .WithSummary("Each state's rank and score movement between two snapshots, read from what they stored.")
+            .ProducesProblems(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound)
+            .ForAnalysts();
 
         snapshots.MapGet("/{snapshotId:long}", async Task<Results<Ok<SnapshotDto>, ProblemHttpResult>> (
                     long snapshotId, MeridianDbContext db, CancellationToken ct) =>

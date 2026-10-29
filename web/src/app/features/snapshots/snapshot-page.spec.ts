@@ -57,6 +57,12 @@ describe('SnapshotPage', () => {
     );
   });
 
+  it('leads to the comparison with this snapshot as A', async () => {
+    const page = await open(snapshot);
+
+    expect(page.querySelector('[data-testid="compare-link"]')?.getAttribute('href')).toBe('/snapshots/compare?a=42');
+  });
+
   it('shows a failed job with its error and no ranking', async () => {
     const page = await open({
       ...snapshot, results: [], voteCount: 0,

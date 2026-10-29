@@ -77,6 +77,121 @@ internal static class SnapshotQueries
         return new SnapshotBreakdownDto(result, lines);
     }
 
+    /// <summary>
+    /// A and B side by side from their stored results; nothing is recalculated. Score change is B minus A;
+    /// rank change is A's rank minus B's, so a positive number means the state moved up. A state n/a in a
+    /// snapshot, or missing from it, has no score or rank there and no movement.
+    /// </summary>
+    public static async Task<SnapshotComparisonDto> CompareAsync(MeridianDbContext db, SnapshotRefDto a, SnapshotRefDto b,
+        CancellationToken ct)
+    {
+        var names = await db.MemberStates.AsNoTracking().ToDictionaryAsync(s => s.Code, s => s.Name, ct);
+        var (resultsA, resultsB) = (await StoredAsync(db, a.Id, ct), await StoredAsync(db, b.Id, ct));
+        var reasons = ReasonsFor(await StoredLinesAsync(db, a.Id, ct), await StoredLinesAsync(db, b.Id, ct));
+
+        var states = resultsA.Keys.Union(resultsB.Keys).Select(code =>
+        {
+            var (resultA, resultB) = (resultsA.GetValueOrDefault(code), resultsB.GetValueOrDefault(code));
+            var (scoreA, scoreB) = (resultA?.Score, resultB?.Score);
+            var (rankA, rankB) = (resultA?.Rank, resultB?.Rank);
+            return new StateMovementDto(code, names[code], scoreA, rankA, BasisOf(resultA), scoreB, rankB, BasisOf(resultB),
+                scoreA is { } sa && scoreB is { } sb ? sb - sa : null,
+                rankA is { } ra && rankB is { } rb ? ra - rb : null, reasons[code].ToList());
+        });
+        return new SnapshotComparisonDto(a, b, states
+            .OrderBy(s => s.RankB is null).ThenBy(s => s.RankB).ThenBy(s => s.StateCode, StringComparer.Ordinal)
+            .ToList());
+    }
+
+    private sealed record StoredLine(
+        long VoteId, string AssemblyVoteId, DateOnly VoteDate, string Title, string StateCode, LineCategory Category, Ballot? Ballot,
+        Stance Stance, short Weight)
+    {
+        public int Matched => Category == LineCategory.Match ? Weight : 0;
+        public int Counted => Category is LineCategory.Match or LineCategory.Mismatch ? Weight : 0;
+        public ReasonSideDto Side => new(Category, Ballot, Stance, Weight);
+    }
+
+    /// <summary>Every stored line of a snapshot with the position and the ballot it used.</summary>
+    private static async Task<List<StoredLine>> StoredLinesAsync(MeridianDbContext db, long snapshotId, CancellationToken ct) =>
+        await (
+                from l in db.SnapshotLines
+                where l.SnapshotId == snapshotId
+                join sv in db.SnapshotVotes on new { l.SnapshotId, l.VoteId } equals new { sv.SnapshotId, sv.VoteId }
+                join v in db.Votes on l.VoteId equals v.Id
+                join d in db.VoteDetailsRevisions on sv.DetailsRevisionId equals d.Id
+                join p in db.PositionRevisions on sv.PositionRevisionId equals p.Id
+                join c in db.CountryVoteRevisions on l.CountryVoteRevisionId equals c.Id into ballots
+                from c in ballots.DefaultIfEmpty()
+                select new StoredLine(v.Id, v.AssemblyVoteId, d.VoteDate, d.Title, l.StateCode, l.Category, c != null ? c.Ballot : null,
+                    p.Stance, p.Weight))
+            .AsNoTracking().ToListAsync(ct);
+
+    /// <summary>
+    /// Per state, the votes whose matched or counted weight differs between A and B, by vote date then assembly
+    /// vote id like the breakdown. A vote that only moved between abstain, absent, non-member and no data
+    /// changes no score and is not a reason.
+    /// </summary>
+    private static ILookup<string, MovementReasonDto> ReasonsFor(List<StoredLine> linesA, List<StoredLine> linesB)
+    {
+        var inA = linesA.ToDictionary(l => (l.VoteId, l.StateCode));
+        var inB = linesB.ToDictionary(l => (l.VoteId, l.StateCode));
+        return inA.Keys.Union(inB.Keys)
+            .Select(key => (key.StateCode, Date: (inB.GetValueOrDefault(key) ?? inA[key]).VoteDate,
+                Reason: ReasonFor(inA.GetValueOrDefault(key), inB.GetValueOrDefault(key))))
+            .Where(r => r.Reason is not null)
+            .OrderBy(r => r.Date).ThenBy(r => r.Reason!.Vote.AssemblyVoteId, StringComparer.Ordinal)
+            .ToLookup(r => r.StateCode, r => r.Reason!);
+    }
+
+    /// <summary>Why a state's weights differ on one vote, or null when A and B give it the same matched and counted weight.</summary>
+    private static MovementReasonDto? ReasonFor(StoredLine? a, StoredLine? b)
+    {
+        var matchedChange = (b?.Matched ?? 0) - (a?.Matched ?? 0);
+        var countedChange = (b?.Counted ?? 0) - (a?.Counted ?? 0);
+        if (matchedChange == 0 && countedChange == 0) return null;
+
+        var line = (b ?? a)!;
+        var kind = a is null ? ReasonKind.OnlyInB : b is null ? ReasonKind.OnlyInA : ReasonKind.Changed;
+        return new MovementReasonDto(new VoteRefDto(line.VoteId, line.AssemblyVoteId), line.Title, kind,
+            a is not null && b is not null ? ChangesBetween(a, b) : [], a?.Side, b?.Side, matchedChange, countedChange);
+    }
+
+    private static List<ReasonChange> ChangesBetween(StoredLine a, StoredLine b)
+    {
+        var changes = new List<ReasonChange>();
+        if (a.Category != b.Category) changes.Add(ReasonChange.Category);
+        if (a.Ballot != b.Ballot) changes.Add(ReasonChange.Ballot);
+        if (a.Stance != b.Stance) changes.Add(ReasonChange.Stance);
+        if (a.Weight != b.Weight) changes.Add(ReasonChange.Weight);
+        return changes;
+    }
+
+    /// <summary>True when every one of the snapshots has finished calculating.</summary>
+    public static async Task<bool> AllCalculatedAsync(MeridianDbContext db, IReadOnlyCollection<long> snapshotIds, CancellationToken ct) =>
+        await db.Jobs.CountAsync(j => j.SnapshotId != null && snapshotIds.Contains(j.SnapshotId.Value) && j.State == JobState.Done, ct)
+            == snapshotIds.Count;
+
+    private static ScoreBasisDto? BasisOf(StateResult? result) =>
+        result is null ? null : new ScoreBasisDto(result.CountableVotes, result.MatchedWeight, result.CountedWeight);
+
+    /// <summary>A snapshot's stored results by state code, each with its countable votes counted from the stored lines.</summary>
+    private static async Task<Dictionary<string, StateResult>> StoredAsync(MeridianDbContext db, long snapshotId, CancellationToken ct)
+    {
+        var countable = await db.SnapshotLines.AsNoTracking()
+            .Where(l => l.SnapshotId == snapshotId && (l.Category == LineCategory.Match || l.Category == LineCategory.Mismatch))
+            .GroupBy(l => l.StateCode).Select(g => new { StateCode = g.Key, Votes = g.Count() })
+            .ToDictionaryAsync(g => g.StateCode, g => g.Votes, ct);
+        var results = await db.SnapshotResults.AsNoTracking().Where(r => r.SnapshotId == snapshotId).ToListAsync(ct);
+        return results.ToDictionary(r => r.StateCode, r => new StateResult(r.StateCode, r.MatchedWeight, r.CountedWeight,
+            countable.GetValueOrDefault(r.StateCode), r.Rank));
+    }
+
+    /// <summary>The snapshot's name and time, or null when there is none.</summary>
+    public static Task<SnapshotRefDto?> RefAsync(MeridianDbContext db, long snapshotId, CancellationToken ct) =>
+        db.Snapshots.AsNoTracking().Where(s => s.Id == snapshotId)
+            .Select(s => new SnapshotRefDto(s.Id, s.Name, s.RecordedAt)).SingleOrDefaultAsync(ct);
+
     /// <summary>Ranked states by rank then code, then the n/a states by code; or just one state.</summary>
     public static async Task<List<SnapshotResultDto>> ResultsAsync(MeridianDbContext db, long snapshotId, string? stateCode,
         CancellationToken ct)

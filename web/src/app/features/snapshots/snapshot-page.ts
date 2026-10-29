@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { DatePipe } from '@angular/common';
+import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTableModule } from '@angular/material/table';
 import { RouterLink } from '@angular/router';
@@ -18,7 +19,7 @@ import { describeStoredSelection } from './selection';
 @Component({
   selector: 'app-snapshot-page',
   imports: [
-    DatePipe, MatTableModule, MatProgressBarModule, RouterLink, JobStateBadge, BreakdownPanel, PublishPanel, PageHeader,
+    DatePipe, MatButtonModule, MatTableModule, MatProgressBarModule, RouterLink, JobStateBadge, BreakdownPanel, PublishPanel, PageHeader,
     LoadState, ScoreWithBasis,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -70,6 +71,11 @@ import { describeStoredSelection } from './selection';
 
       @if (s.job.state === 'done') {
         <app-publish-panel [snapshotId]="s.id" (published)="snapshot.reload()" />
+        <p>
+          <a mat-stroked-button routerLink="/snapshots/compare" [queryParams]="{ a: s.id }" data-testid="compare-link">
+            Compare with another snapshot
+          </a>
+        </p>
         <div class="results">
           <section aria-labelledby="ranking-heading">
             <h2 id="ranking-heading">Ranking</h2>
