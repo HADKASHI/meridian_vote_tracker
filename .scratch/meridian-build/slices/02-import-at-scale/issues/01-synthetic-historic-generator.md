@@ -4,10 +4,10 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The same seed gives byte-identical output; a different seed gives different output
-- [ ] The file has 6,480 votes, 147–151 rows per vote and 150 member codes, and is interleaved so no vote's rows are contiguous
-- [ ] Every defect kind appears, and the expected counts (new, duplicate, invalid, contradiction 0) are returned alongside the file
-- [ ] Classifying the generated rows with the real parser and classifier gives exactly the expected counts
-- [ ] The member-states file is generated too, and nothing generated is committed
+- [x] The same seed gives byte-identical output; a different seed gives different output
+- [x] The file has 6,480 votes, 147–151 rows per vote and 150 member codes, and is interleaved so no vote's rows are contiguous
+- [x] Every defect kind appears, and the expected counts (new, duplicate, invalid, contradiction 0) are returned alongside the file
+- [x] Classifying the generated rows with the real parser and classifier gives exactly the expected counts
+- [x] The member-states file is generated too, and nothing generated is committed
