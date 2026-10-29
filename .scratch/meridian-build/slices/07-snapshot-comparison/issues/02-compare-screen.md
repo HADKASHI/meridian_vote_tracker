@@ -4,11 +4,11 @@
 
 **Blocked by:** 01 Compare two snapshots' stored results
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The page offers two pickers listing calculated snapshots by name; choosing both loads the comparison, and the choices are held in `?a=` and `?b=`
-- [ ] The table shows per state: A rank and score, B rank and score, score change and rank change, with an up/down/no-change reading that does not rely on colour alone
-- [ ] A state n/a or missing in one snapshot shows n/a and "no movement" for it
-- [ ] Comparing a snapshot with itself, an unknown id and a failed load each show a clear message rather than an empty table
-- [ ] Reached from the snapshots list and from a snapshot page; the feature folder imports only core, shared and the generated API
-- [ ] Vitest specs with `HttpTestingController` cover the table, the n/a case and the query params
+- [x] The page offers two pickers listing calculated snapshots by name; choosing both loads the comparison, and the choices are held in `?a=` and `?b=`
+- [x] The table shows per state: A rank and score, B rank and score, score change and rank change, with an up/down/no-change reading that does not rely on colour alone
+- [x] A state n/a or missing in one snapshot shows n/a and "no movement" for it
+- [x] Comparing a snapshot with itself, an unknown id and a failed load each show a clear message rather than an empty table
+- [x] Reached from the snapshots list and from a snapshot page; the feature folder imports only core, shared and the generated API
+- [x] Vitest specs with `HttpTestingController` cover the table, the n/a case and the query params
