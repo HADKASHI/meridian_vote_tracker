@@ -3,7 +3,8 @@ import { MatTableModule } from '@angular/material/table';
 import { RouterLink } from '@angular/router';
 import { getSnapshotBreakdownResource } from '../../api/snapshots/snapshots.resource';
 import { LoadState } from '../../shared/ui/load-state';
-import { categoryLabel, formatScore } from './selection';
+import { formatScore } from '../../shared/ui/score';
+import { categoryLabel } from './selection';
 
 /** SNP-03: one state's breakdown, every vote with its category and the exact value used, to recompute by hand. */
 @Component({

@@ -8,6 +8,11 @@ export interface ScoreFacts {
   countedWeight: number;
 }
 
+/** A score to 1 decimal, or n/a when nothing is countable. */
+export function formatScore(score: number | null): string {
+  return score === null ? 'n/a' : score.toFixed(1);
+}
+
 /** "10 countable votes · 20 of 32 weight matched", or "nothing countable". */
 export function scoreBasis(facts: Omit<ScoreFacts, 'score'>): string {
   if (facts.countableVotes === 0) return 'nothing countable';
@@ -40,9 +45,6 @@ export function scoreBasis(facts: Omit<ScoreFacts, 'score'>): string {
 })
 export class ScoreWithBasis {
   readonly result = input.required<ScoreFacts>();
-  protected readonly score = computed(() => {
-    const score = this.result().score;
-    return score === null ? 'n/a' : score.toFixed(1);
-  });
+  protected readonly score = computed(() => formatScore(this.result().score));
   protected readonly basis = computed(() => scoreBasis(this.result()));
 }

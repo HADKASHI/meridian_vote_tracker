@@ -58,11 +58,6 @@ export function describeStoredSelection(selection: SnapshotSelectionDto): string
   return removed > 0 ? `${base}, minus ${removed} removed ${removed === 1 ? 'vote' : 'votes'}` : base;
 }
 
-/** A score to 1 decimal, or n/a when nothing was countable. */
-export function formatScore(score: number | null): string {
-  return score === null ? 'n/a' : score.toFixed(1);
-}
-
 /** A line's category in the glossary's words. */
 export function categoryLabel(category: string): string {
   return category.replace('_', ' ').replace('non member', 'non-member');
