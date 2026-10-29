@@ -104,7 +104,7 @@ internal static class SnapshotQueries
     }
 
     private sealed record StoredLine(
-        long VoteId, string AssemblyVoteId, string Title, string StateCode, LineCategory Category, Ballot? Ballot,
+        long VoteId, string AssemblyVoteId, DateOnly VoteDate, string Title, string StateCode, LineCategory Category, Ballot? Ballot,
         Stance Stance, short Weight)
     {
         public int Matched => Category == LineCategory.Match ? Weight : 0;
@@ -123,39 +123,48 @@ internal static class SnapshotQueries
                 join p in db.PositionRevisions on sv.PositionRevisionId equals p.Id
                 join c in db.CountryVoteRevisions on l.CountryVoteRevisionId equals c.Id into ballots
                 from c in ballots.DefaultIfEmpty()
-                select new StoredLine(v.Id, v.AssemblyVoteId, d.Title, l.StateCode, l.Category, c != null ? c.Ballot : null,
+                select new StoredLine(v.Id, v.AssemblyVoteId, d.VoteDate, d.Title, l.StateCode, l.Category, c != null ? c.Ballot : null,
                     p.Stance, p.Weight))
             .AsNoTracking().ToListAsync(ct);
 
     /// <summary>
-    /// Per state, the votes whose matched or counted weight differs between A and B, by assembly vote id. A vote
-    /// that only moved between abstain, absent, non-member and no data changes no score and is not a reason.
+    /// Per state, the votes whose matched or counted weight differs between A and B, by vote date then assembly
+    /// vote id like the breakdown. A vote that only moved between abstain, absent, non-member and no data
+    /// changes no score and is not a reason.
     /// </summary>
     private static ILookup<string, MovementReasonDto> ReasonsFor(List<StoredLine> linesA, List<StoredLine> linesB)
     {
         var inA = linesA.ToDictionary(l => (l.VoteId, l.StateCode));
         var inB = linesB.ToDictionary(l => (l.VoteId, l.StateCode));
-        return inA.Keys.Union(inB.Keys).Select(key =>
-            {
-                var (a, b) = (inA.GetValueOrDefault(key), inB.GetValueOrDefault(key));
-                var (matchedChange, countedChange) = ((b?.Matched ?? 0) - (a?.Matched ?? 0), (b?.Counted ?? 0) - (a?.Counted ?? 0));
-                if (matchedChange == 0 && countedChange == 0) return ((string StateCode, MovementReasonDto Reason)?)null;
-                var shown = (b ?? a)!;
-                var changes = new List<ReasonChange>();
-                if (a is not null && b is not null)
-                {
-                    if (a.Category != b.Category) changes.Add(ReasonChange.Category);
-                    if (a.Ballot != b.Ballot) changes.Add(ReasonChange.Ballot);
-                    if (a.Stance != b.Stance) changes.Add(ReasonChange.Stance);
-                    if (a.Weight != b.Weight) changes.Add(ReasonChange.Weight);
-                }
-                return ((string StateCode, MovementReasonDto Reason)?)(key.StateCode, new MovementReasonDto(new VoteRefDto(shown.VoteId, shown.AssemblyVoteId), shown.Title,
-                    a is null ? ReasonKind.OnlyInB : b is null ? ReasonKind.OnlyInA : ReasonKind.Changed, changes,
-                    a?.Side, b?.Side, matchedChange, countedChange));
-            })
-            .Where(r => r is not null).Select(r => r!.Value)
-            .OrderBy(r => r.Reason.Vote.AssemblyVoteId, StringComparer.Ordinal)
-            .ToLookup(r => r.StateCode, r => r.Reason);
+        return inA.Keys.Union(inB.Keys)
+            .Select(key => (key.StateCode, Date: (inB.GetValueOrDefault(key) ?? inA[key]).VoteDate,
+                Reason: ReasonFor(inA.GetValueOrDefault(key), inB.GetValueOrDefault(key))))
+            .Where(r => r.Reason is not null)
+            .OrderBy(r => r.Date).ThenBy(r => r.Reason!.Vote.AssemblyVoteId, StringComparer.Ordinal)
+            .ToLookup(r => r.StateCode, r => r.Reason!);
+    }
+
+    /// <summary>Why a state's weights differ on one vote, or null when A and B give it the same matched and counted weight.</summary>
+    private static MovementReasonDto? ReasonFor(StoredLine? a, StoredLine? b)
+    {
+        var matchedChange = (b?.Matched ?? 0) - (a?.Matched ?? 0);
+        var countedChange = (b?.Counted ?? 0) - (a?.Counted ?? 0);
+        if (matchedChange == 0 && countedChange == 0) return null;
+
+        var line = (b ?? a)!;
+        var kind = a is null ? ReasonKind.OnlyInB : b is null ? ReasonKind.OnlyInA : ReasonKind.Changed;
+        return new MovementReasonDto(new VoteRefDto(line.VoteId, line.AssemblyVoteId), line.Title, kind,
+            a is not null && b is not null ? ChangesBetween(a, b) : [], a?.Side, b?.Side, matchedChange, countedChange);
+    }
+
+    private static List<ReasonChange> ChangesBetween(StoredLine a, StoredLine b)
+    {
+        var changes = new List<ReasonChange>();
+        if (a.Category != b.Category) changes.Add(ReasonChange.Category);
+        if (a.Ballot != b.Ballot) changes.Add(ReasonChange.Ballot);
+        if (a.Stance != b.Stance) changes.Add(ReasonChange.Stance);
+        if (a.Weight != b.Weight) changes.Add(ReasonChange.Weight);
+        return changes;
     }
 
     /// <summary>True when every one of the snapshots has finished calculating.</summary>

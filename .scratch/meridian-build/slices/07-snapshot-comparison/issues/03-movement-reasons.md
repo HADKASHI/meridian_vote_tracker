@@ -10,6 +10,6 @@
 - [x] A vote only in A, or only in B, is a reason when it counted for the state there; a vote that is in both and counted the same is not listed
 - [x] The reasons add up: for every state the sum of matched and counted weight changes over its reasons equals the difference between the stored matched and counted weight in B and in A
 - [x] A changed ballot (an accepted conflict between the snapshots), a changed position (stance or weight) and a different vote set are each proven by a named integration test through the HTTP API
-- [x] A state n/a in one or both snapshots, and a state with no difference, return an empty list rather than null
+- [x] A state with no difference (including one n/a in both snapshots) returns an empty list rather than null; a state n/a in one snapshot but countable in the other lists the votes that made it countable
 - [x] It reads stored data only: later changes to approved data or positions do not change the reasons
 - [x] The OpenAPI file is regenerated for the changed response only; no endpoint is added and no migration is needed

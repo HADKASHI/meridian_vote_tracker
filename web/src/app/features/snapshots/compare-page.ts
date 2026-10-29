@@ -5,11 +5,12 @@ import { MatInputModule } from '@angular/material/input';
 import { Router, RouterLink } from '@angular/router';
 import { MatTableModule } from '@angular/material/table';
 import { HttpErrorResponse } from '@angular/common/http';
-import { LineCategory, JobState, MovementReasonDto, ReasonSideDto, ScoreBasisDto } from '../../api/model';
+import { JobState, MovementReasonDto, ReasonSideDto, ScoreBasisDto } from '../../api/model';
 import { compareSnapshotsResource, listSnapshotsResource } from '../../api/snapshots/snapshots.resource';
 import { LoadState } from '../../shared/ui/load-state';
 import { PageHeader } from '../../shared/ui/page-header';
 import { formatScore, scoreBasis } from '../../shared/ui/score';
+import { categoryLabel } from './selection';
 
 /** "3 · 50.0", or n/a when the state has no rank in that snapshot. */
 export function rankAndScore(rank: number | null, score: number | null): string {
@@ -34,10 +35,6 @@ export function rankMovement(change: number | null): string {
   return change > 0 ? `▲ up ${change}` : change < 0 ? `▼ down ${-change}` : '= unchanged';
 }
 
-const CATEGORY_WORDS: Record<LineCategory, string> = {
-  match: 'match', mismatch: 'mismatch', abstain: 'abstain', absent: 'absent', non_member: 'non-member', no_data: 'no data',
-};
-
 const signed = (n: number): string => (n < 0 ? `−${-n}` : `+${n}`);
 const ballotWord = (side: ReasonSideDto): string => side.ballot?.toUpperCase() ?? 'none';
 
@@ -48,15 +45,15 @@ export function reasonText(reason: MovementReasonDto): string {
   if (a === null || b === null) {
     const only = a === null ? 'B' : 'A';
     const side = (a ?? b)!;
-    what = `only in ${only}, treated as ${CATEGORY_WORDS[side.category]}${side.ballot ? ` with ballot ${ballotWord(side)}` : ''}`;
+    what = `only in ${only}, treated as ${categoryLabel(side.category)}${side.ballot ? ` with country vote ${ballotWord(side)}` : ''}`;
   } else {
     what = reason.changes
       .map((change) => {
         switch (change) {
           case 'category':
-            return `category ${CATEGORY_WORDS[a.category]} → ${CATEGORY_WORDS[b.category]}`;
+            return `category ${categoryLabel(a.category)} → ${categoryLabel(b.category)}`;
           case 'ballot':
-            return `ballot ${ballotWord(a)} → ${ballotWord(b)}`;
+            return `country vote ${ballotWord(a)} → ${ballotWord(b)}`;
           case 'stance':
             return `position ${a.stance} → ${b.stance}`;
           case 'weight':
@@ -247,7 +244,7 @@ export class ComparePage {
   protected toggle(code: string): void {
     const now = this.opened();
     const next = now.includes(code) ? now.filter((c) => c !== code) : [...now, code];
-    void this.router.navigate([], { queryParams: { open: next.join(',') || null }, queryParamsHandling: 'merge' });
+    void this.router.navigate([], { queryParams: { open: next.join(',') || null }, queryParamsHandling: 'merge', replaceUrl: true });
   }
 
   protected pick(side: 'a' | 'b', event: Event): void {

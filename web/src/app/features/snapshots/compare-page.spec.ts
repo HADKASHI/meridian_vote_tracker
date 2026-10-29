@@ -122,8 +122,8 @@ describe('ComparePage', () => {
 
     expect(page.querySelector('button[data-testid="why-ARG"]')?.getAttribute('aria-expanded')).toBe('true');
     expect(reasonLines(page, 'ARG')).toEqual([
-      'MA/2024/001 Ocean Treaty: category mismatch → match, ballot N → Y · matched weight +2 · counted weight +0',
-      'MA/2024/002 Space Debris: only in B, treated as match with ballot Y · matched weight +3 · counted weight +3',
+      'MA/2024/001 Ocean Treaty: category mismatch → match, country vote N → Y · matched weight +2 · counted weight +0',
+      'MA/2024/002 Space Debris: only in B, treated as match with country vote Y · matched weight +3 · counted weight +3',
     ]);
     expect(reasonLines(page, 'BRA')).toEqual([
       'MA/2024/003 Deep Sea Mining: category match → mismatch, position yes → no, weight 2 → 5 · matched weight −2 · counted weight +3',

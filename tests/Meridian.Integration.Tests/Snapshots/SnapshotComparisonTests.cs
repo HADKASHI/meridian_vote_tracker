@@ -246,4 +246,29 @@ public sealed class SnapshotComparisonTests(PostgresFixture postgres, AzuriteFix
         // CIV abstained then was absent, FRA voted the same way on an unchanged vote: nothing to explain.
         Assert.Empty(Reasons(State(comparison, "CIV")));
     }
+
+    [Fact]
+    public async Task A_state_that_became_countable_lists_the_votes_that_made_it_so_and_reasons_come_in_vote_date_order()
+    {
+        await using var api = await ApiFactory.CreateAsync(postgres, azurite);
+        await using var fx = Meridian.Fixtures.Fixtures.For(api.ConnectionString);
+        var later = await fx.VoteAsync("MA/2024/002", new DateOnly(2024, 3, 1));
+        await fx.CountryVotesAsync(later, ("BRA", Y));
+        await fx.PositionAsync(later, Stance.Yes, 1);
+        var earlier = await fx.VoteAsync("MA/2024/010", new DateOnly(2024, 1, 5));
+        await fx.CountryVotesAsync(earlier, ("BRA", Y));
+        await fx.PositionAsync(earlier, Stance.Yes, 1);
+        var unrelated = await fx.VoteAsync("MA/2024/003", new DateOnly(2024, 2, 1));
+        await fx.CountryVotesAsync(unrelated, ("ARG", Y));
+        await fx.PositionAsync(unrelated, Stance.Yes, 1);
+        var a = await fx.SnapshotAsync("Nothing for BRA", [unrelated]);
+        var b = await fx.SnapshotAsync("BRA votes added", [later, earlier]);
+
+        var bra = State(await CompareAsync(api, a.Id, b.Id), "BRA");
+
+        Assert.Null(Number(bra.GetProperty("scoreA")));
+        Assert.Equal(100.0, Number(bra.GetProperty("scoreB")));
+        // MA/2024/010 is the earlier vote even though its id sorts after MA/2024/002.
+        Assert.Equal(["MA/2024/010", "MA/2024/002"], Reasons(bra).Select(r => r.GetProperty("vote").GetProperty("assemblyVoteId").GetString()));
+    }
 }
