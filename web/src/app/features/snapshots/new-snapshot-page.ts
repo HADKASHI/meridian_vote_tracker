@@ -6,6 +6,8 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { Router } from '@angular/router';
 import { NoPositionProblem, SnapshotPreviewDto } from '../../api/model';
+import { listRuleSetsResource } from '../../api/snapshots/snapshots.resource';
+import { CurrentUser } from '../../core/identity/current-user';
 import { SnapshotsService } from '../../api/snapshots/snapshots.service';
 import { ProblemBanner } from '../../shared/problem/problem-banner';
 import { PageHeader } from '../../shared/ui/page-header';
@@ -88,6 +90,20 @@ type Field = 'name' | 'note' | 'from' | 'to' | 'sessions' | 'voteIds';
         </p>
       }
 
+      @if (currentUser.isAdmin() && ruleSets.hasValue()) {
+        <mat-form-field>
+          <mat-label>Rule set</mat-label>
+          <select matNativeControl name="ruleSet" [value]="ruleSet()" (change)="ruleSet.set(value($event))">
+            @for (r of ruleSets.value(); track r.id) {
+              <option [value]="r.id" [selected]="r.id === ruleSet()">{{ r.name }}</option>
+            }
+          </select>
+          <mat-hint data-testid="rule-set-hint">{{ chosenRuleSet()?.description }}</mat-hint>
+        </mat-form-field>
+      } @else if (defaultRuleSet(); as rules) {
+        <p class="muted" data-testid="rule-set-default">Scored under {{ rules.name }}.</p>
+      }
+
       <mat-form-field>
         <mat-label>Note (optional)</mat-label>
         <textarea matInput name="note" rows="3" [value]="note()" (input)="note.set(value($event))"></textarea>
@@ -143,6 +159,15 @@ export class NewSnapshotPage {
   private readonly snapshots = inject(SnapshotsService);
   private readonly dialog = inject(MatDialog);
   private readonly router = inject(Router);
+  protected readonly currentUser = inject(CurrentUser);
+
+  /** ADR 0007: only the admin chooses a rule set; everyone else is scored under the default. */
+  protected readonly ruleSets = listRuleSetsResource();
+  protected readonly ruleSet = signal('');
+  protected readonly defaultRuleSet = computed(() => (this.ruleSets.hasValue() ? this.ruleSets.value().find((r) => r.isDefault) : undefined));
+  protected readonly chosenRuleSet = computed(() =>
+    this.ruleSets.hasValue() ? this.ruleSets.value().find((r) => r.id === (this.ruleSet() || this.defaultRuleSet()?.id)) : undefined,
+  );
 
   protected readonly name = signal('');
   protected readonly note = signal('');
@@ -203,7 +228,11 @@ export class NewSnapshotPage {
   /** Creates the snapshot; its job calculates it, and its page follows the job. */
   protected calculate(): void {
     this.busy.set(true);
-    const request = { name: this.name(), note: this.note() || null, selection: toSelection(this.form()) };
+    const chosen = this.currentUser.isAdmin() ? this.chosenRuleSet() : undefined;
+    const request = {
+      name: this.name(), note: this.note() || null, selection: toSelection(this.form()),
+      ...(chosen && !chosen.isDefault ? { ruleSet: chosen.id } : {}),
+    };
     this.snapshots.createSnapshot(request).subscribe({
       next: (created) => {
         this.busy.set(false);

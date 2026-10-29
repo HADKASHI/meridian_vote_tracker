@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { JobDto, MovementReasonDto, SnapshotComparisonDto, SnapshotSummaryDto } from '../../api/model';
-import { ComparePage } from './compare-page';
+import { ComparePage, reasonText } from './compare-page';
 
 const job = (state: JobDto['state']): JobDto => ({
   id: 1, kind: 'snapshot', state, importId: null, snapshotId: 1, placeInQueue: null, rowsRead: 0, votesDone: 0,
@@ -33,9 +33,20 @@ const positionChanged: MovementReasonDto = {
   matchedChange: -2, countedChange: 3,
 };
 
+const defaultRules = { id: 'alignment-2026.1', name: 'Alignment 2026.1 (default)', description: '', weightUnit: 1, isDefault: true };
+const strictRules = { id: 'strict', name: 'Strict', description: '', weightUnit: 1, isDefault: false };
+const halfCreditRules = { id: 'abstain-half-credit', name: 'Abstain for half credit', description: '', weightUnit: 2, isDefault: false };
+const rulesChanged: MovementReasonDto = {
+  vote: { voteId: 4, assemblyVoteId: 'MA/2024/004' }, title: 'Coral Reefs', kind: 'changed', changes: ['rules'],
+  a: { category: 'abstain', ballot: 'a', stance: 'yes', weight: 3 }, b: { category: 'abstain', ballot: 'a', stance: 'yes', weight: 3 },
+  matchedChange: 0, countedChange: 3,
+};
+
 const comparison: SnapshotComparisonDto = {
-  a: { id: 1, name: 'Q1 index', createdAt: '2024-04-02T09:00:00Z' },
-  b: { id: 2, name: 'Q2 index', createdAt: '2024-07-02T09:00:00Z' },
+  a: { id: 1, name: 'Q1 index', createdAt: '2024-04-02T09:00:00Z', ruleSet: defaultRules },
+  b: { id: 2, name: 'Q2 index', createdAt: '2024-07-02T09:00:00Z', ruleSet: defaultRules },
+  ruleSetsDiffer: false,
+  weightUnit: 1,
   states: [
     { stateCode: 'ARG', stateName: 'Argentina', scoreA: 50, rankA: 3, basisA: { countableVotes: 2, matchedWeight: 2, countedWeight: 4 }, scoreB: 80.04, rankB: 1, basisB: { countableVotes: 5, matchedWeight: 4, countedWeight: 5 }, scoreChange: 30.04, rankChange: 2, reasons: [ballotChanged, onlyInB] },
     { stateCode: 'BRA', stateName: 'Brazil', scoreA: 90, rankA: 1, basisA: { countableVotes: 3, matchedWeight: 9, countedWeight: 10 }, scoreB: 70, rankB: 2, basisB: { countableVotes: 5, matchedWeight: 7, countedWeight: 10 }, scoreChange: -20, rankChange: -1, reasons: [positionChanged] },
@@ -183,5 +194,41 @@ describe('ComparePage', () => {
 
     expect(page.querySelector('[role="alert"]')?.textContent).toContain('could not be compared');
     expect(page.querySelector('[data-testid="movement"]')).toBeNull();
+  });
+
+  it('names the rule set of each snapshot and warns only when they differ', async () => {
+    const same = await loaded({});
+    expect(same.querySelector('[data-testid="rule-sets"]')?.textContent).toContain('Alignment 2026.1 (default)');
+    expect(same.querySelector('[data-testid="rule-set-warning"]')).toBeNull();
+  });
+
+  it('warns that a change of rules is mixed into the movement when the rule sets differ', async () => {
+    const page = await open({ a: '1', b: '2' });
+    http.expectOne((r) => r.url === '/api/snapshots/compare').flush({
+      ...comparison, b: { ...comparison.b, ruleSet: strictRules }, ruleSetsDiffer: true,
+    });
+    await settle();
+
+    expect(page.querySelector('[data-testid="rule-sets"]')?.textContent?.replace(/\s+/g, ' ')).toContain(
+      'Q1 index: Alignment 2026.1 (default) · Q2 index: Strict');
+    const warning = page.querySelector('[data-testid="rule-set-warning"]');
+    expect(warning?.textContent).toContain('scored under different rule sets');
+    expect(warning?.textContent).toContain('change of rules');
+  });
+
+  it('shows weights in weight, not points, when a rule set counts in halves', async () => {
+    const page = await open({ a: '1', b: '2' });
+    http.expectOne((r) => r.url === '/api/snapshots/compare').flush({
+      ...comparison, b: { ...comparison.b, ruleSet: halfCreditRules }, ruleSetsDiffer: true, weightUnit: 2,
+      states: [{ ...comparison.states[0], basisA: { countableVotes: 2, matchedWeight: 3, countedWeight: 5 }, reasons: [rulesChanged] }],
+    });
+    await settle();
+
+    expect(rows(page)[0][1]).toContain('1.5 of 2.5 weight matched');
+  });
+
+  it('says a reason is the rule sets counting the same vote differently', () => {
+    expect(reasonText(rulesChanged)).toBe('counted differently by the two rule sets · matched weight +0 · counted weight +3');
+    expect(reasonText(rulesChanged, 2)).toBe('counted differently by the two rule sets · matched weight +0 · counted weight +1.5');
   });
 });

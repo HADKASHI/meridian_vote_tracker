@@ -51,6 +51,10 @@ public static class SnapshotsModule
                     CreateSnapshotRequest request, ClaimsPrincipal user, MeridianDbContext db, CancellationToken ct) =>
             {
                 var selection = request.Selection!;
+                var ruleSet = request.RuleSet ?? RuleSets.DefaultId;
+                if (ruleSet != RuleSets.DefaultId && !user.IsInRole(SnakeCaseEnumConverter<Role>.ToName(Role.Admin)))
+                    return ProblemDetailsSetup.Problem(StatusCodes.Status403Forbidden, ProblemTypes.Forbidden,
+                        "Forbidden", "Only the admin chooses a rule set other than the default.");
                 var votes = SnapshotSelection.Resolve(db, selection);
                 if (!await votes.AnyAsync(ct)) return NoVotesMatch();
                 var noPosition = await SnapshotSelection.NoPositionAsync(votes, ct);
@@ -64,7 +68,7 @@ public static class SnapshotsModule
                 var snapshot = new Snapshot
                 {
                     Name = request.Name!.Trim(), Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim(),
-                    Selection = SnapshotJson.WriteSelection(selection), ScoringRulesVersion = AlignmentScoring.RulesVersion,
+                    Selection = SnapshotJson.WriteSelection(selection), ScoringRulesVersion = ruleSet,
                     CreatedBy = user.UserId(),
                 };
                 db.Snapshots.Add(snapshot);
@@ -152,6 +156,12 @@ public static class SnapshotsModule
             .WithSummary("Each reporting quarter's chain of publications, newest quarter first.")
             .ForAnalysts();
 
+        api.MapGet("/rule-sets", () => TypedResults.Ok<IReadOnlyList<RuleSetDto>>([.. RuleSets.All.Select(RuleSetDto.Of)]))
+            .WithTags("Snapshots")
+            .WithName("listRuleSets")
+            .WithSummary("The known rule sets, the default first. Only the admin may create a snapshot under another.")
+            .ForAnalysts();
+
         return api;
     }
 
@@ -191,7 +201,7 @@ public static class SnapshotsModule
             return QuarterPublished((await PublicationQueries.CurrentAsync(db, quarter, ct))!);
         }
 
-        var created = await PublicationQueries.Load(db, db.Publications.Where(p => p.Id == publication.Id)).SingleAsync(ct);
+        var created = await PublicationQueries.CreatedAsync(db, publication.Id, ct);
         return TypedResults.Created($"/api/publications", created);
     }
 

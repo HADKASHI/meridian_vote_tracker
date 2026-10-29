@@ -3,7 +3,7 @@ import { MatTableModule } from '@angular/material/table';
 import { RouterLink } from '@angular/router';
 import { getSnapshotBreakdownResource } from '../../api/snapshots/snapshots.resource';
 import { LoadState } from '../../shared/ui/load-state';
-import { formatScore } from '../../shared/ui/score';
+import { formatScore, formatWeight } from '../../shared/ui/score';
 import { categoryLabel } from './selection';
 
 /** SNP-03: one state's breakdown, every vote with its category and the exact value used, to recompute by hand. */
@@ -15,7 +15,7 @@ import { categoryLabel } from './selection';
     @if (breakdown.hasValue() && breakdown.value(); as b) {
       <h2>Breakdown: {{ b.result.stateName }} ({{ b.result.stateCode }})</h2>
       <p class="result" data-testid="breakdown-result">
-        Score {{ score(b.result.score) }} · {{ b.result.matchedWeight }} of {{ b.result.countedWeight }} weight matched over
+        Score {{ score(b.result.score) }} · {{ weight(b.result.matchedWeight) }} of {{ weight(b.result.countedWeight) }} weight matched over
         {{ b.result.countableVotes }} countable {{ b.result.countableVotes === 1 ? 'vote' : 'votes' }}
       </p>
       <div class="table-scroll">
@@ -78,12 +78,18 @@ import { categoryLabel } from './selection';
 export class BreakdownPanel {
   readonly snapshotId = input.required<number>();
   readonly stateCode = input.required<string>();
+  /** The snapshot's rule set weight unit: weights are stored in points of 1 ÷ unit. */
+  readonly weightUnit = input(1);
 
   protected readonly columns = ['vote', 'date', 'title', 'position', 'ballot', 'category', 'revision'];
   protected readonly breakdown = getSnapshotBreakdownResource(this.snapshotId, this.stateCode);
 
   protected score(score: number | null): string {
     return formatScore(score);
+  }
+
+  protected weight(points: number): string {
+    return formatWeight(points, this.weightUnit());
   }
 
   /** Counted categories in the main tones, the rest muted; the word always shows. */

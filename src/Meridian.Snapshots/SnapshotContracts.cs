@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Meridian.Domain;
+using Meridian.Domain.Scoring;
 using Meridian.Platform.Contracts;
 using Meridian.Platform.Jobs;
 
@@ -44,11 +45,31 @@ public sealed class SnapshotSelectionDto : IValidatableObject
     }
 }
 
-public sealed class CreateSnapshotRequest
+public sealed class CreateSnapshotRequest : IValidatableObject
 {
     [Required(AllowEmptyStrings = false), MaxLength(200)] public string? Name { get; init; }
     [MaxLength(2000)] public string? Note { get; init; }
     [Required] public SnapshotSelectionDto? Selection { get; init; }
+
+    /// <summary>The id of a rule set; omitted means the default. Only the admin may choose another.</summary>
+    public string? RuleSet { get; init; }
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (RuleSet is not null && !RuleSets.TryGet(RuleSet, out _))
+            yield return new ValidationResult($"{RuleSet} is not a known rule set.", [nameof(RuleSet)]);
+    }
+}
+
+/// <summary>A rule set (ADR 0007). Weights in results are points of 1 ÷ <c>WeightUnit</c> of a weight.</summary>
+public sealed record RuleSetDto(string Id, string Name, string Description, int WeightUnit, bool IsDefault)
+{
+    public static RuleSetDto Of(RuleSet ruleSet) =>
+        new(ruleSet.Id, ruleSet.Name, ruleSet.Description, ruleSet.WeightUnit, ruleSet.Id == RuleSets.DefaultId);
+
+    /// <summary>A snapshot's rule set by the id it stored; an id no rule set has (a fixture-built snapshot) reads as the default's rules.</summary>
+    public static RuleSetDto Stored(string id) =>
+        RuleSets.TryGet(id, out var known) ? Of(known) : new RuleSetDto(id, id, "Not a known rule set; read as the default's rules.", 1, false);
 }
 
 public enum SnapshotWarningKind { PendingConflicts, IncompleteVote, ImportRunning }
@@ -64,20 +85,26 @@ public sealed record SnapshotPreviewDto(int VoteCount, IReadOnlyList<VoteRefDto>
 
 public sealed record SnapshotCreatedDto(long SnapshotId, long JobId);
 
-/// <summary>One state's result. Score is 100 × matched ÷ counted, null (n/a) when nothing was countable.</summary>
+/// <summary>
+/// One state's result. Score is 100 × matched ÷ counted, null (n/a) when nothing was countable. The evidence is a share (0–1)
+/// of the votes the state was a member for, derived from the stored lines and the same under every rule set (ADR 0007):
+/// completeness is yes and no ballots, abstention rate is abstentions, missing data is votes with no data. They are null when
+/// the state was never a member, and <c>Confidence</c> is null when nothing was countable.
+/// </summary>
 public sealed record SnapshotResultDto(
-    string StateCode, string StateName, int MatchedWeight, int CountedWeight, int CountableVotes, double? Score, int? Rank);
+    string StateCode, string StateName, int MatchedWeight, int CountedWeight, int CountableVotes, double? Score, int? Rank,
+    double? Completeness, double? AbstentionRate, double? MissingData, Confidence? Confidence);
 
 public sealed record PublicationDto(
     long Id, long SnapshotId, string SnapshotName, string Quarter, string PublishedBy, DateTimeOffset PublishedAt,
-    string? Reason, long? SupersedesPublicationId, long? SupersededByPublicationId);
+    string? Reason, long? SupersedesPublicationId, long? SupersededByPublicationId, string RuleSetId, string RuleSetName);
 
 public sealed record SnapshotSummaryDto(
     long Id, string Name, string CreatedBy, DateTimeOffset CreatedAt, int? VoteCount, JobDto Job,
     IReadOnlyList<PublicationDto> Publications);
 
 public sealed record SnapshotDto(
-    long Id, string Name, string? Note, SnapshotSelectionDto Selection, string ScoringRulesVersion,
+    long Id, string Name, string? Note, SnapshotSelectionDto Selection, string ScoringRulesVersion, RuleSetDto RuleSet,
     string CreatedBy, DateTimeOffset CreatedAt, JobDto Job, int VoteCount,
     IReadOnlyList<SnapshotResultDto> Results, IReadOnlyList<SnapshotWarningDto> Warnings,
     IReadOnlyList<PublicationDto> Publications);
@@ -89,7 +116,7 @@ public sealed record SnapshotLineDto(
 
 public sealed record SnapshotBreakdownDto(SnapshotResultDto Result, IReadOnlyList<SnapshotLineDto> Lines);
 
-public sealed record SnapshotRefDto(long Id, string Name, DateTimeOffset CreatedAt);
+public sealed record SnapshotRefDto(long Id, string Name, DateTimeOffset CreatedAt, RuleSetDto RuleSet);
 
 /// <summary>What a score rests on: countable votes and the weight matched out of the weight counted.</summary>
 public sealed record ScoreBasisDto(int CountableVotes, int MatchedWeight, int CountedWeight);
@@ -98,7 +125,8 @@ public sealed record ScoreBasisDto(int CountableVotes, int MatchedWeight, int Co
 public enum ReasonKind { OnlyInA, OnlyInB, Changed }
 
 /// <summary>What differs for a vote in both snapshots.</summary>
-public enum ReasonChange { Category, Ballot, Stance, Weight }
+/// <param name="Rules">Category, ballot, position and weight are the same, but the two rule sets count it differently.</param>
+public enum ReasonChange { Category, Ballot, Stance, Weight, Rules }
 
 /// <summary>How one snapshot treated a vote for a state: the category, the ballot it used and the position.</summary>
 public sealed record ReasonSideDto(LineCategory Category, Ballot? Ballot, Stance Stance, short Weight);
@@ -120,7 +148,12 @@ public sealed record StateMovementDto(
     double? ScoreB, int? RankB, ScoreBasisDto? BasisB, double? ScoreChange, int? RankChange,
     IReadOnlyList<MovementReasonDto> Reasons);
 
-public sealed record SnapshotComparisonDto(SnapshotRefDto A, SnapshotRefDto B, IReadOnlyList<StateMovementDto> States);
+/// <summary>
+/// <c>RuleSetsDiffer</c> is the warning that the movement mixes a change of rules with a change of data. Every weight in the
+/// states and their reasons is in points of 1 ÷ <c>WeightUnit</c> of a weight, the finest unit of the two rule sets.
+/// </summary>
+public sealed record SnapshotComparisonDto(
+    SnapshotRefDto A, SnapshotRefDto B, bool RuleSetsDiffer, int WeightUnit, IReadOnlyList<StateMovementDto> States);
 
 /// <summary>What changed a value: a person setting a position, an import row, or a conflict decision.</summary>
 public enum ChangeOriginKind { Position, Import, Decision }

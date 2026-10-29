@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -14,6 +14,7 @@ import { ScoreWithBasis } from '../../shared/ui/score';
 import { BreakdownPanel } from './breakdown-panel';
 import { ChangesPanel } from './changes-panel';
 import { PublishPanel } from './publish-panel';
+import { confidenceLabel, ConfidenceFilter, ConfidenceOrder, isLowEvidence, narrow, percent } from './evidence';
 import { describeStoredSelection } from './selection';
 
 /** SNP-03: one snapshot, followed while its job runs, then its ranking with each score's basis. */
@@ -29,7 +30,7 @@ import { describeStoredSelection } from './selection';
       <app-page-header [heading]="s.name" [back]="{ label: 'Snapshots', link: '/snapshots' }">
         <p pageLead data-testid="snapshot-meta">
           {{ selectionLabel() }} · {{ s.voteCount }} {{ s.voteCount === 1 ? 'vote' : 'votes' }} · by {{ s.createdBy }} at
-          {{ s.createdAt | date: 'yyyy-MM-dd HH:mm' }} · scoring rules {{ s.scoringRulesVersion }}
+          {{ s.createdAt | date: 'yyyy-MM-dd HH:mm' }} · scored under {{ s.ruleSet.name }}
         </p>
       </app-page-header>
       @if (s.note) {
@@ -81,8 +82,33 @@ import { describeStoredSelection } from './selection';
         <div class="results">
           <section aria-labelledby="ranking-heading">
             <h2 id="ranking-heading">Ranking</h2>
+            <div class="evidence-controls">
+              <label>
+                Confidence
+                <select data-testid="filter-confidence" [value]="filter()" (change)="filter.set(choice($event))">
+                  <option value="all">All states</option>
+                  <option value="high">High</option>
+                  <option value="medium">Medium</option>
+                  <option value="low">Low (low evidence)</option>
+                  <option value="none">No band</option>
+                </select>
+              </label>
+              <label>
+                Order
+                <select data-testid="sort-confidence" [value]="order()" (change)="order.set(choice($event))">
+                  <option value="rank">Rank</option>
+                  <option value="confidence">Confidence, high first</option>
+                </select>
+              </label>
+            </div>
+            <p class="muted">
+              Completeness is the share of votes the state was a member for with a yes or no; confidence never changes the rank.
+            </p>
+            @if (shown().length === 0) {
+              <p class="muted" data-testid="ranking-empty">{{ emptyMessage() }}</p>
+            }
             <div class="table-scroll">
-              <table mat-table [dataSource]="s.results" data-testid="ranking">
+              <table mat-table [dataSource]="shown()" data-testid="ranking">
                 <ng-container matColumnDef="rank">
                   <th mat-header-cell *matHeaderCellDef>Rank</th>
                   <td mat-cell *matCellDef="let r" class="rank">{{ r.rank ?? '–' }}</td>
@@ -96,7 +122,28 @@ import { describeStoredSelection } from './selection';
                 </ng-container>
                 <ng-container matColumnDef="score">
                   <th mat-header-cell *matHeaderCellDef>Score and basis</th>
-                  <td mat-cell *matCellDef="let r"><app-score [result]="r" /></td>
+                  <td mat-cell *matCellDef="let r"><app-score [result]="r" [unit]="s.ruleSet.weightUnit" /></td>
+                </ng-container>
+                <ng-container matColumnDef="completeness">
+                  <th mat-header-cell *matHeaderCellDef>Completeness</th>
+                  <td mat-cell *matCellDef="let r" class="num">{{ percent(r.completeness) }}</td>
+                </ng-container>
+                <ng-container matColumnDef="abstention">
+                  <th mat-header-cell *matHeaderCellDef>Abstention rate</th>
+                  <td mat-cell *matCellDef="let r" class="num">{{ percent(r.abstentionRate) }}</td>
+                </ng-container>
+                <ng-container matColumnDef="missing">
+                  <th mat-header-cell *matHeaderCellDef>Missing data</th>
+                  <td mat-cell *matCellDef="let r" class="num">{{ percent(r.missingData) }}</td>
+                </ng-container>
+                <ng-container matColumnDef="confidence">
+                  <th mat-header-cell *matHeaderCellDef>Confidence</th>
+                  <td mat-cell *matCellDef="let r">
+                    <span class="chip" [attr.data-tone]="r.confidence === 'low' ? 'error' : 'neutral'">{{ confidenceLabel(r.confidence) }}</span>&ngsp;
+                    @if (isLowEvidence(r)) {
+                      <span class="chip" data-tone="error" data-testid="low-evidence">low evidence</span>
+                    }
+                  </td>
                 </ng-container>
                 <tr mat-header-row *matHeaderRowDef="columns"></tr>
                 <tr mat-row *matRowDef="let row; columns: columns" [class.selected]="row.stateCode === state()"></tr>
@@ -105,7 +152,7 @@ import { describeStoredSelection } from './selection';
           </section>
           @if (state(); as code) {
             <section class="breakdown">
-              <app-breakdown-panel [snapshotId]="s.id" [stateCode]="code" />
+              <app-breakdown-panel [snapshotId]="s.id" [stateCode]="code" [weightUnit]="s.ruleSet.weightUnit" />
             </section>
           }
         </div>
@@ -162,6 +209,21 @@ import { describeStoredSelection } from './selection';
     .selected {
       background: var(--mat-sys-secondary-container);
     }
+    .num {
+      font-variant-numeric: tabular-nums;
+    }
+    .evidence-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-block-end: 8px;
+    }
+    .evidence-controls label {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font: var(--mat-sys-label-large);
+    }
     .state a[aria-current='true'] {
       font-weight: 600;
     }
@@ -172,7 +234,19 @@ export class SnapshotPage {
   /** The member state whose breakdown is open, from <code>?state=</code>. */
   readonly state = input<string>();
 
-  protected readonly columns = ['rank', 'state', 'score'];
+  protected readonly columns = ['rank', 'state', 'score', 'completeness', 'abstention', 'missing', 'confidence'];
+  /** ADR 0007: narrowing and ordering by confidence only changes what is listed, never a rank. */
+  protected readonly filter = signal<ConfidenceFilter>('all');
+  protected readonly order = signal<ConfidenceOrder>('rank');
+  protected readonly shown = computed(() => narrow(this.snapshot.hasValue() ? (this.snapshot.value()?.results ?? []) : [], this.filter(), this.order()));
+  protected readonly emptyMessage = computed(() => {
+    const filter = this.filter();
+    if (filter === 'none') return 'Every member state has a confidence band.';
+    return `No member state has ${filter[0].toUpperCase()}${filter.slice(1)} confidence.`;
+  });
+  protected readonly percent = percent;
+  protected readonly confidenceLabel = confidenceLabel;
+  protected readonly isLowEvidence = isLowEvidence;
   protected readonly snapshot = getSnapshotResource(computed(() => Number(this.snapshotId())));
   protected readonly selectionLabel = computed(() =>
     this.snapshot.hasValue() && this.snapshot.value() ? describeStoredSelection(this.snapshot.value()!.selection) : '',
@@ -186,6 +260,10 @@ export class SnapshotPage {
     pollWhile(this.snapshot, 1000, this.active);
   }
 
+
+  protected choice<T extends string>(event: Event): T {
+    return (event.target as HTMLSelectElement).value as T;
+  }
 
   protected progress(job: JobDto): string {
     switch (job.state) {

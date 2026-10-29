@@ -1069,6 +1069,40 @@
         }
       }
     },
+    "/api/rule-sets": {
+      "get": {
+        "tags": [
+          "Snapshots"
+        ],
+        "summary": "The known rule sets, the default first. Only the admin may create a snapshot under another.",
+        "operationId": "listRuleSets",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RuleSetDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/snapshots/preview": {
       "post": {
         "tags": [
@@ -1639,6 +1673,14 @@
           "decision"
         ]
       },
+      "Confidence": {
+        "enum": [
+          "high",
+          "medium",
+          "low",
+          null
+        ]
+      },
       "ConflictDecisionDto": {
         "required": [
           "id",
@@ -2040,6 +2082,12 @@
               {
                 "$ref": "#/components/schemas/SnapshotSelectionDto"
               }
+            ]
+          },
+          "ruleSet": {
+            "type": [
+              "null",
+              "string"
             ]
           }
         }
@@ -3378,7 +3426,9 @@
           "publishedAt",
           "reason",
           "supersedesPublicationId",
-          "supersededByPublicationId"
+          "supersededByPublicationId",
+          "ruleSetId",
+          "ruleSetName"
         ],
         "type": "object",
         "properties": {
@@ -3422,6 +3472,12 @@
               "integer"
             ],
             "format": "int64"
+          },
+          "ruleSetId": {
+            "type": "string"
+          },
+          "ruleSetName": {
+            "type": "string"
           }
         }
       },
@@ -3515,7 +3571,8 @@
           "category",
           "ballot",
           "stance",
-          "weight"
+          "weight",
+          "rules"
         ]
       },
       "ReasonKind": {
@@ -3561,6 +3618,34 @@
           "analyst",
           "admin"
         ]
+      },
+      "RuleSetDto": {
+        "required": [
+          "id",
+          "name",
+          "description",
+          "weightUnit",
+          "isDefault"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "weightUnit": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isDefault": {
+            "type": "boolean"
+          }
+        }
       },
       "ScoreBasisDto": {
         "required": [
@@ -3673,6 +3758,8 @@
         "required": [
           "a",
           "b",
+          "ruleSetsDiffer",
+          "weightUnit",
           "states"
         ],
         "type": "object",
@@ -3682,6 +3769,13 @@
           },
           "b": {
             "$ref": "#/components/schemas/SnapshotRefDto"
+          },
+          "ruleSetsDiffer": {
+            "type": "boolean"
+          },
+          "weightUnit": {
+            "type": "integer",
+            "format": "int32"
           },
           "states": {
             "type": "array",
@@ -3715,6 +3809,7 @@
           "note",
           "selection",
           "scoringRulesVersion",
+          "ruleSet",
           "createdBy",
           "createdAt",
           "job",
@@ -3743,6 +3838,9 @@
           },
           "scoringRulesVersion": {
             "type": "string"
+          },
+          "ruleSet": {
+            "$ref": "#/components/schemas/RuleSetDto"
           },
           "createdBy": {
             "type": "string"
@@ -3860,7 +3958,8 @@
         "required": [
           "id",
           "name",
-          "createdAt"
+          "createdAt",
+          "ruleSet"
         ],
         "type": "object",
         "properties": {
@@ -3874,6 +3973,9 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "ruleSet": {
+            "$ref": "#/components/schemas/RuleSetDto"
           }
         }
       },
@@ -3885,7 +3987,11 @@
           "countedWeight",
           "countableVotes",
           "score",
-          "rank"
+          "rank",
+          "completeness",
+          "abstentionRate",
+          "missingData",
+          "confidence"
         ],
         "type": "object",
         "properties": {
@@ -3920,6 +4026,37 @@
               "integer"
             ],
             "format": "int32"
+          },
+          "completeness": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "abstentionRate": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "missingData": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "confidence": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Confidence"
+              }
+            ]
           }
         }
       },

@@ -52,6 +52,32 @@ public sealed class PublicationTests(PostgresFixture postgres, AzuriteFixture az
     }
 
     [Fact]
+    public async Task A_publication_names_the_rule_set_its_snapshot_was_scored_under()
+    {
+        var (api, fx, vote) = await ArrangeAsync(postgres, azurite);
+        await using var ownedApi = api;
+        await using var ownedFx = fx;
+        var strictResponse = await api.ClientAs("lena").PostAsJsonAsync("/api/snapshots", new
+        {
+            name = "Strict cut", ruleSet = "strict", selection = new { from = "2024-01-01", to = "2024-03-31" },
+        }, Ct);
+        var strictId = (await strictResponse.Content.ReadFromJsonAsync<JsonElement>(Ct)).GetProperty("snapshotId").GetInt64();
+        await RunJobsAsync(api.ConnectionString);
+        var defaultId = await CreateAsync(api, new { from = "2024-01-01", to = "2024-03-31" }, "Default cut");
+        await RunJobsAsync(api.ConnectionString);
+
+        var created = await (await PublishAsync(api, strictId, new { quarter = "2024-Q1" })).Content.ReadFromJsonAsync<JsonElement>(Ct);
+        await PublishedAsync(await PublishAsync(api, defaultId, new { quarter = "2024-Q2" }));
+        var quarters = await api.ClientAs("dana").GetFromJsonAsync<JsonElement>("/api/publications", Ct);
+
+        Assert.Equal(("strict", "Strict"), (created.GetProperty("ruleSetId").GetString(), created.GetProperty("ruleSetName").GetString()));
+        Assert.Equal([("2024-Q2", "alignment-2026.1"), ("2024-Q1", "strict")], quarters.EnumerateArray()
+            .Select(q => (q.GetProperty("quarter").GetString()!, q.GetProperty("current").GetProperty("ruleSetId").GetString()!)));
+        var onSnapshot = (await api.ClientAs("dana").GetFromJsonAsync<JsonElement>($"/api/snapshots/{strictId}", Ct)).GetProperty("publications");
+        Assert.Equal("Strict", Assert.Single(onSnapshot.EnumerateArray()).GetProperty("ruleSetName").GetString());
+    }
+
+    [Fact]
     public async Task A_published_quarter_answers_409_and_a_replacement_with_a_reason_keeps_the_chain_visible()
     {
         var (api, fx, vote) = await ArrangeAsync(postgres, azurite);

@@ -20,15 +20,15 @@ public sealed record ScoredSnapshot(IReadOnlyList<ScoredLine> Lines, IReadOnlyLi
 
 /// <summary>
 /// The Alignment Index (docs/adr/0006-scoring-rules.md): score = 100 × matched weight ÷
-/// counted weight over a member's yes and no ballots. Pure, so every rule is unit-tested.
+/// counted weight over a member's yes and no ballots, with how abstentions and absences count
+/// decided by the rule set (docs/adr/0007-rule-sets-and-evidence-metrics.md). Weights are
+/// integer points of 1 ÷ the rule set's weight unit. Pure, so every rule is unit-tested.
 /// </summary>
 public static class AlignmentScoring
 {
-    /// <summary>Recorded on every snapshot; change it whenever a rule changes.</summary>
-    public const string RulesVersion = "alignment-2026.1";
-
-    public static ScoredSnapshot Score(IEnumerable<ScoringFact> facts)
+    public static ScoredSnapshot Score(IEnumerable<ScoringFact> facts, RuleSet? ruleSet = null)
     {
+        ruleSet ??= RuleSets.Default;
         var lines = new List<ScoredLine>();
         var totals = new Dictionary<string, (int Matched, int Counted, int Countable)>(StringComparer.Ordinal);
         foreach (var fact in facts)
@@ -36,12 +36,9 @@ public static class AlignmentScoring
             var category = Categorise(fact);
             lines.Add(new ScoredLine(fact.VoteId, fact.StateCode, category));
             var (matched, counted, countable) = totals.GetValueOrDefault(fact.StateCode);
-            totals[fact.StateCode] = category switch
-            {
-                LineCategory.Match => (matched + fact.Weight, counted + fact.Weight, countable + 1),
-                LineCategory.Mismatch => (matched, counted + fact.Weight, countable + 1),
-                _ => (matched, counted, countable),
-            };
+            var (addedMatched, addedCounted) = ruleSet.Points(category, fact.Weight);
+            totals[fact.StateCode] = (matched + addedMatched, counted + addedCounted,
+                category is LineCategory.Match or LineCategory.Mismatch ? countable + 1 : countable);
         }
 
         return new ScoredSnapshot(lines, Rank(totals));

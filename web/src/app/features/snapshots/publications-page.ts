@@ -21,13 +21,14 @@ import { PageHeader } from '../../shared/ui/page-header';
           <p class="current">
             Official index:
             <a [routerLink]="['/snapshots', quarter.current.snapshotId]">{{ quarter.current.snapshotName }}</a>
+            · scored under {{ quarter.current.ruleSetName }}
             · published by {{ quarter.current.publishedBy }} at {{ quarter.current.publishedAt | date: 'yyyy-MM-dd HH:mm' }}
           </p>
           @if (quarter.chain.length > 1) {
             <ol class="chain">
               @for (p of quarter.chain; track p.id) {
                 <li [class.superseded]="p.supersededByPublicationId !== null">
-                  <a [routerLink]="['/snapshots', p.snapshotId]">{{ p.snapshotName }}</a>, by {{ p.publishedBy }} at
+                  <a [routerLink]="['/snapshots', p.snapshotId]">{{ p.snapshotName }}</a>, scored under {{ p.ruleSetName }}, by {{ p.publishedBy }} at
                   {{ p.publishedAt | date: 'yyyy-MM-dd HH:mm' }}
                   @if (p.reason) {
                     · reason: {{ p.reason }}

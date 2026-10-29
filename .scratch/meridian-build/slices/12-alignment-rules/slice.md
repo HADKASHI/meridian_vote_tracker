@@ -1,6 +1,6 @@
 # Slice 12: Alignment rules and evidence
 
-Status: ready-for-agent
+Status: done
 Blocked by: Slices 6, 7 and 11
 Runs in parallel with: slice 8 (not with slice 11: both change the snapshot page and the snapshots module)
 PR title: `Slice 12: Alignment rules and evidence`
