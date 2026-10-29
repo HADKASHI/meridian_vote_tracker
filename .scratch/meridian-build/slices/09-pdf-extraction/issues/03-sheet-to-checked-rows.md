@@ -4,13 +4,13 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Requirements:** PDF-03, PDF-04
 
-- [ ] Code comes from the printed Code column; YES, NO and ABST. marks map to Y, N and A; a blank row maps to X
-- [ ] Header gives vote id, session, title and an ISO date from a long-form date such as 4 October 2011; pages of one sheet merge into one vote
-- [ ] Blocking: counts differ from any printed total; unknown code or not a member on the vote date (using the CSV import's own check); duplicate code; two marks or an unreadable cell on one row
-- [ ] Warning: low-confidence cell, header vote id differs from the file name, a member on the date has no row
-- [ ] The corrigendum fixture's one changed row (a state moving from YES to ABST.) and its totals are covered by named tests
-- [ ] Messages carry no document content beyond ids and codes
+- [x] Code comes from the printed Code column; YES, NO and ABST. marks map to Y, N and A; a blank row maps to X
+- [x] Header gives vote id, session, title and an ISO date from a long-form date such as 4 October 2011; pages of one sheet merge into one vote
+- [x] Blocking: counts differ from any printed total; unknown code or not a member on the vote date (using the CSV import's own check); duplicate code; two marks or an unreadable cell on one row
+- [x] Warning: low-confidence cell, header vote id differs from the file name, a member on the date has no row
+- [x] The corrigendum fixture's one changed row (a state moving from YES to ABST.) and its totals are covered by named tests
+- [x] Messages carry no document content beyond ids and codes

@@ -131,7 +131,7 @@ public static partial class RowNormaliser
     /// <c>yyyy-mm-dd</c>, <c>yyyy/mm/dd</c>, <c>dd-mm-yyyy</c>, <c>dd/mm/yyyy</c>, <c>dd.mm.yyyy</c> (leading zeros
     /// optional) and <c>14 March 2007</c>. Numeric dates are day-first; anything else is invalid.
     /// </summary>
-    private static DateOnly? ParseDate(string text)
+    internal static DateOnly? ParseDate(string text)
     {
         int year, month, day;
         if (YearFirst().Match(text) is { Success: true } ymd)
