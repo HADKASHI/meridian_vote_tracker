@@ -4,10 +4,10 @@
 
 **Blocked by:** 02 Evidence metrics and a confidence band on every result; 04 Choose the rule set in the new-snapshot form and show it everywhere
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Each ranking row shows the three metrics and the band beside the score and its basis; a state with no band shows none
-- [ ] Low states are flagged "low evidence"
-- [ ] The ranking can be filtered by band and sorted by confidence, and clearing them restores the stored order
-- [ ] Rank numbers never change with the filter or sort
-- [ ] Vitest specs cover the metrics, the flag, the filter, the sort and the unchanged rank
+- [x] Each ranking row shows the three metrics and the band beside the score and its basis; a state with no band shows none
+- [x] Low states are flagged "low evidence"
+- [x] The ranking can be filtered by band and sorted by confidence, and clearing them restores the stored order
+- [x] Rank numbers never change with the filter or sort
+- [x] Vitest specs cover the metrics, the flag, the filter, the sort and the unchanged rank

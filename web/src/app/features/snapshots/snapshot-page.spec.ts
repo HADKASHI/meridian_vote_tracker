@@ -53,8 +53,8 @@ describe('SnapshotPage', () => {
     const rows = [...page.querySelectorAll('[data-testid="ranking"] tr')].map((r) =>
       [...r.querySelectorAll('td')].map((c) => c.textContent?.trim()),
     );
-    expect(rows[1]).toEqual(['1', 'Argentina (ARG)', '66.7 2 countable votes · 2 of 3 weight matched']);
-    expect(rows[2]).toEqual(['–', 'Japan (JPN)', 'n/a nothing countable']);
+    expect(rows[1].slice(0, 3)).toEqual(['1', 'Argentina (ARG)', '66.7 2 countable votes · 2 of 3 weight matched']);
+    expect(rows[2].slice(0, 3)).toEqual(['–', 'Japan (JPN)', 'n/a nothing countable']);
     expect(page.querySelector('[data-testid="snapshot-meta"]')?.textContent).toContain(
       '2024-01-01 → 2024-03-31, minus 1 removed vote',
     );
@@ -131,5 +131,56 @@ describe('SnapshotPage', () => {
 
     expect(page.querySelector('[data-testid="ranking"] tbody tr')?.textContent).toContain('3.5 of 4 weight matched');
     expect(page.querySelector('[data-testid="breakdown-result"]')?.textContent).toContain('3.5 of 4 weight matched');
+  });
+
+  const evidenceResults = [
+    { ...snapshot.results[0], stateCode: 'FRA', stateName: 'France', rank: 1, score: 100, completeness: 0.4, abstentionRate: 0.1, missingData: 0.5, confidence: 'low' as const },
+    { ...snapshot.results[0], stateCode: 'ARG', stateName: 'Argentina', rank: 2, score: 90, completeness: 1, abstentionRate: 0, missingData: 0, confidence: 'high' as const },
+    { ...snapshot.results[1], completeness: 0, abstentionRate: 0.5, missingData: 0.5, confidence: null },
+  ];
+  const rankingRows = (page: HTMLElement) =>
+    [...page.querySelectorAll('[data-testid="ranking"] tbody tr')].map((r) => [...r.querySelectorAll('td')].map((c) => c.textContent?.replace(/\s+/g, ' ').trim()));
+
+  it('shows each score with its completeness, abstention rate, missing data and band, and flags low evidence', async () => {
+    const page = await open({ ...snapshot, results: evidenceResults });
+
+    const rows = rankingRows(page);
+    expect(rows[0].slice(0, 2)).toEqual(['1', 'France (FRA)']);
+    expect(rows[0].slice(3)).toEqual(['40%', '10%', '50%', 'Low low evidence']);
+    expect(rows[1].slice(3)).toEqual(['100%', '0%', '0%', 'High']);
+    expect(rows[2].slice(3)).toEqual(['0%', '50%', '50%', 'No band']);
+    expect(page.querySelectorAll('[data-testid="low-evidence"]').length).toBe(1);
+  });
+
+  it('filters the ranking by band and sorts it by confidence without changing any rank', async () => {
+    const page = await open({ ...snapshot, results: evidenceResults });
+    const pick = (name: string, value: string) => {
+      const select = page.querySelector<HTMLSelectElement>(`select[data-testid="${name}"]`)!;
+      select.value = value;
+      select.dispatchEvent(new Event('change'));
+    };
+
+    pick('sort-confidence', 'confidence');
+    await settle();
+    expect(rankingRows(page).map((r) => r.slice(0, 2))).toEqual([['2', 'Argentina (ARG)'], ['1', 'France (FRA)'], ['–', 'Japan (JPN)']]);
+
+    pick('filter-confidence', 'low');
+    await settle();
+    expect(rankingRows(page).map((r) => r.slice(0, 2))).toEqual([['1', 'France (FRA)']]);
+
+    pick('filter-confidence', 'all');
+    pick('sort-confidence', 'rank');
+    await settle();
+    expect(rankingRows(page).map((r) => r[0])).toEqual(['1', '2', '–']);
+  });
+
+  it('says so when the filter leaves no state', async () => {
+    const page = await open({ ...snapshot, results: evidenceResults.slice(0, 2) });
+    const select = page.querySelector<HTMLSelectElement>('select[data-testid="filter-confidence"]')!;
+    select.value = 'medium';
+    select.dispatchEvent(new Event('change'));
+    await settle();
+
+    expect(page.querySelector('[data-testid="ranking-empty"]')?.textContent).toContain('No member state has Medium confidence');
   });
 });
