@@ -418,6 +418,113 @@ namespace Meridian.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Meridian.Data.Entities.Extraction", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("nextval('history_seq')");
+
+                    b.Property<string>("BlobName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("blob_name");
+
+                    b.Property<string>("CheckResult")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("check_result");
+
+                    b.Property<DateTimeOffset?>("DecidedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("decided_at");
+
+                    b.Property<string>("DecidedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("decided_by");
+
+                    b.Property<string>("DecisionComment")
+                        .HasColumnType("text")
+                        .HasColumnName("decision_comment");
+
+                    b.Property<string>("Edits")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("edits")
+                        .HasDefaultValueSql("'[]'::jsonb");
+
+                    b.Property<string>("Error")
+                        .HasColumnType("text")
+                        .HasColumnName("error");
+
+                    b.Property<string>("Extracted")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("extracted");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("file_name");
+
+                    b.Property<long?>("ImportId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("import_id");
+
+                    b.Property<DateTimeOffset>("RecordedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("recorded_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("Sha256")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("sha256");
+
+                    b.Property<string>("Sheet")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("sheet");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("size_bytes");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<string>("UploadedBy")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("uploaded_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_extraction");
+
+                    b.HasIndex("ImportId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_extraction_import")
+                        .HasFilter("import_id IS NOT NULL");
+
+                    b.HasIndex("Sha256")
+                        .IsUnique()
+                        .HasDatabaseName("ux_extraction_sha256");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("ix_extraction_status");
+
+                    b.ToTable("extraction", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_extraction_decision", "(status IN ('approved', 'rejected')) = (decided_by IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_extraction_import", "(status = 'approved') = (import_id IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_extraction_status", "status IN ('extracting', 'needs_review', 'failed', 'approved', 'rejected')");
+                        });
+                });
+
             modelBuilder.Entity("Meridian.Data.Entities.Import", b =>
                 {
                     b.Property<long>("Id")
@@ -700,6 +807,10 @@ namespace Meridian.Data.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("now()");
 
+                    b.Property<long?>("ExtractionId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("extraction_id");
+
                     b.Property<DateTimeOffset?>("FinishedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("finished_at");
@@ -755,6 +866,10 @@ namespace Meridian.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_job");
 
+                    b.HasIndex("ExtractionId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_job_extraction_id");
+
                     b.HasIndex("HeartbeatAt")
                         .HasDatabaseName("ix_job_running_heartbeat")
                         .HasFilter("state = 'running'");
@@ -773,9 +888,9 @@ namespace Meridian.Data.Migrations
 
                     b.ToTable("job", null, t =>
                         {
-                            t.HasCheckConstraint("ck_job_kind", "kind IN ('import', 'snapshot')");
+                            t.HasCheckConstraint("ck_job_kind", "kind IN ('import', 'snapshot', 'pdf_extraction')");
 
-                            t.HasCheckConstraint("ck_job_link", "(kind = 'import') = (import_id IS NOT NULL) AND (kind = 'snapshot') = (snapshot_id IS NOT NULL)");
+                            t.HasCheckConstraint("ck_job_link", "(kind = 'import') = (import_id IS NOT NULL) AND (kind = 'snapshot') = (snapshot_id IS NOT NULL) AND (kind = 'pdf_extraction') = (extraction_id IS NOT NULL)");
 
                             t.HasCheckConstraint("ck_job_state", "state IN ('queued', 'running', 'done', 'failed')");
                         });
@@ -1505,6 +1620,14 @@ namespace Meridian.Data.Migrations
                         .HasConstraintName("fk_decision_attempt_not_applied_conflict_conflict_id");
                 });
 
+            modelBuilder.Entity("Meridian.Data.Entities.Extraction", b =>
+                {
+                    b.HasOne("Meridian.Data.Entities.Import", null)
+                        .WithOne()
+                        .HasForeignKey("Meridian.Data.Entities.Extraction", "ImportId")
+                        .HasConstraintName("fk_extraction_import_import_id");
+                });
+
             modelBuilder.Entity("Meridian.Data.Entities.Import", b =>
                 {
                     b.HasOne("Meridian.Data.Entities.AppUser", null)
@@ -1574,6 +1697,11 @@ namespace Meridian.Data.Migrations
 
             modelBuilder.Entity("Meridian.Data.Entities.Job", b =>
                 {
+                    b.HasOne("Meridian.Data.Entities.Extraction", null)
+                        .WithOne()
+                        .HasForeignKey("Meridian.Data.Entities.Job", "ExtractionId")
+                        .HasConstraintName("fk_job_extractions_extraction_id");
+
                     b.HasOne("Meridian.Data.Entities.Import", null)
                         .WithOne()
                         .HasForeignKey("Meridian.Data.Entities.Job", "ImportId")

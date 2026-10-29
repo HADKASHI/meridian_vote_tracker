@@ -107,7 +107,7 @@ public sealed class RoleMatrixTests(PostgresFixture postgres, AzuriteFixture azu
     {
         var path = Template(endpoint.Endpoint)
             .Replace("{stateCode}", "FRA")
-            .Replace("{importId}", "1").Replace("{conflictId}", "1").Replace("{voteId}", "1").Replace("{snapshotId}", "1");
+            .Replace("{importId}", "1").Replace("{extractionId}", "1").Replace("{conflictId}", "1").Replace("{voteId}", "1").Replace("{snapshotId}", "1");
         if (endpoint.Key == "GET /api/snapshots/compare") path += "?a=1&b=2";
 
         var request = new HttpRequestMessage(new HttpMethod(endpoint.Method), path);
@@ -118,7 +118,7 @@ public sealed class RoleMatrixTests(PostgresFixture postgres, AzuriteFixture azu
 
     private static HttpContent BodyFor(string key, bool valid)
     {
-        if (key == "POST /api/imports")
+        if (key is "POST /api/imports" or "POST /api/extractions")
         {
             var form = new MultipartFormDataContent();
             var file = new ByteArrayContent("assembly_vote_id\n"u8.ToArray());

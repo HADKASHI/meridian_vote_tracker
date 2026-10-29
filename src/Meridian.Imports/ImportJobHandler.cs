@@ -38,7 +38,7 @@ internal sealed class ImportJobHandler(
             return;
         }
 
-        var members = await MembersAsync(cancellationToken);
+        var members = await db.LoadMemberStatesAsync(cancellationToken);
         // Rows that can't name a vote (wrong field count, no vote id) are written on their own.
         var groups = parsed.Rows.GroupBy(RowNormaliser.VoteKey).ToList();
         var votes = groups.Where(g => g.Key is not null).ToList();
@@ -66,13 +66,6 @@ internal sealed class ImportJobHandler(
             await context.ReportAsync(votesDone: ++done, cancellationToken: cancellationToken);
         }
         logger.LogInformation("Import {ImportId} applied {Votes} votes from {DataRows} data rows", importId, votes.Count, parsed.DataRows);
-    }
-
-    private async Task<MemberStates> MembersAsync(CancellationToken cancellationToken)
-    {
-        var periods = await db.MembershipPeriods.AsNoTracking().ToListAsync(cancellationToken);
-        return new MemberStates(periods.GroupBy(p => p.StateCode.Trim()).ToDictionary(
-            g => g.Key, g => (IReadOnlyList<MembershipSpan>)g.Select(p => new MembershipSpan(p.MemberFrom, p.MemberTo)).ToList()));
     }
 
     /// <summary>The parse record and the file-level warnings, written once even when the job is retried.</summary>

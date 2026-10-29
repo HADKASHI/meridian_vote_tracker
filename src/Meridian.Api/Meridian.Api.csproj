@@ -8,6 +8,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Meridian.Platform\Meridian.Platform.csproj" />
     <ProjectReference Include="..\Meridian.Imports\Meridian.Imports.csproj" />
+    <ProjectReference Include="..\Meridian.Extractions\Meridian.Extractions.csproj" />
     <ProjectReference Include="..\Meridian.Conflicts\Meridian.Conflicts.csproj" />
     <ProjectReference Include="..\Meridian.Votes\Meridian.Votes.csproj" />
     <ProjectReference Include="..\Meridian.Positions\Meridian.Positions.csproj" />

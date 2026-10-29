@@ -9,6 +9,7 @@ public sealed class Job
     public JobKind Kind { get; init; }
     public long? ImportId { get; init; }
     public long? SnapshotId { get; init; }
+    public long? ExtractionId { get; init; }
     public JobState State { get; set; }
     public int RowsRead { get; set; }
     public int VotesDone { get; set; }

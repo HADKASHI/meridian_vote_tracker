@@ -7,7 +7,7 @@ import { ImportDto, JobDto, PageDtoOfImportSummaryDto } from '../../api/model';
 import routes from './imports.routes';
 
 const job = (state: JobDto['state'], extra: Partial<JobDto> = {}): JobDto => ({
-  id: 3, kind: 'import', state, importId: 7, snapshotId: null, placeInQueue: state === 'queued' ? 1 : null,
+  id: 3, kind: 'import', state, importId: 7, snapshotId: null, extractionId: null, placeInQueue: state === 'queued' ? 1 : null,
   rowsRead: 0, votesDone: 0, votesTotal: null, attempts: state === 'queued' ? 0 : 1, lastError: null,
   traceId: null, startedBy: 'dana', createdAt: '2024-01-01T00:00:00Z', startedAt: null, finishedAt: null, ...extra,
 });

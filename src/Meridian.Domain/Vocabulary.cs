@@ -21,7 +21,10 @@ public enum LineCategory { Match, Mismatch, Abstain, Absent, NonMember, NoData }
 
 public enum Role { Analyst, Admin }
 
-public enum JobKind { Import, Snapshot }
+public enum JobKind { Import, Snapshot, PdfExtraction }
+
+/// <summary>Where a scanned voting sheet's extraction stands: read in the background, waiting for a person, or decided.</summary>
+public enum ExtractionStatus { Extracting, NeedsReview, Failed, Approved, Rejected }
 
 /// <summary>A job is queued, running, done or failed. Done means the work finished.</summary>
 public enum JobState { Queued, Running, Done, Failed }

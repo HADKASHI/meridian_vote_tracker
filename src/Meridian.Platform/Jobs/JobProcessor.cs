@@ -65,7 +65,7 @@ public sealed class JobProcessor(
               ORDER BY id
               LIMIT 1
               FOR UPDATE SKIP LOCKED)
-            RETURNING id, kind, import_id, snapshot_id, attempts, trace_parent
+            RETURNING id, kind, import_id, snapshot_id, attempts, trace_parent, extraction_id
             """, connection, transaction);
 
         ClaimedJob? job = null;
@@ -78,7 +78,8 @@ public sealed class JobProcessor(
                     reader.IsDBNull(2) ? null : reader.GetInt64(2),
                     reader.IsDBNull(3) ? null : reader.GetInt64(3),
                     reader.GetInt32(4),
-                    reader.IsDBNull(5) ? null : reader.GetString(5));
+                    reader.IsDBNull(5) ? null : reader.GetString(5),
+                    reader.IsDBNull(6) ? null : reader.GetInt64(6));
         }
         await transaction.CommitAsync(cancellationToken);
         return job;

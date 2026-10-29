@@ -4,13 +4,13 @@
 
 **Blocked by:** Job kind policy, Sheet to checked rows
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Requirements:** PDF-01
 
-- [ ] One migration adds the extraction record, the pdf_extraction job kind and the job's link to an extraction; the PR says so at the top
-- [ ] The PDF is stored in the blob container under its own prefix by the same streaming, hashing helper the CSV upload uses (no second copy of that code)
-- [ ] POST, list and get under /api/extractions, role-checked like the other write endpoints, with the OpenAPI file regenerated
-- [ ] The job handler runs the reader, then the sheet-to-checked-rows logic, and saves rows, issues and status
-- [ ] Status goes extracting then needs review and is returned by get
-- [ ] Logs and errors hold ids, counts and timings only
+- [x] One migration adds the extraction record, the pdf_extraction job kind and the job's link to an extraction; the PR says so at the top
+- [x] The PDF is stored in the blob container under its own prefix by the same streaming, hashing helper the CSV upload uses (no second copy of that code)
+- [x] POST, list and get under /api/extractions, role-checked like the other write endpoints, with the OpenAPI file regenerated
+- [x] The job handler runs the reader, then the sheet-to-checked-rows logic, and saves rows, issues and status
+- [x] Status goes extracting then needs review and is returned by get
+- [x] Logs and errors hold ids, counts and timings only

@@ -34,6 +34,7 @@ public sealed class JobContext(ClaimedJob job, Func<int?, int?, int?, Cancellati
     public JobKind Kind => job.Kind;
     public long? ImportId => job.ImportId;
     public long? SnapshotId => job.SnapshotId;
+    public long? ExtractionId => job.ExtractionId;
 
     /// <summary>1 on the first run, higher when retried after a failure or a stall.</summary>
     public int Attempt => job.Attempts;
@@ -45,7 +46,8 @@ public sealed class JobContext(ClaimedJob job, Func<int?, int?, int?, Cancellati
 }
 
 /// <summary>A job this worker has claimed and is running.</summary>
-public sealed record ClaimedJob(long Id, JobKind Kind, long? ImportId, long? SnapshotId, int Attempts, string? TraceParent);
+public sealed record ClaimedJob(
+    long Id, JobKind Kind, long? ImportId, long? SnapshotId, int Attempts, string? TraceParent, long? ExtractionId = null);
 
 /// <summary>Creates queued jobs. The caller inserts one in the same transaction as its import or snapshot.</summary>
 public static class JobQueue
@@ -55,6 +57,9 @@ public static class JobQueue
 
     public static Job ForSnapshot(long snapshotId) =>
         new() { Kind = JobKind.Snapshot, SnapshotId = snapshotId, State = JobState.Queued, TraceParent = CurrentTraceParent() };
+
+    public static Job ForExtraction(long extractionId) =>
+        new() { Kind = JobKind.PdfExtraction, ExtractionId = extractionId, State = JobState.Queued, TraceParent = CurrentTraceParent() };
 
     /// <summary>The W3C traceparent of the current request, so the job runs in its trace.</summary>
     private static string? CurrentTraceParent() =>
@@ -70,9 +75,13 @@ public sealed class JobOptions
     public int MaxAttempts { get; set; } = 3;
     public TimeSpan ImportTimeout { get; set; } = TimeSpan.FromMinutes(30);
     public TimeSpan SnapshotTimeout { get; set; } = TimeSpan.FromMinutes(10);
+    public TimeSpan ExtractionTimeout { get; set; } = TimeSpan.FromMinutes(10);
 
     /// <summary><c>Imports:MaxConcurrent</c>: how many imports may run at once (1, so the earlier upload is approved first).</summary>
     public int MaxConcurrentImports { get; set; } = 1;
+
+    /// <summary><c>Extractions:MaxConcurrent</c>: how many voting sheets may be read at once.</summary>
+    public int MaxConcurrentExtractions { get; set; } = 2;
 }
 
 /// <summary>
@@ -89,6 +98,7 @@ public static class JobPolicies
     {
         JobKind.Import => new(kind, options.MaxConcurrentImports, options.ImportTimeout, "ImportId", job => job.ImportId),
         JobKind.Snapshot => new(kind, 1, options.SnapshotTimeout, "SnapshotId", job => job.SnapshotId),
+        JobKind.PdfExtraction => new(kind, options.MaxConcurrentExtractions, options.ExtractionTimeout, "ExtractionId", job => job.ExtractionId),
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "No job policy for this kind."),
     };
 

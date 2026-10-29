@@ -453,6 +453,173 @@
         }
       }
     },
+    "/api/extractions": {
+      "post": {
+        "tags": [
+          "Extractions"
+        ],
+        "summary": "Upload a scanned voting sheet; its extraction runs as a job.",
+        "operationId": "uploadExtraction",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "$ref": "#/components/schemas/IFormFile"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtractionCreatedDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Extractions"
+        ],
+        "summary": "Every extraction, newest first, with its status, job and issue counts.",
+        "operationId": "listExtractions",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageDtoOfExtractionSummaryDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/extractions/{extractionId}": {
+      "get": {
+        "tags": [
+          "Extractions"
+        ],
+        "summary": "One extraction: the sheet as read, its counts against the printed totals and its issues.",
+        "operationId": "getExtraction",
+        "parameters": [
+          {
+            "name": "extractionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtractionDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/conflicts": {
       "get": {
         "tags": [
@@ -2192,6 +2359,194 @@
           }
         }
       },
+      "ExtractionCreatedDto": {
+        "required": [
+          "extractionId",
+          "jobId"
+        ],
+        "type": "object",
+        "properties": {
+          "extractionId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "jobId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ExtractionDto": {
+        "required": [
+          "id",
+          "fileName",
+          "sha256",
+          "sizeBytes",
+          "uploadedBy",
+          "uploadedAt",
+          "status",
+          "job",
+          "error",
+          "voteId",
+          "header",
+          "rows",
+          "counted",
+          "printed",
+          "issues",
+          "canApprove"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "uploadedBy": {
+            "type": "string"
+          },
+          "uploadedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ExtractionStatus"
+          },
+          "job": {
+            "$ref": "#/components/schemas/JobDto"
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "voteId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "header": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/SheetHeader"
+              }
+            ]
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SheetRow"
+            }
+          },
+          "counted": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/SheetTotals"
+              }
+            ]
+          },
+          "printed": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/SheetTotals"
+              }
+            ]
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SheetIssue"
+            }
+          },
+          "canApprove": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ExtractionStatus": {
+        "enum": [
+          "extracting",
+          "needs_review",
+          "failed",
+          "approved",
+          "rejected"
+        ]
+      },
+      "ExtractionSummaryDto": {
+        "required": [
+          "id",
+          "fileName",
+          "uploadedBy",
+          "uploadedAt",
+          "sizeBytes",
+          "status",
+          "voteId",
+          "job",
+          "blockingIssues",
+          "warnings"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "uploadedBy": {
+            "type": "string"
+          },
+          "uploadedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ExtractionStatus"
+          },
+          "voteId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "job": {
+            "$ref": "#/components/schemas/JobDto"
+          },
+          "blockingIssues": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "warnings": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "IFormFile": {
         "type": "string",
         "format": "binary"
@@ -2589,6 +2944,7 @@
           "state",
           "importId",
           "snapshotId",
+          "extractionId",
           "placeInQueue",
           "rowsRead",
           "votesDone",
@@ -2621,6 +2977,13 @@
             "format": "int64"
           },
           "snapshotId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "extractionId": {
             "type": [
               "null",
               "integer"
@@ -2691,7 +3054,8 @@
       "JobKind": {
         "enum": [
           "import",
-          "snapshot"
+          "snapshot",
+          "pdf_extraction"
         ]
       },
       "JobState": {
@@ -3067,6 +3431,35 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ConflictListItemDto"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PageDtoOfExtractionSummaryDto": {
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExtractionSummaryDto"
             }
           },
           "total": {
@@ -3701,6 +4094,162 @@
               "integer"
             ],
             "format": "int64"
+          }
+        }
+      },
+      "SheetHeader": {
+        "required": [
+          "voteId",
+          "session",
+          "date",
+          "title"
+        ],
+        "type": "object",
+        "properties": {
+          "voteId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "session": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "date": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "SheetIssue": {
+        "required": [
+          "severity",
+          "kind",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "severity": {
+            "$ref": "#/components/schemas/SheetIssueSeverity"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/SheetIssueKind"
+          },
+          "message": {
+            "type": "string"
+          },
+          "code": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "SheetIssueKind": {
+        "enum": [
+          "header",
+          "totals_missing",
+          "totals_mismatch",
+          "unknown_code",
+          "not_member_on_date",
+          "duplicate_code",
+          "ambiguous_mark",
+          "low_confidence",
+          "vote_id_mismatch",
+          "missing_member"
+        ]
+      },
+      "SheetIssueSeverity": {
+        "enum": [
+          "blocking",
+          "warning"
+        ]
+      },
+      "SheetRow": {
+        "required": [
+          "code",
+          "name",
+          "choice",
+          "ambiguous",
+          "confidence",
+          "page",
+          "position"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "choice": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Ballot"
+              }
+            ]
+          },
+          "ambiguous": {
+            "type": "boolean"
+          },
+          "confidence": {
+            "type": "number",
+            "format": "double"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "position": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "SheetTotals": {
+        "required": [
+          "yes",
+          "no",
+          "abstentions",
+          "notVoting"
+        ],
+        "type": "object",
+        "properties": {
+          "yes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "no": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "abstentions": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "notVoting": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -4882,6 +5431,9 @@
     },
     {
       "name": "Imports"
+    },
+    {
+      "name": "Extractions"
     },
     {
       "name": "Conflicts"

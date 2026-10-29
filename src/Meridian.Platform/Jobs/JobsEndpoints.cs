@@ -68,7 +68,9 @@ public static class JobQueries
                 from i in imports.DefaultIfEmpty()
                 join s in db.Snapshots on j.SnapshotId equals s.Id into snapshots
                 from s in snapshots.DefaultIfEmpty()
-                select new { Job = j, StartedBy = i != null ? i.UploadedBy : s!.CreatedBy })
+                join x in db.Extractions on j.ExtractionId equals x.Id into extractions
+                from x in extractions.DefaultIfEmpty()
+                select new { Job = j, StartedBy = i != null ? i.UploadedBy : s != null ? s.CreatedBy : x!.UploadedBy })
             .AsNoTracking().ToListAsync(ct);
 
         // Place in queue counts the queued jobs of the same kind ahead of it.
@@ -81,7 +83,7 @@ public static class JobQueries
             .ToDictionary(p => p.Id, p => p.Place);
 
         return rows.Select(r => new JobDto(
-                r.Job.Id, r.Job.Kind, r.Job.State, r.Job.ImportId, r.Job.SnapshotId,
+                r.Job.Id, r.Job.Kind, r.Job.State, r.Job.ImportId, r.Job.SnapshotId, r.Job.ExtractionId,
                 places.TryGetValue(r.Job.Id, out var place) ? place : null,
                 r.Job.RowsRead, r.Job.VotesDone, r.Job.VotesTotal, r.Job.Attempts, r.Job.LastError,
                 TraceIdOf(r.Job.TraceParent), r.StartedBy,
