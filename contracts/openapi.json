@@ -3426,7 +3426,9 @@
           "publishedAt",
           "reason",
           "supersedesPublicationId",
-          "supersededByPublicationId"
+          "supersededByPublicationId",
+          "ruleSetId",
+          "ruleSetName"
         ],
         "type": "object",
         "properties": {
@@ -3470,6 +3472,12 @@
               "integer"
             ],
             "format": "int64"
+          },
+          "ruleSetId": {
+            "type": "string"
+          },
+          "ruleSetName": {
+            "type": "string"
           }
         }
       },

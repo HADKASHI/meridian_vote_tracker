@@ -254,27 +254,43 @@ internal static class PublicationQueries
 {
     public static async Task<List<PublicationDto>> ForSnapshotsAsync(MeridianDbContext db, IReadOnlyCollection<long> snapshotIds,
         CancellationToken ct) =>
-        await Load(db, db.Publications.Where(p => snapshotIds.Contains(p.SnapshotId))).ToListAsync(ct);
+        ToDtos(await Load(db, db.Publications.Where(p => snapshotIds.Contains(p.SnapshotId))).ToListAsync(ct));
 
     /// <summary>The quarter's published snapshot now: the end of its chain, the publication nothing supersedes.</summary>
-    public static Task<PublicationDto?> CurrentAsync(MeridianDbContext db, string quarter, CancellationToken ct) =>
-        Load(db, db.Publications.Where(p => p.Quarter == quarter
+    public static async Task<PublicationDto?> CurrentAsync(MeridianDbContext db, string quarter, CancellationToken ct) =>
+        ToDtos(await Load(db, db.Publications.Where(p => p.Quarter == quarter
                 && !db.Publications.Any(n => n.SupersedesPublicationId == p.Id)))
-            .SingleOrDefaultAsync(ct);
+            .ToListAsync(ct)).SingleOrDefault();
 
     /// <summary>Each quarter's chain, first publication first, newest quarter first.</summary>
     public static async Task<List<QuarterPublicationsDto>> QuartersAsync(MeridianDbContext db, CancellationToken ct) =>
-        (await Load(db, db.Publications).ToListAsync(ct))
+        ToDtos(await Load(db, db.Publications).ToListAsync(ct))
             .GroupBy(p => p.Quarter)
             .OrderByDescending(g => g.Key, StringComparer.Ordinal)
             .Select(g => new QuarterPublicationsDto(g.Key, g.Single(p => p.SupersededByPublicationId is null), g.ToList()))
             .ToList();
 
-    public static IQueryable<PublicationDto> Load(MeridianDbContext db, IQueryable<Publication> publications) =>
+    public static async Task<PublicationDto> CreatedAsync(MeridianDbContext db, long publicationId, CancellationToken ct) =>
+        ToDtos(await Load(db, db.Publications.Where(p => p.Id == publicationId)).ToListAsync(ct)).Single();
+
+    /// <summary>A publication as stored, with the rules version of its snapshot, which the rule set names are read from.</summary>
+    private sealed record Row(
+        long Id, long SnapshotId, string SnapshotName, string Quarter, string PublishedBy, DateTimeOffset PublishedAt,
+        string? Reason, long? SupersedesPublicationId, long? SupersededByPublicationId, string ScoringRulesVersion);
+
+    private static List<PublicationDto> ToDtos(List<Row> rows) => rows.Select(r =>
+    {
+        var ruleSet = RuleSetDto.Stored(r.ScoringRulesVersion);
+        return new PublicationDto(r.Id, r.SnapshotId, r.SnapshotName, r.Quarter, r.PublishedBy, r.PublishedAt, r.Reason,
+            r.SupersedesPublicationId, r.SupersededByPublicationId, ruleSet.Id, ruleSet.Name);
+    }).ToList();
+
+    private static IQueryable<Row> Load(MeridianDbContext db, IQueryable<Publication> publications) =>
         from p in publications
         join s in db.Snapshots on p.SnapshotId equals s.Id
         orderby p.Id
-        select new PublicationDto(
+        select new Row(
             p.Id, p.SnapshotId, s.Name, p.Quarter, p.PublishedBy, p.RecordedAt, p.Reason, p.SupersedesPublicationId,
-            db.Publications.Where(n => n.SupersedesPublicationId == p.Id).Select(n => (long?)n.Id).FirstOrDefault());
+            db.Publications.Where(n => n.SupersedesPublicationId == p.Id).Select(n => (long?)n.Id).FirstOrDefault(),
+            s.ScoringRulesVersion);
 }

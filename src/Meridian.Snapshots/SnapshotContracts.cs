@@ -97,7 +97,7 @@ public sealed record SnapshotResultDto(
 
 public sealed record PublicationDto(
     long Id, long SnapshotId, string SnapshotName, string Quarter, string PublishedBy, DateTimeOffset PublishedAt,
-    string? Reason, long? SupersedesPublicationId, long? SupersededByPublicationId);
+    string? Reason, long? SupersedesPublicationId, long? SupersededByPublicationId, string RuleSetId, string RuleSetName);
 
 public sealed record SnapshotSummaryDto(
     long Id, string Name, string CreatedBy, DateTimeOffset CreatedAt, int? VoteCount, JobDto Job,

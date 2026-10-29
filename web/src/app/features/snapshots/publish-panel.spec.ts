@@ -9,6 +9,7 @@ import { PublishPanel } from './publish-panel';
 const theirs: PublicationDto = {
   id: 5, snapshotId: 3, snapshotName: 'First cut', quarter: '2024-Q1', publishedBy: 'lena',
   publishedAt: '2024-04-02T09:00:00Z', reason: null, supersedesPublicationId: null, supersededByPublicationId: null,
+  ruleSetId: 'alignment-2026.1', ruleSetName: 'Alignment 2026.1 (default)',
 };
 
 describe('PublishPanel', () => {

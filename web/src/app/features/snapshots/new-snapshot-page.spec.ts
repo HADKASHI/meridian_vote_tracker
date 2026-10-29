@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
-import { SnapshotPreviewDto } from '../../api/model';
+import { RuleSetDto, SnapshotPreviewDto, UserDto } from '../../api/model';
 import { NewSnapshotPage } from './new-snapshot-page';
 
 const blocked: SnapshotPreviewDto = {
@@ -41,9 +41,7 @@ describe('NewSnapshotPage', () => {
     [...overlay().querySelectorAll('button')].find((b) => b.textContent?.trim() === text)!;
 
   it('blocks Calculate until the votes without a position are removed, and records them in the selection', async () => {
-    const fixture = TestBed.createComponent(NewSnapshotPage);
-    const page = fixture.nativeElement as HTMLElement;
-    await fixture.whenStable();
+    const { fixture, page } = await openAs('analyst');
     type(page, 'name', 'Q1 2024 index');
     type(page, 'from', '2024-01-01');
     type(page, 'to', '2024-03-31');
@@ -72,9 +70,7 @@ describe('NewSnapshotPage', () => {
   });
 
   it('shows no-votes-match in the form, with its reference', async () => {
-    const fixture = TestBed.createComponent(NewSnapshotPage);
-    const page = fixture.nativeElement as HTMLElement;
-    await fixture.whenStable();
+    const { fixture, page } = await openAs('analyst');
     type(page, 'from', '2023-01-01');
     type(page, 'to', '2023-12-31');
     page.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
@@ -100,9 +96,7 @@ describe('NewSnapshotPage', () => {
 
   it('creates the snapshot on Calculate and opens its page', async () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
-    const fixture = TestBed.createComponent(NewSnapshotPage);
-    const page = fixture.nativeElement as HTMLElement;
-    await fixture.whenStable();
+    const { fixture, page } = await openAs('analyst');
     await previewReady(page, fixture, 'Q1 2024 index');
 
     button('Calculate').click();
@@ -118,9 +112,7 @@ describe('NewSnapshotPage', () => {
   });
 
   it('puts a missing name on the name field', async () => {
-    const fixture = TestBed.createComponent(NewSnapshotPage);
-    const page = fixture.nativeElement as HTMLElement;
-    await fixture.whenStable();
+    const { fixture, page } = await openAs('analyst');
     await previewReady(page, fixture, '');
 
     button('Calculate').click();
@@ -131,5 +123,50 @@ describe('NewSnapshotPage', () => {
     await fixture.whenStable();
 
     expect(page.querySelector('[data-testid="name-error"]')?.textContent).toContain('Enter a name.');
+  });
+
+  const ruleSets: RuleSetDto[] = [
+    { id: 'alignment-2026.1', name: 'Alignment 2026.1 (default)', description: 'Abstentions and absences are left out.', weightUnit: 1, isDefault: true },
+    { id: 'strict', name: 'Strict', description: 'Abstentions and absences both count as not aligned.', weightUnit: 1, isDefault: false },
+  ];
+  const users = (role: UserDto['role']): UserDto[] => [{ id: 'u', displayName: 'U', role }];
+
+  async function openAs(role: UserDto['role']) {
+    const fixture = TestBed.createComponent(NewSnapshotPage);
+    TestBed.tick();
+    http.expectOne('/api/users').flush(users(role));
+    http.expectOne('/api/rule-sets').flush(ruleSets);
+    await fixture.whenStable();
+    return { fixture, page: fixture.nativeElement as HTMLElement };
+  }
+
+  it('lets the admin choose a rule set and sends the choice', async () => {
+    const { fixture, page } = await openAs('admin');
+    const select = page.querySelector<HTMLSelectElement>('select[name="ruleSet"]')!;
+    expect([...select.options].map((o) => o.textContent?.trim())).toEqual(['Alignment 2026.1 (default)', 'Strict']);
+    expect(select.value).toBe('alignment-2026.1');
+    select.value = 'strict';
+    select.dispatchEvent(new Event('change'));
+    await previewReady(page, fixture, 'Strict cut');
+
+    button('Calculate').click();
+
+    expect(http.expectOne('/api/snapshots').request.body).toMatchObject({ name: 'Strict cut', ruleSet: 'strict' });
+  });
+
+  it('sends no rule set when the admin keeps the default', async () => {
+    const { fixture, page } = await openAs('admin');
+    await previewReady(page, fixture, 'Default cut');
+
+    button('Calculate').click();
+
+    expect(http.expectOne('/api/snapshots').request.body).not.toHaveProperty('ruleSet');
+  });
+
+  it('shows an analyst the default rule set without a choice', async () => {
+    const { page } = await openAs('analyst');
+
+    expect(page.querySelector('select[name="ruleSet"]')).toBeNull();
+    expect(page.querySelector('[data-testid="rule-set-default"]')?.textContent).toContain('Alignment 2026.1 (default)');
   });
 });

@@ -4,12 +4,12 @@
 
 **Blocked by:** 01 Create a snapshot under a chosen rule set
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The new-snapshot form offers the rule sets with their names to the admin, defaulting to the default one, and sends the choice; an analyst sees no choice
-- [ ] The snapshot page shows the rule set name and shows weights in weight, not points
-- [ ] A publication carries its snapshot's rule set name and the publications page shows it
-- [ ] An existing snapshot shows `alignment-2026.1` and reads as before
-- [ ] Vitest specs cover the form for the admin and the analyst, and the snapshot and publications pages
-- [ ] An integration test proves the publications read carries the rule set name
-- [ ] The OpenAPI file is regenerated for these endpoints only
+- [x] The new-snapshot form offers the rule sets with their names to the admin, defaulting to the default one, and sends the choice; an analyst sees no choice
+- [x] The snapshot page shows the rule set name and shows weights in weight, not points
+- [x] A publication carries its snapshot's rule set name and the publications page shows it
+- [x] An existing snapshot shows `alignment-2026.1` and reads as before
+- [x] Vitest specs cover the form for the admin and the analyst, and the snapshot and publications pages
+- [x] An integration test proves the publications read carries the rule set name
+- [x] The OpenAPI file is regenerated for these endpoints only

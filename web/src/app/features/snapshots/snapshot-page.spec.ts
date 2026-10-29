@@ -111,4 +111,25 @@ describe('SnapshotPage', () => {
     await open({ ...snapshot, job: { ...job, state: 'failed', lastError: 'x' }, results: [], voteCount: 0 });
     http.expectNone('/api/snapshots/42/changes');
   });
+
+  it('names the rule set the snapshot was scored under', async () => {
+    const page = await open({ ...snapshot, ruleSet: { ...snapshot.ruleSet, id: 'strict', name: 'Strict', isDefault: false } });
+
+    expect(page.querySelector('[data-testid="snapshot-meta"]')?.textContent).toContain('scored under Strict');
+  });
+
+  it('shows weights in weight, not stored points, for a rule set that counts in halves', async () => {
+    const half = { id: 'abstain-half-credit', name: 'Abstain for half credit', description: '', weightUnit: 2, isDefault: false };
+    const page = await open({
+      ...snapshot, ruleSet: half,
+      results: [{ ...snapshot.results[0], matchedWeight: 7, countedWeight: 8, countableVotes: 1 }],
+    }, 'ARG');
+    http.expectOne('/api/snapshots/42/states/ARG').flush({
+      result: { ...snapshot.results[0], matchedWeight: 7, countedWeight: 8, countableVotes: 1 }, lines: [],
+    } satisfies SnapshotBreakdownDto);
+    await settle();
+
+    expect(page.querySelector('[data-testid="ranking"] tbody tr')?.textContent).toContain('3.5 of 4 weight matched');
+    expect(page.querySelector('[data-testid="breakdown-result"]')?.textContent).toContain('3.5 of 4 weight matched');
+  });
 });

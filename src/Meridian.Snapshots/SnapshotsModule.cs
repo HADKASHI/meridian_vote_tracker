@@ -201,7 +201,7 @@ public static class SnapshotsModule
             return QuarterPublished((await PublicationQueries.CurrentAsync(db, quarter, ct))!);
         }
 
-        var created = await PublicationQueries.Load(db, db.Publications.Where(p => p.Id == publication.Id)).SingleAsync(ct);
+        var created = await PublicationQueries.CreatedAsync(db, publication.Id, ct);
         return TypedResults.Created($"/api/publications", created);
     }
 

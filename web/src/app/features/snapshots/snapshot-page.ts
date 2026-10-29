@@ -29,7 +29,7 @@ import { describeStoredSelection } from './selection';
       <app-page-header [heading]="s.name" [back]="{ label: 'Snapshots', link: '/snapshots' }">
         <p pageLead data-testid="snapshot-meta">
           {{ selectionLabel() }} · {{ s.voteCount }} {{ s.voteCount === 1 ? 'vote' : 'votes' }} · by {{ s.createdBy }} at
-          {{ s.createdAt | date: 'yyyy-MM-dd HH:mm' }} · scoring rules {{ s.scoringRulesVersion }}
+          {{ s.createdAt | date: 'yyyy-MM-dd HH:mm' }} · scored under {{ s.ruleSet.name }}
         </p>
       </app-page-header>
       @if (s.note) {
@@ -96,7 +96,7 @@ import { describeStoredSelection } from './selection';
                 </ng-container>
                 <ng-container matColumnDef="score">
                   <th mat-header-cell *matHeaderCellDef>Score and basis</th>
-                  <td mat-cell *matCellDef="let r"><app-score [result]="r" /></td>
+                  <td mat-cell *matCellDef="let r"><app-score [result]="r" [unit]="s.ruleSet.weightUnit" /></td>
                 </ng-container>
                 <tr mat-header-row *matHeaderRowDef="columns"></tr>
                 <tr mat-row *matRowDef="let row; columns: columns" [class.selected]="row.stateCode === state()"></tr>
@@ -105,7 +105,7 @@ import { describeStoredSelection } from './selection';
           </section>
           @if (state(); as code) {
             <section class="breakdown">
-              <app-breakdown-panel [snapshotId]="s.id" [stateCode]="code" />
+              <app-breakdown-panel [snapshotId]="s.id" [stateCode]="code" [weightUnit]="s.ruleSet.weightUnit" />
             </section>
           }
         </div>
