@@ -4,7 +4,8 @@ using Meridian.Platform.Jobs;
 
 namespace Meridian.Extractions;
 
-public sealed record ExtractionCreatedDto(long ExtractionId, long JobId);
+/// <param name="Existing">True when these exact bytes were uploaded before and this is that earlier extraction.</param>
+public sealed record ExtractionCreatedDto(long ExtractionId, long JobId, bool Existing);
 
 /// <param name="VoteId">The vote number printed on the sheet, once it has been read.</param>
 public sealed record ExtractionSummaryDto(

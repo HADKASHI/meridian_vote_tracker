@@ -12,6 +12,15 @@ public interface IVoteSheetReader
     Task<SheetRead> ReadAsync(Stream pdf, CancellationToken cancellationToken);
 }
 
+/// <summary>
+/// A reader's failure, in words free of the sheet's content. <see cref="Permanent"/> means trying again can't help
+/// (the service refused the file); otherwise it is worth retrying (a timeout, a busy service).
+/// </summary>
+public sealed class SheetReaderException(string message, bool permanent) : Exception(message)
+{
+    public bool Permanent => permanent;
+}
+
 /// <summary>Stands in until a real reader is configured, so a queued sheet fails with a clear reason and nothing crashes.</summary>
 internal sealed class NotConfiguredSheetReader : IVoteSheetReader
 {

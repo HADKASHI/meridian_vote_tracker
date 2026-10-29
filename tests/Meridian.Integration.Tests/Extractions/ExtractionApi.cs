@@ -36,16 +36,23 @@ public static class ExtractionApi
     public static Task<ExtractionDto> GetAsync(HttpClient client, long id) =>
         ImportApi.GetAsync<ExtractionDto>(client, $"/api/extractions/{id}");
 
-    public static IHost Worker(ApiFactory api, IVoteSheetReader reader) =>
-        WorkerHost.Build(api.ConnectionString, [], new Dictionary<string, string?>
+    public static Task<HttpResponseMessage> RetryAsync(HttpClient client, long id) =>
+        client.PostAsync($"/api/extractions/{id}/retry", null, TestContext.Current.CancellationToken);
+
+    public static IHost Worker(ApiFactory api, IVoteSheetReader reader, IDictionary<string, string?>? settings = null)
+    {
+        var all = new Dictionary<string, string?>
         {
             ["Blob:ConnectionString"] = api.BlobConnectionString,
             ["Blob:Container"] = api.BlobContainer,
-        }, services => services.AddExtractionsJobs().AddSingleton(reader));
+        };
+        foreach (var (key, value) in settings ?? new Dictionary<string, string?>()) all[key] = value;
+        return WorkerHost.Build(api.ConnectionString, [], all, services => services.AddExtractionsJobs().AddSingleton(reader));
+    }
 
-    public static async Task RunJobsAsync(ApiFactory api, IVoteSheetReader reader)
+    public static async Task RunJobsAsync(ApiFactory api, IVoteSheetReader reader, IDictionary<string, string?>? settings = null)
     {
-        using var worker = Worker(api, reader);
+        using var worker = Worker(api, reader, settings);
         await worker.Processor().RunUntilIdleAsync(TestContext.Current.CancellationToken);
     }
 }
@@ -94,5 +101,17 @@ public static class SheetFixtures
             $"Recorded totals: Yes: {p.Yes} No: {p.No} Abstentions: {p.Abstentions} Not voting: {p.NotVoting}",
         };
         return new SheetRead([new SheetPage(lines, [new SheetTable(rows)])]);
+    }
+}
+
+/// <summary>Fails the way the test says on each call, then reads the sheet; counts its calls.</summary>
+public sealed class FlakySheetReader(Func<int, Exception?> failure, SheetRead sheet) : IVoteSheetReader
+{
+    public int Calls { get; private set; }
+
+    public Task<SheetRead> ReadAsync(Stream pdf, CancellationToken cancellationToken)
+    {
+        Calls++;
+        return failure(Calls) is { } error ? throw error : Task.FromResult(sheet);
     }
 }

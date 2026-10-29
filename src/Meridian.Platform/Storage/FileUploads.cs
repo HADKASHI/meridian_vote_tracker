@@ -19,6 +19,13 @@ public static class FileUploads
     public static Task<long> NextIdAsync(MeridianDbContext db, CancellationToken cancellationToken) =>
         db.Database.SqlQuery<long>($"SELECT nextval('history_seq') AS \"Value\"").SingleAsync(cancellationToken);
 
+    /// <summary>The SHA-256 of the file as it will be stored, to find an earlier upload of the same bytes.</summary>
+    public static async Task<string> HashAsync(IFormFile file, CancellationToken cancellationToken)
+    {
+        await using var source = file.OpenReadStream();
+        return Convert.ToHexStringLower(await SHA256.HashDataAsync(source, cancellationToken));
+    }
+
     /// <summary>The 413 for a file over <paramref name="maxBytes"/>, or null when it fits.</summary>
     public static Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult? RefuseIfTooLarge(IFormFile file, long maxBytes, string verb) =>
         file.Length > maxBytes

@@ -54,6 +54,12 @@ public static class ExtractionsModule
             .ProducesProblems(StatusCodes.Status404NotFound)
             .ForAnalysts();
 
+        extractions.MapPost("/{extractionId:long}/retry", ExtractionRetry.HandleAsync)
+            .WithName("retryExtraction")
+            .WithSummary("Queue a failed extraction again.")
+            .ProducesProblems(StatusCodes.Status404NotFound, StatusCodes.Status409Conflict)
+            .ForAnalysts();
+
         return api;
     }
 }

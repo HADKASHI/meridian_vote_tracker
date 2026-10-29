@@ -15,6 +15,7 @@ public static class ProblemTypes
     public const string NotFound = "not-found";
     public const string MethodNotAllowed = "method-not-allowed";
     public const string AlreadyDecided = "already-decided";
+    public const string NotRetryable = "not-retryable";
     public const string StalePosition = "stale-position";
     public const string QuarterPublished = "quarter-published";
     public const string PayloadTooLarge = "payload-too-large";

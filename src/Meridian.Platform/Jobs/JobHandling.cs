@@ -62,7 +62,7 @@ public static class JobQueue
         new() { Kind = JobKind.PdfExtraction, ExtractionId = extractionId, State = JobState.Queued, TraceParent = CurrentTraceParent() };
 
     /// <summary>The W3C traceparent of the current request, so the job runs in its trace.</summary>
-    private static string? CurrentTraceParent() =>
+    public static string? CurrentTraceParent() =>
         Activity.Current is { IdFormat: ActivityIdFormat.W3C } activity ? activity.Id : null;
 }
 
