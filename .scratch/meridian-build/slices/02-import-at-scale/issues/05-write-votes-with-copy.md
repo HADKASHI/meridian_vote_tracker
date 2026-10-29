@@ -4,12 +4,13 @@
 
 **Blocked by:** 02 Performance test.
 
-**Status:** done
+**Status:** wontfix
 
-- [x] All slice 1 tests give the same results as before (including the brief's 7.2 example and crash resume)
-- [x] The `Performance` test finishes within 5 minutes with the same outcome counts
-- [x] Only the inside of `ImportWriter` changed; classification and its tests are untouched
+- [ ] All slice 1 tests give the same results as before (including the brief's 7.2 example and crash resume)
+- [ ] The `Performance` test finishes within 5 minutes with the same outcome counts
+- [ ] Only the inside of `ImportWriter` changed; classification and its tests are untouched
 
 ## Comments
 
 - One test line changed: the crash-resume test named EF's `DbUpdateException` in the job's redacted error; the same database failure now surfaces as `PostgresException`. The progress it asserts (2 of 4 votes kept) is unchanged.
+- Built, measured (03:02 against 06:50, 732 MiB growth against 1,471 MiB) and passing the slice 1 tests, then taken out again on the user's decision (2026-10-29) to keep the EF writer and the existing 200 MB upload limit. The commit "Write a vote's rows with binary COPY" in pull request #12 holds it. See ADR 5.

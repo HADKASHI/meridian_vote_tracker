@@ -7,10 +7,10 @@
 **Status:** done
 
 - [x] The measured time and peak memory, and where they were measured, are in ADR 5
-- [x] The budget (5 minutes, about 1 GB) is met, or a fix ticket was added and done first
+- [x] The budget (5 minutes, about 1 GB) is met, or a fix ticket was added and done first, or the miss is recorded with the user's decision (changed 2026-10-29: the miss is accepted, see below)
 - [x] All slice 1 tests still pass
 
 ## Comments
 
-- Budget missed with EF (06:50, 1,471 MiB growth), met with COPY from ticket 05 (03:02, 732 MiB growth), so no two-pass parser ticket. Measured in a shared-CPU cloud container with PostgreSQL in Docker, not on a laptop.
+- Budget missed with EF (06:50, 1,471 MiB growth). COPY (ticket 05) met it (03:02, 732 MiB growth) but was not adopted: the user decided to keep the EF writer and the existing 200 MB upload limit, so the 5-minute budget for the historic-sized file stays unmet. ADR 5 records the numbers and what a file at the 200 MB cap would need (about 14 minutes and about 3 GB of memory; estimates, not runs). Measured in a shared-CPU cloud container with PostgreSQL in Docker, not on a laptop.
 - `DECISIONS.md` lines 44 and 58 still describe the writer as EF-only; slice 8 rewrites that file.
