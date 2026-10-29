@@ -4,8 +4,13 @@
 
 **Blocked by:** 02 Performance test, 05 Write a vote's rows with COPY (if the budget was missed).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The measured time and peak memory, and where they were measured, are in ADR 5
-- [ ] The budget (5 minutes, about 1 GB) is met, or a fix ticket was added and done first
-- [ ] All slice 1 tests still pass
+- [x] The measured time and peak memory, and where they were measured, are in ADR 5
+- [x] The budget (5 minutes, about 1 GB) is met, or a fix ticket was added and done first
+- [x] All slice 1 tests still pass
+
+## Comments
+
+- Budget missed with EF (06:50, 1,471 MiB growth), met with COPY from ticket 05 (03:02, 732 MiB growth), so no two-pass parser ticket. Measured in a shared-CPU cloud container with PostgreSQL in Docker, not on a laptop.
+- `DECISIONS.md` lines 44 and 58 still describe the writer as EF-only; slice 8 rewrites that file.
