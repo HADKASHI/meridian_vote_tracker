@@ -27,19 +27,14 @@ internal static class ExtractionApproval
         ImportWriter writer, CancellationToken ct)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
-        var extraction = await db.Extractions.FromSqlInterpolated($"SELECT * FROM extraction WHERE id = {extractionId} FOR UPDATE")
-            .SingleOrDefaultAsync(ct);
-        if (extraction is null || extraction.Status != ExtractionStatus.NeedsReview)
-            return ExtractionDecisions.RefusalFor(extraction, extractionId);
-
-        var sheet = ExtractionJson.Read<MappedSheet>(extraction.Sheet)!;
-        var members = await db.LoadMemberStatesAsync(ct);
-        var check = SheetValidator.Check(sheet, extraction.FileName, members);
-        if (!check.CanApprove) return ExtractionDecisions.BlockedBy(check);
+        var (extraction, refusal) = await ExtractionDecisions.LoadForReviewAsync(db, extractionId, forUpdate: true, ct);
+        if (extraction is null) return refusal!;
+        var (approvable, blocked) = await ExtractionDecisions.ApprovableAsync(db, extraction, ct);
+        if (approvable is null) return blocked!;
 
         var importId = await FileUploads.NextIdAsync(db, ct);
         var now = DateTimeOffset.UtcNow;
-        var rows = SheetRows.ToExportRows(sheet, check.Details!);
+        var rows = approvable.Rows;
         db.Imports.Add(new Import
         {
             Id = importId, FileName = extraction.FileName, BlobName = extraction.BlobName, Sha256 = extraction.Sha256,
@@ -53,16 +48,15 @@ internal static class ExtractionApproval
         });
         await db.SaveChangesAsync(ct);
 
-        await writer.WriteVoteAsync(importId, RowNormaliser.VoteKey(rows[0]), rows, members, ct);
+        await writer.WriteVoteAsync(importId, RowNormaliser.VoteKey(rows[0]), rows, approvable.Members, ct);
 
-        var refusal = await ExtractionDecisions.DecideAsync(db, extractionId, user.UserId(), ExtractionStatus.Approved,
-            string.IsNullOrWhiteSpace(request.Comment) ? null : request.Comment.Trim(), importId, ct);
-        if (refusal is not null) return refusal;
-        var json = ExtractionJson.Write(check);
-        await db.Extractions.Where(x => x.Id == extractionId).ExecuteUpdateAsync(s => s.SetProperty(x => x.CheckResult, json), ct);
+        var (decision, lost) = await ExtractionDecisions.DecideAsync(
+            db, extractionId, user.UserId(), ExtractionStatus.Approved, request.Comment, importId, ct);
+        if (decision is null) return lost!;
+        var checkJson = ExtractionJson.Write(approvable.Check);
+        await db.Extractions.Where(x => x.Id == extractionId).ExecuteUpdateAsync(s => s.SetProperty(x => x.CheckResult, checkJson), ct);
         await transaction.CommitAsync(ct);
 
-        var approved = await db.Extractions.AsNoTracking().SingleAsync(x => x.Id == extractionId, ct);
-        return TypedResults.Ok(new ExtractionApprovedDto(ExtractionQueries.DecisionOf(approved)!, importId));
+        return TypedResults.Ok(new ExtractionApprovedDto(decision, importId));
     }
 }

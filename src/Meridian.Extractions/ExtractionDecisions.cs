@@ -1,6 +1,7 @@
 using Meridian.Data;
 using Meridian.Data.Entities;
 using Meridian.Domain;
+using Meridian.Domain.Imports;
 using Meridian.Domain.Sheets;
 using Meridian.Platform.Problems;
 using Microsoft.AspNetCore.Http;
@@ -16,16 +17,47 @@ namespace Meridian.Extractions;
 /// </summary>
 internal static class ExtractionDecisions
 {
-    /// <returns>Null when the decision was applied, otherwise the problem to answer with.</returns>
-    public static async Task<ProblemHttpResult?> DecideAsync(MeridianDbContext db, long id, string by, ExtractionStatus status,
-        string? comment, long? importId, CancellationToken ct)
+    /// <summary>The extraction, when it is waiting for review; otherwise why it is not. Locks its row when the caller will change it.</summary>
+    public static async Task<(Extraction? Extraction, ProblemHttpResult? Refusal)> LoadForReviewAsync(
+        MeridianDbContext db, long id, bool forUpdate, CancellationToken ct)
+    {
+        var extraction = forUpdate
+            ? await db.Extractions.FromSqlInterpolated($"SELECT * FROM extraction WHERE id = {id} FOR UPDATE").SingleOrDefaultAsync(ct)
+            : await db.Extractions.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct);
+        return extraction is { Status: ExtractionStatus.NeedsReview } ? (extraction, null) : (null, RefusalFor(extraction, id));
+    }
+
+    /// <summary>The sheet as it is stored, with the rows an import would take, or the 409 that an issue blocking approval gives.</summary>
+    public sealed record Approvable(MappedSheet Sheet, MemberStates Members, SheetCheck Check, IReadOnlyList<ExportRow> Rows);
+
+    /// <summary>
+    /// What approval and its preview share: read the stored sheet, check it against the members as they are now, and
+    /// turn it into the importer's rows, unless something blocks.
+    /// </summary>
+    public static async Task<(Approvable? Approvable, ProblemHttpResult? Blocked)> ApprovableAsync(
+        MeridianDbContext db, Extraction extraction, CancellationToken ct)
+    {
+        var sheet = ExtractionJson.Read<MappedSheet>(extraction.Sheet)!;
+        var members = await db.LoadMemberStatesAsync(ct);
+        var check = SheetValidator.Check(sheet, extraction.FileName, members);
+        return check.CanApprove
+            ? (new Approvable(sheet, members, check, SheetRows.ToExportRows(sheet, check.Details!)), null)
+            : (null, BlockedBy(check));
+    }
+
+    /// <returns>The decision when it was applied, otherwise the problem to answer with.</returns>
+    public static async Task<(ExtractionDecisionDto? Decision, ProblemHttpResult? Refusal)> DecideAsync(
+        MeridianDbContext db, long id, string by, ExtractionStatus status, string? comment, long? importId, CancellationToken ct)
     {
         var decidedAt = DateTimeOffset.UtcNow;
+        comment = string.IsNullOrWhiteSpace(comment) ? null : comment.Trim();
         var applied = await db.Extractions.Where(x => x.Id == id && x.Status == ExtractionStatus.NeedsReview)
             .ExecuteUpdateAsync(s => s.SetProperty(x => x.Status, status).SetProperty(x => x.DecidedBy, by)
                 .SetProperty(x => x.DecidedAt, decidedAt).SetProperty(x => x.DecisionComment, comment)
                 .SetProperty(x => x.ImportId, importId), ct);
-        return applied == 1 ? null : RefusalFor(await db.Extractions.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct), id);
+        return applied == 1
+            ? (new ExtractionDecisionDto(status, by, decidedAt, comment), null)
+            : (null, RefusalFor(await db.Extractions.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct), id));
     }
 
     /// <summary>Why this extraction can't be edited or decided now: unknown, already decided (with the winner) or not yet read.</summary>

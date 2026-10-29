@@ -19,12 +19,9 @@ internal static class ExtractionReview
     public static async Task<Results<Ok<ExtractionDto>, ValidationProblem, ProblemHttpResult>> SaveEditsAsync(
         long extractionId, SaveEditsRequest request, ClaimsPrincipal user, MeridianDbContext db, CancellationToken ct)
     {
-        var id = extractionId;
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
-        var extraction = await db.Extractions.FromSqlInterpolated($"SELECT * FROM extraction WHERE id = {id} FOR UPDATE")
-            .SingleOrDefaultAsync(ct);
-        if (extraction is null || extraction.Status != ExtractionStatus.NeedsReview)
-            return ExtractionDecisions.RefusalFor(extraction, id);
+        var (extraction, refusal) = await ExtractionDecisions.LoadForReviewAsync(db, extractionId, forUpdate: true, ct);
+        if (extraction is null) return refusal!;
 
         var edited = SheetEditor.Apply(ExtractionJson.Read<MappedSheet>(extraction.Sheet)!, request.Rows, request.Header, request.Printed);
         if (edited.Errors.Count > 0)
@@ -42,16 +39,14 @@ internal static class ExtractionReview
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
 
-        return TypedResults.Ok((await ExtractionQueries.GetAsync(db, id, ct))!);
+        return TypedResults.Ok((await ExtractionQueries.GetAsync(db, extractionId, ct))!);
     }
 
     public static async Task<Results<Ok<ExtractionDecisionDto>, ProblemHttpResult>> RejectAsync(
         long extractionId, RejectExtractionRequest request, ClaimsPrincipal user, MeridianDbContext db, CancellationToken ct)
     {
-        var id = extractionId;
-        var refusal = await ExtractionDecisions.DecideAsync(db, id, user.UserId(), ExtractionStatus.Rejected,
-            string.IsNullOrWhiteSpace(request.Comment) ? null : request.Comment.Trim(), importId: null, ct);
-        if (refusal is not null) return refusal;
-        return TypedResults.Ok(ExtractionQueries.DecisionOf(await db.Extractions.AsNoTracking().SingleAsync(x => x.Id == id, ct))!);
+        var (decision, refusal) = await ExtractionDecisions.DecideAsync(
+            db, extractionId, user.UserId(), ExtractionStatus.Rejected, request.Comment, importId: null, ct);
+        return decision is null ? refusal! : TypedResults.Ok(decision);
     }
 }

@@ -20,17 +20,13 @@ internal static class ExtractionPreview
     public static async Task<Results<Ok<ExtractionPreviewDto>, ProblemHttpResult>> HandleAsync(
         long extractionId, MeridianDbContext db, ImportWriter writer, CancellationToken ct)
     {
-        var extraction = await db.Extractions.AsNoTracking().SingleOrDefaultAsync(x => x.Id == extractionId, ct);
-        if (extraction is null || extraction.Status != ExtractionStatus.NeedsReview)
-            return ExtractionDecisions.RefusalFor(extraction, extractionId);
+        var (extraction, refusal) = await ExtractionDecisions.LoadForReviewAsync(db, extractionId, forUpdate: false, ct);
+        if (extraction is null) return refusal!;
+        var (approvable, blocked) = await ExtractionDecisions.ApprovableAsync(db, extraction, ct);
+        if (approvable is null) return blocked!;
 
-        var sheet = ExtractionJson.Read<MappedSheet>(extraction.Sheet)!;
-        var members = await db.LoadMemberStatesAsync(ct);
-        var check = SheetValidator.Check(sheet, extraction.FileName, members);
-        if (!check.CanApprove) return ExtractionDecisions.BlockedBy(check);
-
-        var rows = SheetRows.ToExportRows(sheet, check.Details!);
-        var (verdict, voteExists) = await writer.ClassifyAsync(RowNormaliser.VoteKey(rows[0])!, rows, members, ct);
+        var rows = approvable.Rows;
+        var (verdict, voteExists) = await writer.ClassifyAsync(RowNormaliser.VoteKey(rows[0])!, rows, approvable.Members, ct);
         int Count(Outcome outcome) => verdict.Rows.Count(r => r.Outcome == outcome);
         return TypedResults.Ok(new ExtractionPreviewDto(
             new OutcomeCountsDto(Count(Outcome.New), Count(Outcome.Unchanged), Count(Outcome.Duplicate), Count(Outcome.Invalid),
