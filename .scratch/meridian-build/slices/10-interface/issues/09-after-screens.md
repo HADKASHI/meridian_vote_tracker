@@ -4,8 +4,8 @@
 
 **Blocked by:** 04, 05, 06, 07, 08
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The capture script reports no sideways overflow on any screen at either width, in either theme
-- [ ] The "after" screenshots are committed under `docs/screens/`
-- [ ] Web lint, Vitest and build pass; the backend and the contract are untouched
+- [x] The capture script reports no sideways overflow on any screen at either width, in either theme
+- [x] The "after" screenshots are committed under `docs/screens/`
+- [x] Web lint, Vitest and build pass; the backend and the contract are untouched
