@@ -1,8 +1,8 @@
 # Slice 7: Snapshot comparison
 
 Status: ready-for-agent
-Blocked by: Slice 6
-Runs in parallel with: slices 2, 3, 4, 5
+Blocked by: Slices 6 and 10
+Runs in parallel with: slice 2
 PR title: `Slice 7: Snapshot comparison`
 Requirements: none (an extra)
 User stories in the spec: 102
