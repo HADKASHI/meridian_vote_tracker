@@ -238,6 +238,21 @@ public sealed class DocumentIntelligenceTests(PostgresFixture postgres, AzuriteF
         Assert.DoesNotContain("MA/2011/042", error.Message);
     }
 
+    [Theory]
+    [InlineData("InternalServerError")]
+    [InlineData("ServiceUnavailable")]
+    [InlineData("Timeout")]
+    [InlineData("TooManyRequests")]
+    public async Task An_analysis_that_fails_for_a_reason_on_the_service_s_side_is_worth_retrying(string code)
+    {
+        var failed = new JsonObject { ["status"] = "failed", ["error"] = new JsonObject { ["code"] = code } };
+
+        var error = await Assert.ThrowsAsync<SheetReaderException>(() => ReadAsync(Reader(new Stub(_ => Accepted(), _ => Json(failed)))));
+
+        Assert.False(error.Permanent);
+        Assert.Contains(code, error.Message);
+    }
+
     [Fact]
     public async Task A_service_that_cannot_be_reached_is_worth_retrying()
     {

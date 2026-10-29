@@ -20,6 +20,10 @@ public sealed class DocumentIntelligenceSheetReader(
 {
     private const string KeyHeader = "Ocp-Apim-Subscription-Key";
 
+    /// <summary>The error codes of a failed analysis that say the service, not the file, was the trouble.</summary>
+    private static readonly HashSet<string> TransientCodes =
+        new(["InternalServerError", "ServiceUnavailable", "Timeout", "TooManyRequests"], StringComparer.OrdinalIgnoreCase);
+
     public async Task<SheetRead> ReadAsync(Stream pdf, CancellationToken cancellationToken)
     {
         var settings = options.Value;
@@ -95,7 +99,9 @@ public sealed class DocumentIntelligenceSheetReader(
                     return body.RootElement.GetProperty("analyzeResult").Clone();
                 case "failed":
                     var code = body.RootElement.TryGetProperty("error", out var error) && error.TryGetProperty("code", out var c) ? c.GetString() : null;
-                    throw new SheetReaderException($"The sheet reader could not read the file ({code ?? "unknown error"}).", permanent: true);
+                    // A reason on the service's side is worth another attempt; anything else is about the file.
+                    throw new SheetReaderException($"The sheet reader could not read the file ({code ?? "unknown error"}).",
+                        permanent: code is null || !TransientCodes.Contains(code));
                 case "canceled":
                     throw new SheetReaderException("The sheet reader stopped the analysis.", permanent: false);
             }
