@@ -3124,6 +3124,28 @@
           "admin"
         ]
       },
+      "ScoreBasisDto": {
+        "required": [
+          "countableVotes",
+          "matchedWeight",
+          "countedWeight"
+        ],
+        "type": "object",
+        "properties": {
+          "countableVotes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "matchedWeight": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "countedWeight": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "SetPositionRequest": {
         "required": [
           "stance",
@@ -3652,8 +3674,10 @@
           "stateName",
           "scoreA",
           "rankA",
+          "basisA",
           "scoreB",
           "rankB",
+          "basisB",
           "scoreChange",
           "rankChange"
         ],
@@ -3679,6 +3703,16 @@
             ],
             "format": "int32"
           },
+          "basisA": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ScoreBasisDto"
+              }
+            ]
+          },
           "scoreB": {
             "type": [
               "null",
@@ -3692,6 +3726,16 @@
               "integer"
             ],
             "format": "int32"
+          },
+          "basisB": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ScoreBasisDto"
+              }
+            ]
           },
           "scoreChange": {
             "type": [

@@ -21,7 +21,7 @@ const PAGE_SIZE = 50;
   template: `
     <app-page-header heading="Snapshots">
       <p pageLead>Each snapshot saves an Alignment Index over chosen votes and never changes; an admin publishes one per quarter.</p>
-      <a pageActions mat-stroked-button routerLink="/snapshots/compare">Compare</a>
+      <a pageActions mat-stroked-button routerLink="/snapshots/compare">Compare snapshots</a>
       <a pageActions mat-flat-button routerLink="/snapshots/new">New snapshot</a>
     </app-page-header>
     @if (snapshots.hasValue() && snapshots.value(); as page) {

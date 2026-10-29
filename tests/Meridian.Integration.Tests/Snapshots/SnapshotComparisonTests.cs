@@ -18,6 +18,13 @@ public sealed class SnapshotComparisonTests(PostgresFixture postgres, AzuriteFix
     private static JsonElement State(JsonElement comparison, string code) =>
         comparison.GetProperty("states").EnumerateArray().Single(s => s.GetProperty("stateCode").GetString() == code);
 
+    private static (int Votes, int Matched, int Counted) Basis(JsonElement state, string side)
+    {
+        var basis = state.GetProperty(side);
+        return (basis.GetProperty("countableVotes").GetInt32(), basis.GetProperty("matchedWeight").GetInt32(),
+            basis.GetProperty("countedWeight").GetInt32());
+    }
+
     private static double? Number(JsonElement value) => value.ValueKind == JsonValueKind.Null ? null : value.GetDouble();
 
     [Fact]
@@ -47,6 +54,9 @@ public sealed class SnapshotComparisonTests(PostgresFixture postgres, AzuriteFix
         Assert.Equal((0.0, 3, 50.0, 2, 50.0, 1), (Number(fra.GetProperty("scoreA")), fra.GetProperty("rankA").GetInt32(),
             Number(fra.GetProperty("scoreB")), fra.GetProperty("rankB").GetInt32(),
             Number(fra.GetProperty("scoreChange")), fra.GetProperty("rankChange").GetInt32()));
+        // ARG's basis: one countable vote in A (weight 1 of 1 matched); two in B (1 of 2).
+        Assert.Equal((1, 1, 1), Basis(arg, "basisA"));
+        Assert.Equal((2, 1, 2), Basis(arg, "basisB"));
         var bra = State(comparison, "BRA");
         Assert.Equal((0.0, 0), (Number(bra.GetProperty("scoreChange")), bra.GetProperty("rankChange").GetInt32()));
     }

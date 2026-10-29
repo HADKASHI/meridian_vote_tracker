@@ -21,11 +21,11 @@ const comparison: SnapshotComparisonDto = {
   a: { id: 1, name: 'Q1 index', createdAt: '2024-04-02T09:00:00Z' },
   b: { id: 2, name: 'Q2 index', createdAt: '2024-07-02T09:00:00Z' },
   states: [
-    { stateCode: 'ARG', stateName: 'Argentina', scoreA: 50, rankA: 3, scoreB: 80.04, rankB: 1, scoreChange: 30.04, rankChange: 2 },
-    { stateCode: 'BRA', stateName: 'Brazil', scoreA: 90, rankA: 1, scoreB: 70, rankB: 2, scoreChange: -20, rankChange: -1 },
-    { stateCode: 'FRA', stateName: 'France', scoreA: 60, rankA: 2, scoreB: 60, rankB: 3, scoreChange: 0, rankChange: -1 },
-    { stateCode: 'JPN', stateName: 'Japan', scoreA: 40, rankA: 4, scoreB: null, rankB: null, scoreChange: null, rankChange: null },
-    { stateCode: 'CIV', stateName: 'Côte d’Ivoire', scoreA: null, rankA: null, scoreB: null, rankB: null, scoreChange: null, rankChange: null },
+    { stateCode: 'ARG', stateName: 'Argentina', scoreA: 50, rankA: 3, basisA: { countableVotes: 2, matchedWeight: 2, countedWeight: 4 }, scoreB: 80.04, rankB: 1, basisB: { countableVotes: 5, matchedWeight: 4, countedWeight: 5 }, scoreChange: 30.04, rankChange: 2 },
+    { stateCode: 'BRA', stateName: 'Brazil', scoreA: 90, rankA: 1, basisA: { countableVotes: 3, matchedWeight: 9, countedWeight: 10 }, scoreB: 70, rankB: 2, basisB: { countableVotes: 5, matchedWeight: 7, countedWeight: 10 }, scoreChange: -20, rankChange: -1 },
+    { stateCode: 'FRA', stateName: 'France', scoreA: 60, rankA: 2, basisA: { countableVotes: 1, matchedWeight: 3, countedWeight: 5 }, scoreB: 60, rankB: 3, basisB: { countableVotes: 2, matchedWeight: 6, countedWeight: 10 }, scoreChange: 0, rankChange: -1 },
+    { stateCode: 'JPN', stateName: 'Japan', scoreA: 40, rankA: 4, basisA: { countableVotes: 1, matchedWeight: 2, countedWeight: 5 }, scoreB: null, rankB: null, basisB: { countableVotes: 0, matchedWeight: 0, countedWeight: 0 }, scoreChange: null, rankChange: null },
+    { stateCode: 'CIV', stateName: 'Côte d’Ivoire', scoreA: null, rankA: null, basisA: { countableVotes: 0, matchedWeight: 0, countedWeight: 0 }, scoreB: null, rankB: null, basisB: { countableVotes: 0, matchedWeight: 0, countedWeight: 0 }, scoreChange: null, rankChange: null },
   ],
 };
 
@@ -74,11 +74,11 @@ describe('ComparePage', () => {
     await settle();
 
     expect(rows(page)).toEqual([
-      ['Argentina (ARG)', '3 · 50.0', '1 · 80.0', '+30.0', '▲ up 2'],
-      ['Brazil (BRA)', '1 · 90.0', '2 · 70.0', '−20.0', '▼ down 1'],
-      ['France (FRA)', '2 · 60.0', '3 · 60.0', '0.0', '▼ down 1'],
-      ['Japan (JPN)', '4 · 40.0', 'n/a', 'no movement', 'no movement'],
-      ['Côte d’Ivoire (CIV)', 'n/a', 'n/a', 'no movement', 'no movement'],
+      ['Argentina (ARG)', '3 · 50.0 2 countable votes · 2 of 4 weight matched', '1 · 80.0 5 countable votes · 4 of 5 weight matched', '+30.0', '▲ up 2'],
+      ['Brazil (BRA)', '1 · 90.0 3 countable votes · 9 of 10 weight matched', '2 · 70.0 5 countable votes · 7 of 10 weight matched', '−20.0', '▼ down 1'],
+      ['France (FRA)', '2 · 60.0 1 countable vote · 3 of 5 weight matched', '3 · 60.0 2 countable votes · 6 of 10 weight matched', '0.0', '▼ down 1'],
+      ['Japan (JPN)', '4 · 40.0 1 countable vote · 2 of 5 weight matched', 'n/a nothing countable', 'no movement', 'no movement'],
+      ['Côte d’Ivoire (CIV)', 'n/a nothing countable', 'n/a nothing countable', 'no movement', 'no movement'],
     ]);
   });
 
@@ -100,10 +100,18 @@ describe('ComparePage', () => {
     http.expectNone('/api/snapshots/compare');
   });
 
-  it('says so when the comparison cannot be loaded', async () => {
+  it('says which problem it is when a snapshot does not exist', async () => {
     const page = await open({ a: '1', b: '999' });
     http.expectOne((r) => r.url === '/api/snapshots/compare').flush(
       { type: 'not-found', title: 'No such snapshot', status: 404 }, { status: 404, statusText: 'Not Found' });
+    await settle();
+
+    expect(page.querySelector('[role="alert"]')?.textContent).toContain('One of these snapshots does not exist');
+  });
+
+  it('says so when the comparison cannot be loaded', async () => {
+    const page = await open({ a: '1', b: '2' });
+    http.expectOne((r) => r.url === '/api/snapshots/compare').flush(null, { status: 500, statusText: 'Server Error' });
     await settle();
 
     expect(page.querySelector('[role="alert"]')?.textContent).toContain('could not be compared');

@@ -85,29 +85,41 @@ internal static class SnapshotQueries
     public static async Task<SnapshotComparisonDto> CompareAsync(MeridianDbContext db, SnapshotRefDto a, SnapshotRefDto b,
         CancellationToken ct)
     {
-        var stored = await db.SnapshotResults.AsNoTracking()
-            .Where(r => r.SnapshotId == a.Id || r.SnapshotId == b.Id)
-            .Select(r => new { r.SnapshotId, r.StateCode, r.MatchedWeight, r.CountedWeight, r.Rank })
-            .ToListAsync(ct);
         var names = await db.MemberStates.AsNoTracking().ToDictionaryAsync(s => s.Code, s => s.Name, ct);
+        var (resultsA, resultsB) = (await StoredAsync(db, a.Id, ct), await StoredAsync(db, b.Id, ct));
 
-        StateResult? Find(long snapshotId, string code) => stored
-            .Where(r => r.SnapshotId == snapshotId && r.StateCode == code)
-            .Select(r => new StateResult(r.StateCode, r.MatchedWeight, r.CountedWeight, 0, r.Rank))
-            .SingleOrDefault();
-
-        var states = stored.Select(r => r.StateCode).Distinct().Select(code =>
+        var states = resultsA.Keys.Union(resultsB.Keys).Select(code =>
         {
-            var (resultA, resultB) = (Find(a.Id, code), Find(b.Id, code));
+            var (resultA, resultB) = (resultsA.GetValueOrDefault(code), resultsB.GetValueOrDefault(code));
             var (scoreA, scoreB) = (resultA?.Score, resultB?.Score);
             var (rankA, rankB) = (resultA?.Rank, resultB?.Rank);
-            return new StateMovementDto(code, names[code], scoreA, rankA, scoreB, rankB,
+            return new StateMovementDto(code, names[code], scoreA, rankA, BasisOf(resultA), scoreB, rankB, BasisOf(resultB),
                 scoreA is { } sa && scoreB is { } sb ? sb - sa : null,
                 rankA is { } ra && rankB is { } rb ? ra - rb : null);
         });
         return new SnapshotComparisonDto(a, b, states
             .OrderBy(s => s.RankB is null).ThenBy(s => s.RankB).ThenBy(s => s.StateCode, StringComparer.Ordinal)
             .ToList());
+    }
+
+    /// <summary>True when every one of the snapshots has finished calculating.</summary>
+    public static async Task<bool> AllCalculatedAsync(MeridianDbContext db, IReadOnlyCollection<long> snapshotIds, CancellationToken ct) =>
+        await db.Jobs.CountAsync(j => j.SnapshotId != null && snapshotIds.Contains(j.SnapshotId.Value) && j.State == JobState.Done, ct)
+            == snapshotIds.Count;
+
+    private static ScoreBasisDto? BasisOf(StateResult? result) =>
+        result is null ? null : new ScoreBasisDto(result.CountableVotes, result.MatchedWeight, result.CountedWeight);
+
+    /// <summary>A snapshot's stored results by state code, each with its countable votes counted from the stored lines.</summary>
+    private static async Task<Dictionary<string, StateResult>> StoredAsync(MeridianDbContext db, long snapshotId, CancellationToken ct)
+    {
+        var countable = await db.SnapshotLines.AsNoTracking()
+            .Where(l => l.SnapshotId == snapshotId && (l.Category == LineCategory.Match || l.Category == LineCategory.Mismatch))
+            .GroupBy(l => l.StateCode).Select(g => new { StateCode = g.Key, Votes = g.Count() })
+            .ToDictionaryAsync(g => g.StateCode, g => g.Votes, ct);
+        var results = await db.SnapshotResults.AsNoTracking().Where(r => r.SnapshotId == snapshotId).ToListAsync(ct);
+        return results.ToDictionary(r => r.StateCode, r => new StateResult(r.StateCode, r.MatchedWeight, r.CountedWeight,
+            countable.GetValueOrDefault(r.StateCode), r.Rank));
     }
 
     /// <summary>The snapshot's name and time, or null when there is none.</summary>

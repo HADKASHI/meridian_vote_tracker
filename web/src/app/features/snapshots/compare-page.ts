@@ -3,15 +3,21 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { Router, RouterLink } from '@angular/router';
 import { MatTableModule } from '@angular/material/table';
-import { JobState } from '../../api/model';
+import { HttpErrorResponse } from '@angular/common/http';
+import { JobState, ScoreBasisDto } from '../../api/model';
 import { compareSnapshotsResource, listSnapshotsResource } from '../../api/snapshots/snapshots.resource';
 import { LoadState } from '../../shared/ui/load-state';
 import { PageHeader } from '../../shared/ui/page-header';
-import { formatScore } from '../../shared/ui/score';
+import { formatScore, scoreBasis } from '../../shared/ui/score';
 
 /** "3 · 50.0", or n/a when the state has no rank in that snapshot. */
 export function rankAndScore(rank: number | null, score: number | null): string {
   return rank === null ? 'n/a' : `${rank} · ${formatScore(score)}`;
+}
+
+/** What the score rests on, or nothing when the snapshot has no result for the state. */
+export function basisOf(basis: ScoreBasisDto | null): string {
+  return basis ? scoreBasis(basis) : '';
 }
 
 /** The score change with its sign, or no movement when either snapshot has no score. */
@@ -42,11 +48,15 @@ export function rankMovement(change: number | null): string {
           </ng-container>
           <ng-container matColumnDef="a">
             <th mat-header-cell *matHeaderCellDef>Rank · score in {{ c.a.name }}</th>
-            <td mat-cell *matCellDef="let s" class="num">{{ rankAndScore(s.rankA, s.scoreA) }}</td>
+            <td mat-cell *matCellDef="let s" class="num">
+              {{ rankAndScore(s.rankA, s.scoreA) }} <span class="basis">{{ basisOf(s.basisA) }}</span>
+            </td>
           </ng-container>
           <ng-container matColumnDef="b">
             <th mat-header-cell *matHeaderCellDef>Rank · score in {{ c.b.name }}</th>
-            <td mat-cell *matCellDef="let s" class="num">{{ rankAndScore(s.rankB, s.scoreB) }}</td>
+            <td mat-cell *matCellDef="let s" class="num">
+              {{ rankAndScore(s.rankB, s.scoreB) }} <span class="basis">{{ basisOf(s.basisB) }}</span>
+            </td>
           </ng-container>
           <ng-container matColumnDef="score">
             <th mat-header-cell *matHeaderCellDef>Score change</th>
@@ -61,7 +71,7 @@ export function rankMovement(change: number | null): string {
         </table>
       </div>
     } @else if (comparison.error()) {
-      <app-load-state kind="error" message="These snapshots could not be compared." />
+      <app-load-state kind="error" [message]="failure()" />
     } @else {
       <app-load-state kind="loading" message="Loading the comparison" />
     }
@@ -69,7 +79,11 @@ export function rankMovement(change: number | null): string {
   styles: `
     .num {
       font-variant-numeric: tabular-nums;
-      white-space: nowrap;
+    }
+    .basis {
+      display: block;
+      color: var(--mat-sys-on-surface-variant);
+      font: var(--mat-sys-body-small);
     }
   `,
 })
@@ -79,7 +93,14 @@ export class SnapshotMovement {
 
   protected readonly columns = ['state', 'a', 'b', 'score', 'rank'];
   protected readonly comparison = compareSnapshotsResource(computed(() => ({ a: this.a(), b: this.b() })));
+  protected readonly failure = computed(() => {
+    const error = this.comparison.error();
+    return error instanceof HttpErrorResponse && error.status === 404
+      ? 'One of these snapshots does not exist.'
+      : 'These snapshots could not be compared.';
+  });
   protected readonly rankAndScore = rankAndScore;
+  protected readonly basisOf = basisOf;
   protected readonly scoreMovement = scoreMovement;
   protected readonly rankMovement = rankMovement;
 }

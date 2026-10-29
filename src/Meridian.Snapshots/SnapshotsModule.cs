@@ -92,9 +92,7 @@ public static class SnapshotsModule
             {
                 var (first, second) = (await SnapshotQueries.RefAsync(db, a, ct), await SnapshotQueries.RefAsync(db, b, ct));
                 if (first is null || second is null) return NotFound("snapshot");
-                var calculated = await db.Jobs.Where(j => (j.SnapshotId == a || j.SnapshotId == b) && j.State == JobState.Done)
-                    .CountAsync(ct);
-                if (calculated < (a == b ? 1 : 2))
+                if (!await SnapshotQueries.AllCalculatedAsync(db, [.. new HashSet<long> { a, b }], ct))
                     return ProblemDetailsSetup.Problem(StatusCodes.Status400BadRequest, ProblemTypes.BadRequest,
                         "Not calculated", "Only calculated snapshots can be compared.");
                 return TypedResults.Ok(await SnapshotQueries.CompareAsync(db, first, second, ct));

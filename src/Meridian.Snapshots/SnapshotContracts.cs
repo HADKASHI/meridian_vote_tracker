@@ -91,9 +91,13 @@ public sealed record SnapshotBreakdownDto(SnapshotResultDto Result, IReadOnlyLis
 
 public sealed record SnapshotRefDto(long Id, string Name, DateTimeOffset CreatedAt);
 
+/// <summary>What a score rests on: countable votes and the weight matched out of the weight counted.</summary>
+public sealed record ScoreBasisDto(int CountableVotes, int MatchedWeight, int CountedWeight);
+
+/// <param name="BasisA">What the score in A rests on; null when the state has no result in A.</param>
 public sealed record StateMovementDto(
-    string StateCode, string StateName, double? ScoreA, int? RankA, double? ScoreB, int? RankB,
-    double? ScoreChange, int? RankChange);
+    string StateCode, string StateName, double? ScoreA, int? RankA, ScoreBasisDto? BasisA,
+    double? ScoreB, int? RankB, ScoreBasisDto? BasisB, double? ScoreChange, int? RankChange);
 
 public sealed record SnapshotComparisonDto(SnapshotRefDto A, SnapshotRefDto B, IReadOnlyList<StateMovementDto> States);
 
