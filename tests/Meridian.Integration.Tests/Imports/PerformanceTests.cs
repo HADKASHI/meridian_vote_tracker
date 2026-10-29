@@ -48,6 +48,9 @@ public sealed class PerformanceTests(PostgresFixture postgres, AzuriteFixture az
                      $"{baseline / 1_048_576:N0} MiB before the import.";
         TestContext.Current.SendDiagnosticMessage(report);
         Console.WriteLine(report);
+        // The manual workflow points this at the run summary.
+        if (Environment.GetEnvironmentVariable("PERFORMANCE_REPORT") is { Length: > 0 } path)
+            await File.AppendAllTextAsync(path, $"### Historic-sized import{Environment.NewLine}{Environment.NewLine}{report}{Environment.NewLine}", Ct);
 
         Assert.Equal(JobState.Done, import.Job.State);
         Assert.Equal(new OutcomeCountsDto(file.Expected.New, 0, file.Expected.Duplicate, file.Expected.Invalid, file.Expected.Contradiction, 0),

@@ -4,8 +4,8 @@
 
 **Blocked by:** 02 Performance test.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The workflow only starts manually
-- [ ] It runs only the `Performance` category
-- [ ] The run summary shows time and peak memory
+- [x] The workflow only starts manually
+- [x] It runs only the `Performance` category
+- [x] The run summary shows time and peak memory
