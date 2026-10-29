@@ -1,5 +1,7 @@
 @use '@angular/material' as mat;
 
+// One theme, light and dark from the system setting. Colours come only from its tokens
+// (--mat-sys-*), never hard-coded, so both schemes stay in step.
 html {
   color-scheme: light dark;
   @include mat.theme(
@@ -15,11 +17,90 @@ html {
       density: 0,
     )
   );
+  @include mat.toolbar-overrides(
+    (
+      container-background-color: var(--mat-sys-primary),
+      container-text-color: var(--mat-sys-on-primary),
+    )
+  );
+  @include mat.table-overrides(
+    (
+      background-color: transparent,
+    )
+  );
+  --app-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
 }
 
 body {
   margin: 0;
-  background: var(--mat-sys-surface);
+  background: var(--mat-sys-surface-container-low);
   color: var(--mat-sys-on-surface);
   font: var(--mat-sys-body-medium);
+}
+
+a {
+  color: var(--mat-sys-primary);
+}
+
+// Every action reachable by keyboard shows where the focus is.
+:focus-visible {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+h2 {
+  font: var(--mat-sys-title-large);
+  margin-block: 24px 12px;
+}
+
+h3 {
+  font: var(--mat-sys-title-medium);
+  margin-block: 0 8px;
+}
+
+// A raised section of a page: lists, forms, panels.
+.surface-card {
+  display: block;
+  background: var(--mat-sys-surface);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 12px;
+  padding: 16px;
+  margin-block-end: 16px;
+}
+
+// Tables never widen the page: they scroll inside their own container when they must.
+.table-scroll {
+  overflow-x: auto;
+  background: var(--mat-sys-surface);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 12px;
+  margin-block-end: 16px;
+}
+
+.table-scroll > table {
+  width: 100%;
+}
+
+.table-scroll th.mat-mdc-header-cell {
+  white-space: nowrap;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-large);
+}
+
+.muted {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.mono {
+  font-family: var(--app-mono);
+}
+
+// Text the data can make arbitrarily long (titles, raw rows, hashes) wraps instead of widening the page.
+.wrap-anywhere {
+  overflow-wrap: anywhere;
+}
+
+.field-error {
+  color: var(--mat-sys-error);
 }

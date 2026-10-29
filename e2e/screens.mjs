@@ -2,6 +2,7 @@
 // 1280 px and 390 px in light and dark, and reports any page that scrolls sideways.
 // Development only, never run in CI. With the stack up (see stack.mjs):
 //   node e2e/screens.mjs [output folder, default docs/screens] [themes, default light,dark]
+// SCREENS=imports,jobs captures only those; BASE_URL points it at `ng serve` while working.
 // Exits 1 when a page scrolls sideways.
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
@@ -39,6 +40,11 @@ async function findIds() {
 
 /** Every screen: a name, the user it is seen as, its URL, and anything to do before the capture. */
 function screens(ids) {
+  const only = process.env.SCREENS?.split(',');
+  return allScreens(ids).filter((screen) => !only || only.includes(screen.name));
+}
+
+function allScreens(ids) {
   return [
     { name: 'imports', url: '/imports' },
     { name: 'import-report', url: `/imports/${ids.original}` },

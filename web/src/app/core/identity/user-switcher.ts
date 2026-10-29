@@ -9,11 +9,12 @@ import { CurrentUser } from './current-user';
   imports: [MatButtonModule, MatMenuModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <button mat-stroked-button [matMenuTriggerFor]="menu" aria-label="Switch user" data-testid="user-switcher">
+    <button mat-flat-button class="switcher" [matMenuTriggerFor]="menu" aria-label="Switch user" data-testid="user-switcher">
       {{ current.user()?.displayName ?? 'Choose user' }}
       @if (current.user(); as user) {
         <span class="role">· {{ user.role }}</span>
       }
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M7 10l5 5 5-5z" /></svg>
     </button>
     <mat-menu #menu="matMenu">
       @if (current.users.hasValue()) {
@@ -26,9 +27,23 @@ import { CurrentUser } from './current-user';
     </mat-menu>
   `,
   styles: `
+    .switcher {
+      --mat-button-filled-container-color: var(--mat-sys-surface);
+      --mat-button-filled-label-text-color: var(--mat-sys-on-surface);
+      white-space: nowrap;
+    }
+    .switcher svg {
+      vertical-align: middle;
+    }
     .role {
-      opacity: 0.7;
+      color: var(--mat-sys-on-surface-variant);
+      font: var(--mat-sys-label-medium);
       margin-inline-start: 4px;
+    }
+    @media (max-width: 600px) {
+      .switcher .role {
+        display: none;
+      }
     }
   `,
 })
