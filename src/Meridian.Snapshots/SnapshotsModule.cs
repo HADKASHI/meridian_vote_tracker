@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Meridian.Data;
 using Meridian.Data.Entities;
+using Meridian.Data.Migrations;
 using Meridian.Domain;
 using Meridian.Domain.Scoring;
 using Meridian.Platform.Contracts;
@@ -55,6 +56,8 @@ public static class SnapshotsModule
                 if (ruleSet != RuleSets.DefaultId && !user.IsInRole(SnakeCaseEnumConverter<Role>.ToName(Role.Admin)))
                     return ProblemDetailsSetup.Problem(StatusCodes.Status403Forbidden, ProblemTypes.Forbidden,
                         "Forbidden", "Only the admin chooses a rule set other than the default.");
+                var name = request.Name!.Trim();
+                if (await SameNameAsync(db, name, ct) is { } taken) return NameTaken(taken);
                 var votes = SnapshotSelection.Resolve(db, selection);
                 if (!await votes.AnyAsync(ct)) return NoVotesMatch();
                 var noPosition = await SnapshotSelection.NoPositionAsync(votes, ct);
@@ -67,12 +70,21 @@ public static class SnapshotsModule
                 await using var transaction = await db.Database.BeginTransactionAsync(ct);
                 var snapshot = new Snapshot
                 {
-                    Name = request.Name!.Trim(), Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim(),
+                    Name = name, Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim(),
                     Selection = SnapshotJson.WriteSelection(selection), ScoringRulesVersion = ruleSet,
                     CreatedBy = user.UserId(),
                 };
                 db.Snapshots.Add(snapshot);
-                await db.SaveChangesAsync(ct);
+                try
+                {
+                    await db.SaveChangesAsync(ct);
+                }
+                catch (DbUpdateException error) when (error.InnerException is PostgresException
+                    { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: UniqueSnapshotNames.IndexName })
+                {
+                    // Another create took the name between the check and this insert.
+                    return NameTaken(await SameNameAsync(db, name, ct) ?? name);
+                }
                 var job = JobQueue.ForSnapshot(snapshot.Id);
                 db.Jobs.Add(job);
                 await db.SaveChangesAsync(ct);
@@ -80,7 +92,7 @@ public static class SnapshotsModule
                 return TypedResults.Accepted($"/api/snapshots/{snapshot.Id}", new SnapshotCreatedDto(snapshot.Id, job.Id));
             })
             .WithName("createSnapshot")
-            .WithSummary("Create a snapshot; it is calculated as a job. Refused when no vote matches or a vote has no position.")
+            .WithSummary("Create a snapshot; it is calculated as a job. Refused when its name is taken, no vote matches or a vote has no position.")
             // 400 is validation, no-votes-match or no-position; the body schema is the widest.
             .ProducesProblem<NoPositionProblem>(StatusCodes.Status400BadRequest)
             .ForAnalysts();
@@ -210,6 +222,22 @@ public static class SnapshotsModule
             "The quarter is already published",
             $"{current.Quarter} is published with {current.SnapshotName}; replace it to publish another snapshot.",
             new Dictionary<string, object?> { ["publication"] = current });
+
+    /// <summary>
+    /// The existing snapshot's name that <paramref name="name"/> clashes with: every snapshot
+    /// holds its name, failed ones included, and case or surrounding spaces don't make a new one.
+    /// </summary>
+    private static Task<string?> SameNameAsync(MeridianDbContext db, string name, CancellationToken ct)
+    {
+        var key = name.ToLowerInvariant();
+        return db.Snapshots.Where(s => s.Name.Trim().ToLower() == key).Select(s => s.Name).FirstOrDefaultAsync(ct);
+    }
+
+    private static ProblemHttpResult NameTaken(string name) =>
+        TypedResults.Problem(new HttpValidationProblemDetails(new Dictionary<string, string[]>
+        {
+            ["name"] = [$"A snapshot named \"{name}\" already exists; choose another name."],
+        }) { Status = StatusCodes.Status400BadRequest, Type = ProblemTypes.Validation, Title = "One or more validation errors occurred." });
 
     private static ProblemHttpResult NotFound(string what) =>
         ProblemDetailsSetup.Problem(StatusCodes.Status404NotFound, ProblemTypes.NotFound, $"No such {what}");

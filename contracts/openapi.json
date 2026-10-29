@@ -1159,7 +1159,7 @@
         "tags": [
           "Snapshots"
         ],
-        "summary": "Create a snapshot; it is calculated as a job. Refused when no vote matches or a vote has no position.",
+        "summary": "Create a snapshot; it is calculated as a job. Refused when its name is taken, no vote matches or a vote has no position.",
         "operationId": "createSnapshot",
         "requestBody": {
           "content": {
