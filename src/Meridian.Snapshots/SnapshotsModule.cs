@@ -121,6 +121,20 @@ public static class SnapshotsModule
             .ProducesProblems(StatusCodes.Status404NotFound)
             .ForAnalysts();
 
+        snapshots.MapGet("/{snapshotId:long}/changes", async Task<Results<Ok<SnapshotChangesDto>, ProblemHttpResult>> (
+                    long snapshotId, MeridianDbContext db, CancellationToken ct) =>
+            {
+                if (await SnapshotQueries.RefAsync(db, snapshotId, ct) is null) return NotFound("snapshot");
+                if (!await SnapshotQueries.AllCalculatedAsync(db, [snapshotId], ct))
+                    return ProblemDetailsSetup.Problem(StatusCodes.Status400BadRequest, ProblemTypes.BadRequest,
+                        "Not calculated", "Only a calculated snapshot can be checked for changes.");
+                return TypedResults.Ok(await SnapshotDrift.ChangesAsync(db, snapshotId, ct));
+            })
+            .WithName("getSnapshotChanges")
+            .WithSummary("What would differ if the snapshot were created now. A live read; no job, score or rank.")
+            .ProducesProblems(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound)
+            .ForAnalysts();
+
         snapshots.MapPost("/{snapshotId:long}/publications", async Task<Results<Created<PublicationDto>, ProblemHttpResult>> (
                     long snapshotId, PublishSnapshotRequest request, ClaimsPrincipal user, MeridianDbContext db, CancellationToken ct) =>
                 await PublishAsync(snapshotId, request, user.UserId(), db, ct))

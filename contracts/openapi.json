@@ -1401,6 +1401,68 @@
         }
       }
     },
+    "/api/snapshots/{snapshotId}/changes": {
+      "get": {
+        "tags": [
+          "Snapshots"
+        ],
+        "summary": "What would differ if the snapshot were created now. A live read; no job, score or rank.",
+        "operationId": "getSnapshotChanges",
+        "parameters": [
+          {
+            "name": "snapshotId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SnapshotChangesDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/snapshots/{snapshotId}/publications": {
       "post": {
         "tags": [
@@ -1537,6 +1599,44 @@
           "a",
           "x",
           null
+        ]
+      },
+      "ChangeOriginDto": {
+        "required": [
+          "kind",
+          "by",
+          "importId",
+          "decisionId"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/ChangeOriginKind"
+          },
+          "by": {
+            "type": "string"
+          },
+          "importId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "decisionId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "ChangeOriginKind": {
+        "enum": [
+          "position",
+          "import",
+          "decision"
         ]
       },
       "ConflictDecisionDto": {
@@ -1917,6 +2017,74 @@
           "reject",
           null
         ]
+      },
+      "DetailsChangeDto": {
+        "required": [
+          "vote",
+          "old",
+          "new",
+          "changedBy",
+          "at"
+        ],
+        "type": "object",
+        "properties": {
+          "vote": {
+            "$ref": "#/components/schemas/VoteRefDto"
+          },
+          "old": {
+            "$ref": "#/components/schemas/DetailsValueDto"
+          },
+          "new": {
+            "$ref": "#/components/schemas/DetailsValueDto"
+          },
+          "changedBy": {
+            "$ref": "#/components/schemas/ChangeOriginDto"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "DetailsChangesDto": {
+        "required": [
+          "count",
+          "votes"
+        ],
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "votes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DetailsChangeDto"
+            }
+          }
+        }
+      },
+      "DetailsValueDto": {
+        "required": [
+          "session",
+          "voteDate",
+          "title"
+        ],
+        "type": "object",
+        "properties": {
+          "session": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "voteDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
       },
       "IFormFile": {
         "type": "string",
@@ -2938,6 +3106,53 @@
           }
         }
       },
+      "PositionChangeDto": {
+        "required": [
+          "vote",
+          "old",
+          "new",
+          "changedBy",
+          "at"
+        ],
+        "type": "object",
+        "properties": {
+          "vote": {
+            "$ref": "#/components/schemas/VoteRefDto"
+          },
+          "old": {
+            "$ref": "#/components/schemas/PositionValueDto"
+          },
+          "new": {
+            "$ref": "#/components/schemas/PositionValueDto"
+          },
+          "changedBy": {
+            "$ref": "#/components/schemas/ChangeOriginDto"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PositionChangesDto": {
+        "required": [
+          "count",
+          "votes"
+        ],
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "votes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PositionChangeDto"
+            }
+          }
+        }
+      },
       "PositionDto": {
         "required": [
           "revisionId",
@@ -2965,6 +3180,22 @@
           "setAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "PositionValueDto": {
+        "required": [
+          "stance",
+          "weight"
+        ],
+        "type": "object",
+        "properties": {
+          "stance": {
+            "$ref": "#/components/schemas/Stance"
+          },
+          "weight": {
+            "type": "integer",
+            "format": "int16"
           }
         }
       },
@@ -3300,6 +3531,26 @@
             "items": {
               "$ref": "#/components/schemas/SnapshotLineDto"
             }
+          }
+        }
+      },
+      "SnapshotChangesDto": {
+        "required": [
+          "readAt",
+          "positionChanged",
+          "detailsChanged"
+        ],
+        "type": "object",
+        "properties": {
+          "readAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "positionChanged": {
+            "$ref": "#/components/schemas/PositionChangesDto"
+          },
+          "detailsChanged": {
+            "$ref": "#/components/schemas/DetailsChangesDto"
           }
         }
       },

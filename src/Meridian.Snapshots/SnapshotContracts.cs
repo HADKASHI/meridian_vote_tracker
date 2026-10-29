@@ -122,6 +122,34 @@ public sealed record StateMovementDto(
 
 public sealed record SnapshotComparisonDto(SnapshotRefDto A, SnapshotRefDto B, IReadOnlyList<StateMovementDto> States);
 
+/// <summary>What changed a value: a person setting a position, an import row, or a conflict decision.</summary>
+public enum ChangeOriginKind { Position, Import, Decision }
+
+/// <summary>Who or what changed a value: <c>By</c> is the admin, the uploader or the person who decided.</summary>
+public sealed record ChangeOriginDto(ChangeOriginKind Kind, string By, long? ImportId, long? DecisionId);
+
+public sealed record PositionValueDto(Stance Stance, short Weight);
+
+public sealed record DetailsValueDto(int Session, DateOnly VoteDate, string Title);
+
+public sealed record PositionChangeDto(
+    VoteRefDto Vote, PositionValueDto Old, PositionValueDto New, ChangeOriginDto ChangedBy, DateTimeOffset At);
+
+public sealed record DetailsChangeDto(
+    VoteRefDto Vote, DetailsValueDto Old, DetailsValueDto New, ChangeOriginDto ChangedBy, DateTimeOffset At);
+
+/// <param name="Count">Every vote that changed; <c>Votes</c> holds the first 20.</param>
+public sealed record PositionChangesDto(int Count, IReadOnlyList<PositionChangeDto> Votes);
+
+/// <inheritdoc cref="PositionChangesDto"/>
+public sealed record DetailsChangesDto(int Count, IReadOnlyList<DetailsChangeDto> Votes);
+
+/// <summary>
+/// What would differ if the snapshot were created now, read live from its stored revisions and today's
+/// values. It holds no score or rank and was not calculated.
+/// </summary>
+public sealed record SnapshotChangesDto(DateTimeOffset ReadAt, PositionChangesDto PositionChanged, DetailsChangesDto DetailsChanged);
+
 public sealed class PublishSnapshotRequest : IValidatableObject
 {
     [Required, RegularExpression("^[0-9]{4}-Q[1-4]$", ErrorMessage = "A reporting quarter looks like 2024-Q1.")]
