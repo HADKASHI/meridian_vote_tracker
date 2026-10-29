@@ -12,7 +12,7 @@ namespace Meridian.Imports;
 /// takes the vote's row lock first, reads what is approved for the vote under that lock,
 /// classifies the rows with the pure <see cref="Classifier"/>, and inserts the verdicts and
 /// what they change. Reads go through EF; the inserts use binary COPY, because EF's
-/// SaveChanges took 82% of the historic import and missed the 5-minute budget (ADR 5).
+/// SaveChanges took 82% of the historic import and missed the 5-minute budget (ADR 0005). The COPY order below is foreign-key order: a new table adds a list and a call here.
 /// </summary>
 internal sealed class ImportWriter(MeridianDbContext db)
 {

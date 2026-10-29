@@ -27,7 +27,7 @@ The brief asks for EF Core and explains data access as a decision (section 9). T
 ## Consequences
 
 - The job runner's queue statements are plain SQL on a pooled data source, because they must be short and conditional on the attempt.
-- The COPY writer takes its table, column and type mappings from the EF model, so the schema is still defined once; a new column on those tables needs no change in the writer.
+- The COPY writer takes its table, column and type mappings from the EF model, so the schema is still defined once. A new column on those tables needs no change in the writer; a new table adds one list and one `BulkCopy.InsertAsync` call, in foreign-key order, in `ImportWriter`.
 
 ## Measured
 
@@ -35,7 +35,7 @@ The `Performance` test (`dotnet test --project tests/Meridian.Integration.Tests 
 
 | | EF `SaveChanges` | Binary COPY |
 |---|---|---|
-| Import time (budget 05:00) | 06:50 | **03:02** |
+| Import time (budget 05:00) | 06:50 (second run; the first took 07:07) | **03:02** |
 | Peak working set, whole test process | 2,223 MiB | 1,488 MiB |
 | Growth during the import (budget about 1 GB) | 1,471 MiB | **732 MiB** |
 

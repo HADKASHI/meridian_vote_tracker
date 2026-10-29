@@ -16,15 +16,17 @@ namespace Meridian.Imports;
 /// </summary>
 internal static class BulkCopy
 {
+    /// <summary>Filled in by the database (<c>DEFAULT now()</c>, docs/schema.md), so it is not copied.</summary>
+    private const string RecordedAt = "RecordedAt";
+
     public static async Task InsertAsync<T>(MeridianDbContext db, IReadOnlyCollection<T> rows, CancellationToken ct) where T : class
     {
         if (rows.Count == 0) return;
         var entity = db.Model.FindEntityType(typeof(T))!;
         var table = StoreObjectIdentifier.Create(entity, StoreObjectType.Table)!.Value;
-        var columns = entity.GetProperties().Where(p => p.Name != "RecordedAt")
-            .Select(p => (Getter: p.GetGetter(), Converter: p.GetRelationalTypeMapping().Converter,
-                Type: (p.GetRelationalTypeMapping() as NpgsqlTypeMapping)?.NpgsqlDbType,
-                Name: p.GetColumnName(table)))
+        var columns = entity.GetProperties().Where(p => p.Name != RecordedAt)
+            .Select(p => (Mapping: p.GetRelationalTypeMapping(), Getter: p.GetGetter(), Name: p.GetColumnName(table)))
+            .Select(p => (p.Getter, p.Mapping.Converter, Type: (p.Mapping as NpgsqlTypeMapping)?.NpgsqlDbType, p.Name))
             .ToList();
 
         var connection = (NpgsqlConnection)db.Database.GetDbConnection();
