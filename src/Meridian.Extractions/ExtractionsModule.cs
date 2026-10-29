@@ -61,6 +61,13 @@ public static class ExtractionsModule
             .ProducesProblem<ExtractionAlreadyDecidedProblem>(StatusCodes.Status409Conflict)
             .ForAnalysts();
 
+        extractions.MapPost("/{extractionId:long}/approval", ExtractionApproval.ApproveAsync)
+            .WithName("approveExtraction")
+            .WithSummary("Approve a checked sheet: it is imported by the CSV's own rules. Exactly one of two simultaneous decisions applies.")
+            .ProducesProblems(StatusCodes.Status404NotFound)
+            .ProducesProblem<ExtractionAlreadyDecidedProblem>(StatusCodes.Status409Conflict)
+            .ForAnalysts();
+
         extractions.MapPost("/{extractionId:long}/rejection", ExtractionReview.RejectAsync)
             .WithName("rejectExtraction")
             .WithSummary("Reject a sheet waiting for review. Exactly one of two simultaneous decisions applies.")

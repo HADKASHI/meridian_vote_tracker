@@ -47,6 +47,17 @@ public static class ExtractionApi
     public static Task<HttpResponseMessage> SaveEditsAsync(HttpClient client, long id, SaveEditsRequest request) =>
         client.PostAsJsonAsync($"/api/extractions/{id}/edits", request, ImportApi.Json, TestContext.Current.CancellationToken);
 
+    public static Task<HttpResponseMessage> ApproveAsync(HttpClient client, long id, string? comment = null) =>
+        client.PostAsJsonAsync($"/api/extractions/{id}/approval", new ApproveExtractionRequest(comment), ImportApi.Json,
+            TestContext.Current.CancellationToken);
+
+    public static async Task<ExtractionApprovedDto> ApproveOkAsync(HttpClient client, long id, string? comment = null)
+    {
+        var response = await ApproveAsync(client, id, comment);
+        Assert.True(response.IsSuccessStatusCode, await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        return (await response.Content.ReadFromJsonAsync<ExtractionApprovedDto>(ImportApi.Json, TestContext.Current.CancellationToken))!;
+    }
+
     public static Task<HttpResponseMessage> RejectAsync(HttpClient client, long id, string? comment = null) =>
         client.PostAsJsonAsync($"/api/extractions/{id}/rejection", new RejectExtractionRequest(comment), ImportApi.Json,
             TestContext.Current.CancellationToken);
@@ -106,6 +117,12 @@ public static class SheetFixtures
 
     /// <summary>Counted from <see cref="Choices"/>: 5 yes, 3 no, 2 abstentions, 1 not voting.</summary>
     public static readonly SheetTotals Printed = new(5, 3, 2, 1);
+
+    /// <summary>The 2011 corrigendum's shape: one state (SSD) moved from YES to ABST., and the totals say so.</summary>
+    public static SheetRead Corrigendum() => Sheet(new SheetTotals(4, 3, 3, 1), (i, cells) =>
+    {
+        if (i == Array.IndexOf(Members, "SSD")) { cells[2] = new SheetCell("", .95); cells[4] = new SheetCell("X", .95); }
+    });
 
     /// <param name="tweak">Changes one row's cells by its index, as a misread would.</param>
     /// <param name="omitTotals">The footer could not be read.</param>

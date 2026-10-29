@@ -712,6 +712,78 @@
         }
       }
     },
+    "/api/extractions/{extractionId}/approval": {
+      "post": {
+        "tags": [
+          "Extractions"
+        ],
+        "summary": "Approve a checked sheet: it is imported by the CSV's own rules. Exactly one of two simultaneous decisions applies.",
+        "operationId": "approveExtraction",
+        "parameters": [
+          {
+            "name": "extractionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveExtractionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtractionApprovedDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtractionAlreadyDecidedProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/extractions/{extractionId}/rejection": {
       "post": {
         "tags": [
@@ -2019,6 +2091,20 @@
           }
         }
       },
+      "ApproveExtractionRequest": {
+        "required": [
+          "comment"
+        ],
+        "type": "object",
+        "properties": {
+          "comment": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "Ballot": {
         "enum": [
           "y",
@@ -2619,6 +2705,22 @@
           }
         }
       },
+      "ExtractionApprovedDto": {
+        "required": [
+          "decision",
+          "importId"
+        ],
+        "type": "object",
+        "properties": {
+          "decision": {
+            "$ref": "#/components/schemas/ExtractionDecisionDto"
+          },
+          "importId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "ExtractionCreatedDto": {
         "required": [
           "extractionId",
@@ -2686,7 +2788,8 @@
           "issues",
           "canApprove",
           "edits",
-          "decision"
+          "decision",
+          "importId"
         ],
         "type": "object",
         "properties": {
@@ -2789,6 +2892,13 @@
                 "$ref": "#/components/schemas/ExtractionDecisionDto"
               }
             ]
+          },
+          "importId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
           }
         }
       },

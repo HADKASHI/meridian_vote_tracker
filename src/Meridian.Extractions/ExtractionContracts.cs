@@ -19,11 +19,12 @@ public sealed record ExtractionSummaryDto(
 /// <param name="CanApprove">False while any issue blocks.</param>
 /// <param name="Edits">What the analyst changed, oldest first, each with the value it replaced.</param>
 /// <param name="Decision">Who approved or rejected it and when; null while it waits.</param>
+/// <param name="ImportId">The import an approval made from the sheet.</param>
 public sealed record ExtractionDto(
     long Id, string FileName, string Sha256, long SizeBytes, string UploadedBy, DateTimeOffset UploadedAt,
     ExtractionStatus Status, JobDto Job, string? Error, string? VoteId, SheetHeader? Header,
     IReadOnlyList<SheetRow> Rows, SheetTotals? Counted, SheetTotals? Printed, IReadOnlyList<SheetIssue> Issues, bool CanApprove,
-    IReadOnlyList<ExtractionEditDto> Edits, ExtractionDecisionDto? Decision);
+    IReadOnlyList<ExtractionEditDto> Edits, ExtractionDecisionDto? Decision, long? ImportId);
 
 /// <param name="Rows">Corrections to grid rows by position.</param>
 /// <param name="Header">Corrections to the printed header fields.</param>
@@ -42,3 +43,8 @@ public sealed class ExtractionAlreadyDecidedProblem : Meridian.Platform.Contract
 {
     public required ExtractionDecisionDto Decision { get; init; }
 }
+
+public sealed record ApproveExtractionRequest(string? Comment);
+
+/// <param name="ImportId">The import the approval made; its report says which rows were new, unchanged or in conflict.</param>
+public sealed record ExtractionApprovedDto(ExtractionDecisionDto Decision, long ImportId);

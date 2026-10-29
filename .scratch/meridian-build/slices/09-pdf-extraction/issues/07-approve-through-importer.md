@@ -4,13 +4,13 @@
 
 **Blocked by:** Edit and reject an extraction
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Requirements:** PDF-05
 
-- [ ] Approve is refused while a blocking issue remains
-- [ ] Approving creates one import that points at the stored PDF without copying it and writes through the existing import writer, so the report, history and origins work as for a CSV
-- [ ] A first sheet for a vote gives new votes; the same sheet again gives unchanged
-- [ ] The corrigendum fixture after the original gives exactly one conflict for the changed state and leaves approved data as it was
-- [ ] A second approve is refused with 409
-- [ ] The imports list and report tolerate a PDF file whose rows are numbered by sheet order
+- [x] Approve is refused while a blocking issue remains
+- [x] Approving creates one import that points at the stored PDF without copying it and writes through the existing import writer, so the report, history and origins work as for a CSV
+- [x] A first sheet for a vote gives new votes; the same sheet again gives unchanged
+- [x] The corrigendum fixture after the original gives exactly one conflict for the changed state and leaves approved data as it was
+- [x] A second approve is refused with 409
+- [x] The imports list and report tolerate a PDF file whose rows are numbered by sheet order
