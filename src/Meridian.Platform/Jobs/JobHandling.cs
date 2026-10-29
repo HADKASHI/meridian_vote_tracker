@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Meridian.Data.Entities;
 using Meridian.Domain;
+using Microsoft.EntityFrameworkCore;
 
 namespace Meridian.Platform.Jobs;
 
@@ -60,6 +61,22 @@ public static class JobQueue
 
     public static Job ForExtraction(long extractionId) =>
         new() { Kind = JobKind.PdfExtraction, ExtractionId = extractionId, State = JobState.Queued, TraceParent = CurrentTraceParent() };
+
+    /// <summary>
+    /// Puts jobs back to queued as if new, for work that is tried again on the same job row (a failed sheet's retry):
+    /// no attempts, error, heartbeat, times or progress, and the trace of the request that asks. It sits beside
+    /// <see cref="ForImport"/> and its kin so a new job column is changed in one place.
+    /// </summary>
+    public static Task<int> RequeueAsync(IQueryable<Job> jobs, CancellationToken cancellationToken)
+    {
+        var traceParent = CurrentTraceParent();
+        return jobs.ExecuteUpdateAsync(s => s
+            .SetProperty(j => j.State, JobState.Queued).SetProperty(j => j.Attempts, 0).SetProperty(j => j.LastError, (string?)null)
+            .SetProperty(j => j.HeartbeatAt, (DateTimeOffset?)null).SetProperty(j => j.StartedAt, (DateTimeOffset?)null)
+            .SetProperty(j => j.FinishedAt, (DateTimeOffset?)null).SetProperty(j => j.RowsRead, 0)
+            .SetProperty(j => j.VotesDone, 0).SetProperty(j => j.VotesTotal, (int?)null)
+            .SetProperty(j => j.TraceParent, traceParent), cancellationToken);
+    }
 
     /// <summary>The W3C traceparent of the current request, so the job runs in its trace.</summary>
     public static string? CurrentTraceParent() =>

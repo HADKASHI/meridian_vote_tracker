@@ -30,14 +30,7 @@ internal static class ExtractionRetry
             return ProblemDetailsSetup.Problem(StatusCodes.Status409Conflict, ProblemTypes.NotRetryable,
                 "Not failed", "Only a failed extraction can be tried again.");
 
-        var traceParent = JobQueue.CurrentTraceParent();
-        await db.Jobs.Where(j => j.Id == jobId)
-            .ExecuteUpdateAsync(s => s
-                .SetProperty(j => j.State, JobState.Queued).SetProperty(j => j.Attempts, 0).SetProperty(j => j.LastError, (string?)null)
-                .SetProperty(j => j.HeartbeatAt, (DateTimeOffset?)null).SetProperty(j => j.StartedAt, (DateTimeOffset?)null)
-                .SetProperty(j => j.FinishedAt, (DateTimeOffset?)null).SetProperty(j => j.RowsRead, 0)
-                .SetProperty(j => j.VotesDone, 0).SetProperty(j => j.VotesTotal, (int?)null)
-                .SetProperty(j => j.TraceParent, traceParent), ct);
+        await JobQueue.RequeueAsync(db.Jobs.Where(j => j.Id == jobId), ct);
         await transaction.CommitAsync(ct);
 
         return TypedResults.Accepted($"/api/extractions/{extractionId}", new ExtractionCreatedDto(extractionId, jobId.Value, Existing: false));
