@@ -76,6 +76,14 @@ The 0–100 score per member state measuring how often it voted with the Institu
 **Countable vote**:
 A vote in which a member state chose yes or no; only these count towards its Alignment Index. Abstentions, absences, votes outside its membership and votes with no data are not countable.
 
+**Rule set**:
+A named, immutable set of rules saying how abstentions and absences count towards an Alignment Index. A snapshot is scored under exactly one and records its name.
+_Avoid_: Scoring mode, configuration
+
+**Confidence**:
+How well the voting evidence supports a member state's score: High, Medium or Low, from its completeness and its number of countable votes. It never changes the rank.
+_Avoid_: Reliability, accuracy
+
 **Snapshot**:
 A saved calculation of the Alignment Index over a chosen set of votes at one moment. It never changes once saved.
 _Avoid_: Ranking, report

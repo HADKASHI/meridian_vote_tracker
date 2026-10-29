@@ -154,6 +154,13 @@ A web application (ASP.NET Core API, background worker, PostgreSQL, Angular, run
 
 103. As an analyst, I want a snapshot's page to tell me what would differ if I created it now (positions, country votes and vote details that changed, votes that now match its selection and votes that no longer do), without recalculating anything, so that I can tell whether a published index is still current.
 
+### Alignment rules and evidence (extra)
+
+104. As the admin, I want to choose a named rule set when creating a snapshot (today's rules by default), so that I can see how an index changes when abstentions or absences count differently, and every snapshot, publication and comparison names the rule set it used.
+105. As an analyst, I want each state's score paired with its completeness, abstention rate and missing data, so that I can tell a score backed by comprehensive evidence from one resting on a few votes.
+106. As an analyst, I want each score to carry a confidence band and a "low evidence" flag, with the ranking filterable and sortable by it and the rank itself unchanged, so that thin evidence is visible without hiding states.
+107. As an analyst, I want the comparison to warn when two snapshots were scored under different rule sets, so that I don't mistake a change of rules for a change in the data.
+
 ### Jobs
 
 103. As a user, I want a header indicator ("2 jobs running · 1 queued") linking to a Jobs list, so that I always know what the system is doing.
@@ -226,6 +233,7 @@ Detailed reasoning lives in the resolved map tickets; the locked schema is in `.
 - Job: in one `REPEATABLE READ` transaction, stream facts (state, vote, ballot or none, member on date, stance, weight) from the current views, re-check positions, apply the pure scoring module, and write snapshot votes (with details and position revision ids), lines (with country vote revision id, or null for no data, and category), results (matched and counted weight as integers, rank or null) and warnings. The header records the scoring rules version.
 - Scoring: score = 100 × matched ÷ counted over yes/no ballots of members; abstain, absent, non-member and no-data excluded and labelled; counted 0 means n/a and no rank; competition ranking on the exact value; ties ordered by code. The database checks `matched ≤ counted` and that rank is null exactly when counted is 0.
 - Publication: an insert-only chain (snapshot, quarter `YYYY-Qn`, who, when, reason, supersedes). Partial unique indexes allow one first publication per quarter and one successor per publication; a reason is required exactly when superseding. A unique violation becomes 409 `quarter-published`.
+- Rule sets and evidence (extra, ADR 0007): a rule set is a named, immutable set of rules in code, stored on the snapshot in `scoring_rules_version`; it decides only how abstentions and absences count, and declares a weight unit so stored weights stay integers. Only the admin may choose a non-default rule set at create (403 otherwise). Each result also carries, derived from the stored lines and the same under every rule set, completeness (yes and no ballots ÷ member votes), abstention rate, missing data and a confidence band (High at least 90% completeness and 10 countable votes, Medium at least 70% and 5, otherwise Low; none when nothing is countable). Confidence never changes the rank. The comparison warns when the two snapshots used different rule sets, and its reasons use each snapshot's rule set.
 - Drift (extra): `GET /api/snapshots/{snapshotId}/changes` for a calculated snapshot compares the stored position, details and country vote revision ids with the current ones, and re-resolves the saved selection against today's votes. It returns, per kind (position changed, country votes changed, details changed, now selected but not in the snapshot, no longer selected), the real count and the first 20 votes with the old and new value, who or what changed it and when, plus the time it was read. It never reads or returns a score or rank and runs no job. Pending conflicts are not changes.
 - Comparison (extra): a pure read over two snapshots' stored results, lines, votes and the ballots they used. `GET /api/snapshots/compare` returns each state's rank and score in A and B with their basis and the change, and its **reasons**: the votes whose matched or counted weight differs (vote only in one snapshot, a different ballot, a different stance or weight). The reasons are in the same response, not a second endpoint.
 
@@ -272,6 +280,7 @@ The build is cut into **slices**: vertical pieces (API, worker, screen and tests
 10. **Interface**: one finished look across every screen, built from Angular Material and matched to the brief's Appendix B and the map ticket 19 prototype, with no behaviour change. Added after the first slices shipped screens that work but are barely designed; numbered 10, run before 7 and 8.
 7. **Extra: snapshot comparison.**
 11. **Extra: snapshot drift**: a summary on a snapshot's page of what would differ if it were created now, added after slice 7 shipped.
+12. **Extra: alignment rules and evidence**: rule sets and per-score completeness and confidence metrics, added after slice 11 was planned (ADR 0007).
 8. **Finishing pass** (protected): clean-clone run, README, DECISIONS.md rewritten to ~1,000 words, AI_USAGE.md, skills trim, and a Playwright smoke test across the merged slices.
 9. **Bonus: PDF extraction**: designed first, then built, with a hard half-day limit.
 
@@ -289,12 +298,13 @@ The build is cut into **slices**: vertical pieces (API, worker, screen and tests
 | 10 Interface | 4, 5, 6 | 2 |
 | 7 Snapshot comparison | 6, 10 | 2 |
 | 11 Snapshot drift | 6, 7 | 8 |
+| 12 Alignment rules and evidence | 6, 7, 11 | 8 |
 | 8 Finishing pass | 0–7, 10 | nothing |
 | 9 PDF extraction | 8 | nothing |
 
 Slices 3, 4 and 6 arrange their data with slice 0's fixture builders, never with the importer, so they don't wait for slice 1. Once slice 1 is merged, any slice still open rebases and may add one end-to-end test through a real import.
 
-**Cut rule**: if time runs short, the PDF bonus goes first, then the drift and comparison extras, then the interface slice. The finishing pass is never cut.
+**Cut rule**: if time runs short, the PDF bonus goes first, then the alignment, drift and comparison extras, then the interface slice. The finishing pass is never cut.
 
 ### Delivery
 

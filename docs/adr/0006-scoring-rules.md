@@ -1,6 +1,6 @@
 # The scoring rules
 
-Status: accepted
+Status: accepted (the abstention and absence rules are now the default rule set's; see 0007)
 
 ## Context
 

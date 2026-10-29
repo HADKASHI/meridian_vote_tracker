@@ -27,6 +27,7 @@ Score = 100 × matched weight ÷ counted weight, over the votes where the state 
 - **Nothing countable means n/a**, not 0, and no rank.
 - **Exactness:** matched and counted weights are stored as integers, so every published score can be recomputed by hand. It is displayed to 1 decimal and ranked on the exact value. Exact ties share a rank (1, 2, 2, 4) and are listed by code.
 - **No minimum-vote threshold**; every score shows how many votes and how much weight it rests on.
+- **The rules can change, by name, and each score says how well it is backed.** A rule set is a named, immutable set of rules in code that decides only how abstentions and absences count (ADR 0007); today's rules are the default and only the admin may choose another when creating a snapshot. The snapshot records the rule set, and weights stay integers through a per-rule-set weight unit, so half credit is still exact. Beside each score sit completeness, abstention rate, missing data and a High/Medium/Low confidence band, always derived from the stored lines and the same whichever rule set was used, so they describe the evidence and not the scoring. Confidence never reorders the ranking; it only flags thin evidence, which keeps the "show the basis, don't hide states" rule. Comparing snapshots scored under different rule sets warns, because the movement then mixes a change of rules with a change of data.
 
 ## Roles and concurrency
 

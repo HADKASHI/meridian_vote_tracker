@@ -105,7 +105,7 @@ A **membership recalculation** (ADR 0002) writes country vote revisions whose or
 
 | Table | Columns | Keys, constraints, indexes |
 |---|---|---|
-| `snapshot` | `id`, `name text`, `note text NULL`, `selection jsonb` (criteria as entered, including removed votes), `scoring_rules_version text`, `created_by`, `recorded_at` | Inserted when requested. Whether it is calculated, running or failed lives on its job |
+| `snapshot` | `id`, `name text`, `note text NULL`, `selection jsonb` (criteria as entered, including removed votes), `scoring_rules_version text` (the id of the rule set the snapshot was scored under; `matched_weight` and `counted_weight` below are in that rule set's weight points), `created_by`, `recorded_at` | Inserted when requested. Whether it is calculated, running or failed lives on its job |
 | `snapshot_vote` | `snapshot_id`, `vote_id`, `details_revision_id`, `position_revision_id` | PK `(snapshot_id, vote_id)`; `position_revision_id NOT NULL` (no position blocks); composite FKs to the same vote's revisions |
 | `snapshot_line` | `snapshot_id`, `vote_id`, `state_code`, `country_vote_revision_id NULL` (null = no data), `category text` | PK `(snapshot_id, vote_id, state_code)`; FK `(snapshot_id, vote_id) → snapshot_vote`; CHECK `category IN ('match','mismatch','abstain','absent','non_member','no_data')`; index `(snapshot_id, state_code)` (per-country breakdown) |
 | `snapshot_result` | `snapshot_id`, `state_code`, `matched_weight int`, `counted_weight int`, `rank int NULL` | PK `(snapshot_id, state_code)`; CHECK `0 <= matched_weight AND matched_weight <= counted_weight`; CHECK `(rank IS NULL) = (counted_weight = 0)` |
