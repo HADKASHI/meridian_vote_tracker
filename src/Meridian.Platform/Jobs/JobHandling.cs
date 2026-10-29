@@ -73,6 +73,25 @@ public sealed class JobOptions
 
     /// <summary><c>Imports:MaxConcurrent</c>: how many imports may run at once (1, so the earlier upload is approved first).</summary>
     public int MaxConcurrentImports { get; set; } = 1;
+}
 
-    public TimeSpan TimeoutFor(JobKind kind) => kind == JobKind.Import ? ImportTimeout : SnapshotTimeout;
+/// <summary>
+/// What the runner needs to know about one job kind: how many may run at once, how long one
+/// may take, and which id its log lines carry. A new kind is one entry in <see cref="JobPolicies.For"/>.
+/// </summary>
+public sealed record JobKindPolicy(
+    JobKind Kind, int MaxRunning, TimeSpan Timeout, string LogScopeKey, Func<ClaimedJob, long?> LinkId);
+
+public static class JobPolicies
+{
+    /// <summary>A <see cref="JobKind"/> missing here is caught by the policy test, which asks every kind for its policy.</summary>
+    public static JobKindPolicy For(JobKind kind, JobOptions options) => kind switch
+    {
+        JobKind.Import => new(kind, options.MaxConcurrentImports, options.ImportTimeout, "ImportId", job => job.ImportId),
+        JobKind.Snapshot => new(kind, 1, options.SnapshotTimeout, "SnapshotId", job => job.SnapshotId),
+        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "No job policy for this kind."),
+    };
+
+    public static IEnumerable<JobKindPolicy> All(JobOptions options) =>
+        Enum.GetValues<JobKind>().Select(kind => For(kind, options));
 }

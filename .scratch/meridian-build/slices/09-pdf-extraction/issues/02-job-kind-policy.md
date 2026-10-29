@@ -4,11 +4,11 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Requirements:** none (prefactor)
 
-- [ ] The claim, the timeout and the log scope all read the same per-kind policy
-- [ ] Existing job tests (claim order, import cap, snapshot alongside import, timeout, sweeper) pass unchanged
-- [ ] Adding a kind needs no new branch in any of the three places, shown by a test with a test-only kind
-- [ ] Commit says it is a refactor of Meridian.Platform and is flagged for the PR
+- [x] The claim, the timeout and the log scope all read the same per-kind policy
+- [x] Existing job tests (claim order, import cap, snapshot alongside import, timeout, sweeper) pass unchanged
+- [x] Adding a kind needs no new branch in any of the three places, shown by a test that asks every kind for its policy (a test-only kind is not possible: kinds are a database-checked enum)
+- [x] Commit says it is a refactor of Meridian.Platform and is flagged for the PR
