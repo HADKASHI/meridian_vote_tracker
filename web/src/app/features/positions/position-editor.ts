@@ -39,9 +39,10 @@ import { positionLabel, setByName } from './position-label';
         (change)="weight.set(toWeight($event))"
         [disabled]="!canEdit() || saving()"
       >
-        <option value="" disabled>Weight</option>
+        <!-- Each option marks itself: the select's value is bound before its options exist. -->
+        <option value="" disabled [selected]="weight() === null">Weight</option>
         @for (w of weights; track w) {
-          <option [value]="w">{{ w }}</option>
+          <option [value]="w" [selected]="w === weight()">{{ w }}</option>
         }
       </select>
       @if (!stale()) {

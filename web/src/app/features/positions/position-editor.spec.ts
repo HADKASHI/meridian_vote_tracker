@@ -57,6 +57,13 @@ describe('PositionEditor', () => {
     expect(saved).toEqual([position]);
   });
 
+  it('shows the saved weight in the weight select', async () => {
+    const fixture = setUp(true);
+    await fixture.whenStable();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="weight"]').value).toBe('2');
+  });
+
   it('keeps an unsaved edit when the worklist reloads with the same position', () => {
     const fixture = setUp(true);
     chooseWeight(fixture.nativeElement, '5');
