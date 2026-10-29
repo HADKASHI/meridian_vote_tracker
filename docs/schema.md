@@ -62,7 +62,7 @@ erDiagram
 | `membership_period` | `id`, `state_code`, `member_from date`, `member_to date NULL` (null = still a member) | FK `state_code`; CHECK `member_to >= member_from`; index `(state_code)`. No overlaps: checked in C# |
 | `app_user` | `id text`, `display_name text`, `role text` | PK `id`; CHECK `role IN ('analyst','admin')` |
 
-**Seed**: the `migrate` service runs migrations, then, if `member_state` is empty, loads `/data_candidate/member_states.csv` (mounted read-only) through the same parser rules as imports, and fails loudly if the file is missing. The users `dana`, `omar` (analyst) and `lena` (admin) are inserted by a migration. Tests use committed synthetic member states.
+**Seed**: the `migrate` service runs migrations, then, if `member_state` is empty, loads `/candidate_data/member_states.csv` (mounted read-only) through the same parser rules as imports, and fails loudly if the file is missing. The users `dana`, `omar` (analyst) and `lena` (admin) are inserted by a migration. Tests use committed synthetic member states.
 
 ### 2. Ingestion 🔒
 

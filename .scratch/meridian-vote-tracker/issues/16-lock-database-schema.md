@@ -33,7 +33,7 @@ Decided with the user in two grilling rounds. The final schema (diagram, every t
 10. **Row record indexes**: unique `(import_id, line_no)`, `(import_id, outcome)`, `(import_id, vote_id)`, `(vote_id)`. Parsed `published_at` is kept per row. Counts are always queried.
 11. **Position concurrency**: the version is the position revision id. The save is a conditional pointer update (`IS NOT DISTINCT FROM @seen`), and zero rows means 409.
 12. **Guard** (UPDATE/DELETE per row, TRUNCATE per statement) on every table except `job`, `vote_current`, `country_vote_current` and `__EFMigrationsHistory`. Reference tables are guarded too.
-13. **Seed**: `migrate` loads member states from the read-only `data_candidate/member_states.csv` if the table is empty, and fails loudly if the file is missing. Users `dana`, `omar` (analyst) and `lena` (admin) come in a migration. Tests use committed synthetic member states.
+13. **Seed**: `migrate` loads member states from the read-only `candidate_data/member_states.csv` if the table is empty, and fails loudly if the file is missing. Users `dana`, `omar` (analyst) and `lena` (admin) come in a migration. Tests use committed synthetic member states.
 14. **Views**: `current_country_vote`, `current_vote`, `pending_conflict`, and a `vote_timeline` `UNION ALL` paged by history id, with "from → to" pairs built in C#.
 15. **Publication**: an insert-only chain. Partial unique indexes allow one first publication per quarter and one successor per publication, and a composite FK keeps a replacement in its quarter. A reason is required exactly when one publication supersedes another.
 16. **Snapshot results** are checked by the database: `matched ≤ counted`, and rank is null exactly when counted is 0.

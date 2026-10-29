@@ -42,7 +42,7 @@ public static class MemberStateSeeder
         if (!File.Exists(path))
             throw new FileNotFoundException(
                 $"The member states file '{Path.GetFileName(path)}' was not found in '{Path.GetDirectoryName(Path.GetFullPath(path))}'. " +
-                "Put the assignment's member_states.csv in data_candidate/ at the repository root and run again.", path);
+                "Put the assignment's member_states.csv in candidate_data/ at the repository root and run again.", path);
 
         using var reader = new StreamReader(path, new UTF8Encoding(false, throwOnInvalidBytes: true));
         using var records = CsvReader.Read(reader).GetEnumerator();

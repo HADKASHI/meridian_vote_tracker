@@ -1,6 +1,6 @@
 # Research: data audit of the candidate files
 
-Researched: 2026-10-26. The primary sources are the data files themselves in `data_candidate/` (gitignored). Every claim below is backed by a script in `07-data-audit-scripts/` or a shell one-liner shown inline. Re-run everything with:
+Researched: 2026-10-26. The primary sources are the data files themselves in `candidate_data/` (gitignored). Every claim below is backed by a script in `07-data-audit-scripts/` or a shell one-liner shown inline. Re-run everything with:
 
 ```
 bash .scratch/meridian-vote-tracker/research/07-data-audit-scripts/run_all.sh
@@ -17,7 +17,7 @@ bash .scratch/meridian-vote-tracker/research/07-data-audit-scripts/run_all.sh
 
 Line numbers are 1-based physical lines, so line 1 is the header. No record in any file spans more than one line, which `01_structure.py` checks ("records with embedded newline: []"), so physical line equals record line + 1.
 
-**Not available:** `assembly_historic.csv` (2015–2023, about 1M rows) is not in `data_candidate/`. Nothing here was checked against it. Defect classes that only show up across years can't be audited yet: sessions across years, Iceland's 2020–2021 gap, the New Zealand exit in 2021-06-30, the South Sudan and Timor-Leste joins, and volume or performance.
+**Not available:** `assembly_historic.csv` (2015–2023, about 1M rows) is not in `candidate_data/`. Nothing here was checked against it. Defect classes that only show up across years can't be audited yet: sessions across years, Iceland's 2020–2021 gap, the New Zealand exit in 2021-06-30, the South Sudan and Timor-Leste joins, and volume or performance.
 
 ## 0. Headline numbers
 
@@ -72,7 +72,7 @@ Each defect class lists its definition, counts, examples, requirement, proposed 
 ### D-03 Wrong field count / wrong delimiter
 - **Definition:** a record with a field count other than 8.
 - **Counts:** original 1, rev2 0.
-- **Example (orig line 3139):** row elided (the data stays out of git; open the line in `data_candidate/`). This has 5 fields. A `;` replaces the comma, and `country_name` and `published_at` are missing.
+- **Example (orig line 3139):** row elided (the data stays out of git; open the line in `candidate_data/`). This has 5 fields. A `;` replaces the comma, and `country_name` and `published_at` are missing.
 - **Requirement:** ING-04 structure.
 - **Outcome:** invalid.
 - **Open question:** we should not try to repair it by splitting on `;` (ING-13).
@@ -81,7 +81,7 @@ Each defect class lists its definition, counts, examples, requirement, proposed 
 ### D-04 Unknown country code (typo)
 - **Definition:** `country_code` is not in member_states and no case or whitespace change fixes it.
 - **Counts:** original 1, rev2 0.
-- **Example (orig line 2143):** row elided (the data stays out of git; open the line in `data_candidate/`).
+- **Example (orig line 2143):** row elided (the data stays out of git; open the line in `candidate_data/`).
 - **Diagnosis:** `FRN` is not a real ISO 3166-1 alpha-3 code (France is `FRA`). The name "France" shows it is a typo. Vote `015` then has no FRA row.
 - **Requirement:** ING-04 country code.
 - **Outcome:** invalid.
@@ -114,7 +114,7 @@ Each defect class lists its definition, counts, examples, requirement, proposed 
 ### D-08 Non-member on the vote date
 - **Definition:** a known code that has no membership period covering the vote date.
 - **Counts:** original 1, rev2 0.
-- **Example (orig line 4854):** row elided (the data stays out of git; open the line in `data_candidate/`). NZL's membership ended on 2021-06-30. NZL is a real ISO code and a real former member, so it is not a typo.
+- **Example (orig line 4854):** row elided (the data stays out of git; open the line in `candidate_data/`). NZL's membership ended on 2021-06-30. NZL is a real ISO code and a real former member, so it is not a typo.
 - **Requirement:** ING-04 membership.
 - **Outcome:** invalid. rev2 omits NZL from `033`, so nothing follows from it.
 - **Not hit in Q1 2024:** Iceland is present in every vote and is a valid member since 2022-01-01. MNE, SSD and TLS are present and valid. These classes need the historic file to be exercised.
@@ -122,7 +122,7 @@ Each defect class lists its definition, counts, examples, requirement, proposed 
 ### D-09 Date in a non-ISO format
 - **Definition:** `vote_date` not in `yyyy-mm-dd`.
 - **Counts:** original 6, rev2 0.
-- **Example (orig lines 3880–3885, vote `027`):** row elided (the data stays out of git; open the line in `data_candidate/`). The other 143 rows of `027` use `2024-02-21`.
+- **Example (orig lines 3880–3885, vote `027`):** row elided (the data stays out of git; open the line in `candidate_data/`). The other 143 rows of `027` use `2024-02-21`.
 - **What the files use:** every other date in both files (5,889 + 5,960 rows) is `yyyy-mm-dd`. `published_at` is always `yyyy-mm-ddThh:mm:ssZ`. The odd format is `dd/mm/yyyy` with **slashes**, which matches neither Appendix A (`yyyy-mm-dd`) nor ING-04 (`dd-mm-yyyy`). No date in any file uses `dd-mm-yyyy`. No impossible dates: all parse, and 2024-02-29 (vote `034`) is a valid leap day.
 - **Requirement:** ING-04 date format. It is also an ING-05 detail inconsistency if accepted as text.
 - **Outcome:** invalid (recommended). If accepted and normalised, the 6 rows are new and consistent with the vote.
@@ -173,7 +173,7 @@ Each defect class lists its definition, counts, examples, requirement, proposed 
 ### D-15 Country name differs from member_states
 - **Definition:** a known code with a `country_name` other than the member_states name.
 - **Counts:** original 0, rev2 **40 rows** (TUR in all 40 votes): `Turkey` vs member_states `Türkiye`.
-- **Example (rev2 line 236):** row elided (the data stays out of git; open the line in `data_candidate/`).
+- **Example (rev2 line 236):** row elided (the data stays out of git; open the line in `candidate_data/`).
 - **Requirement:** ING-11.
 - **Outcome:** not a conflict, and not invalid. Compare on code. 38 of these rows are otherwise identical to the original and should be **unchanged**.
 - **Other name issues:** no file uses two names for one code. In the original, two names map to two codes ("France": FRA and FRN; "Germany": DEU and deu), which are D-04 and D-05.

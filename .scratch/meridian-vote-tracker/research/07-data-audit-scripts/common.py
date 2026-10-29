@@ -1,4 +1,4 @@
-"""Shared loaders for the data audit. Reads data_candidate/ by path; embeds no data.
+"""Shared loaders for the data audit. Reads candidate_data/ by path; embeds no data.
 
 Run every script with:  python3 -I <script> [repo_root]
 (-I isolates from cwd; scripts add their own directory to sys.path explicitly.)
@@ -11,7 +11,7 @@ from collections import namedtuple
 
 ROOT = sys.argv[1] if len(sys.argv) > 1 else os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
-DATA = os.path.join(ROOT, "data_candidate")
+DATA = os.path.join(ROOT, "candidate_data")
 ORIG = os.path.join(DATA, "assembly_export_2024_q1.csv")
 REV2 = os.path.join(DATA, "assembly_export_2024_q1_rev2.csv")
 MEMBERS = os.path.join(DATA, "member_states.csv")

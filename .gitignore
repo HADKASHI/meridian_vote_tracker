@@ -1,4 +1,6 @@
 # Assignment data from KPMG: never committed (see .scratch/meridian-vote-tracker/map.md, Notes)
+/candidate_data/
+# The folder's old name, so a leftover copy can never be committed.
 /data_candidate/
 __pycache__/
 bin/

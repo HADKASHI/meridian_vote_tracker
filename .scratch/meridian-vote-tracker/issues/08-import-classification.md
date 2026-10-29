@@ -30,7 +30,7 @@ Decided with the user over four grilling rounds, using the defect catalogue in [
 13. **Report (ING-14, ING-15)**: row records are the source of truth: line number, raw text, outcome, reason code plus readable message, normalisations applied, links to the approved value or conflicts. Counts per outcome and per vote are queried from them, never stored. The import stores only file-level facts: status, BOM, line endings, and the warnings from rules 1, 9, 10 and 11.
 14. **Grouping (D-21)**: row records are insert-only, so a row's outcome must be known before it is written. The whole file is parsed and grouped by vote id in memory, then classified and written one vote per transaction under the per-vote lock. Streaming for the ~1M-row historic file is for [Design background jobs and live progress](10-background-jobs.md).
 
-**Predicted counts**, derived by hand from the audit's baseline; re-run `research/07-data-audit-scripts/05_simulate.py` with these rules once `data_candidate/` is back:
+**Predicted counts**, derived by hand from the audit's baseline; re-run `research/07-data-audit-scripts/05_simulate.py` with these rules once `candidate_data/` is back:
 
 | Import | new | unchanged | duplicate | invalid | contradiction | conflict rows | conflicts opened |
 | --- | --- | --- | --- | --- | --- | --- | --- |

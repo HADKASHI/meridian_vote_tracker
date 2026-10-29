@@ -1,6 +1,6 @@
 # Research: audit of the historic file
 
-Researched: 2026-10-28. The primary sources are the data files in the gitignored `data_candidate/`. Every number below comes from a script in `17-historic-audit-scripts/`, which reuses the loaders of [07-data-audit-scripts](07-data-audit-scripts/) plus a reference classifier for the rules in [Define import classification rules](../issues/08-import-classification.md). Re-run everything (about 3 minutes) with:
+Researched: 2026-10-28. The primary sources are the data files in the gitignored `candidate_data/`. Every number below comes from a script in `17-historic-audit-scripts/`, which reuses the loaders of [07-data-audit-scripts](07-data-audit-scripts/) plus a reference classifier for the rules in [Define import classification rules](../issues/08-import-classification.md). Re-run everything (about 3 minutes) with:
 
 ```
 bash .scratch/meridian-vote-tracker/research/17-historic-audit-scripts/run_all.sh
