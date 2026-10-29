@@ -1,4 +1,5 @@
 using Meridian.Data;
+using Meridian.Domain;
 using Meridian.Platform.Contracts;
 using Meridian.Platform.Hosting;
 using Meridian.Platform.Http;
@@ -6,6 +7,9 @@ using Meridian.Platform.Storage;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OpenApi;
+using Microsoft.OpenApi;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -46,11 +50,31 @@ public static class ExtractionsModule
             .ProducesProblems(StatusCodes.Status400BadRequest, StatusCodes.Status413PayloadTooLarge)
             .ForAnalysts();
 
-        extractions.MapGet("", async Task<Ok<PageDto<ExtractionSummaryDto>>> (MeridianDbContext db, CancellationToken ct,
-                    int page = 1, int pageSize = 50) =>
-                TypedResults.Ok(await ExtractionQueries.ListAsync(db, page, pageSize, ct)))
+        // The status is bound as text, because minimal APIs parse enums case-sensitively and the client sends the
+        // glossary word (`needs_review`); the contract still names the enum.
+        extractions.MapGet("", async Task<Results<Ok<PageDto<ExtractionSummaryDto>>, Microsoft.AspNetCore.Http.HttpResults.ValidationProblem>> (
+                    MeridianDbContext db, CancellationToken ct, [FromQuery] string? status, int page = 1, int pageSize = 50) =>
+            {
+                ExtractionStatus? filter = null;
+                if (status is not null)
+                {
+                    filter = Enum.GetValues<ExtractionStatus>().Cast<ExtractionStatus?>()
+                        .FirstOrDefault(s => SnakeCaseEnumConverter<ExtractionStatus>.ToName(s!.Value) == status);
+                    if (filter is null)
+                        return TypedResults.ValidationProblem(new Dictionary<string, string[]>
+                            { ["status"] = ["Choose extracting, needs_review, failed, approved or rejected."] });
+                }
+                return TypedResults.Ok(await ExtractionQueries.ListAsync(db, filter, page, pageSize, ct));
+            })
+            .AddOpenApiOperationTransformer((operation, context, _) =>
+            {
+                var parameter = (OpenApiParameter)operation.Parameters!.Single(p => p.Name == "status");
+                parameter.Schema = new OpenApiSchemaReference(nameof(ExtractionStatus), context.Document);
+                return Task.CompletedTask;
+            })
             .WithName("listExtractions")
-            .WithSummary("Every extraction, newest first, with its status, job and issue counts.")
+            .WithSummary("Every extraction, newest first, with its status, job and issue counts; optionally one status only.")
+            .ProducesProblems(StatusCodes.Status400BadRequest)
             .ForAnalysts();
 
         extractions.MapGet("/{extractionId:long}", async Task<Results<Ok<ExtractionDto>, NotFound>> (

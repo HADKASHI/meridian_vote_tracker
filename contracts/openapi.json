@@ -532,9 +532,16 @@
         "tags": [
           "Extractions"
         ],
-        "summary": "Every extraction, newest first, with its status, job and issue counts.",
+        "summary": "Every extraction, newest first, with its status, job and issue counts; optionally one status only.",
         "operationId": "listExtractions",
         "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/ExtractionStatus"
+            }
+          },
           {
             "name": "page",
             "in": "query",
@@ -561,6 +568,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PageDtoOfExtractionSummaryDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
                 }
               }
             }

@@ -3,18 +3,20 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { ConflictFilter, ConflictListItemDto } from '../../api/model';
 import { LoadState } from '../../shared/ui/load-state';
 import { PageHeader } from '../../shared/ui/page-header';
+import { ReviewTabs } from '../../shared/ui/review-tabs';
 import { changeLabel, decisionLabel, subjectLabel } from './conflict-values';
 import { ReviewInbox, toFilter, toScope } from './review-inbox';
 
 /** The Review inbox: the conflict list beside the decision pane (the child route). */
 @Component({
   selector: 'app-review-page',
-  imports: [RouterLink, RouterLinkActive, RouterOutlet, PageHeader, LoadState],
+  imports: [RouterLink, RouterLinkActive, RouterOutlet, PageHeader, LoadState, ReviewTabs],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-page-header heading="Review">
       <p pageLead>A decision takes the incoming value or keeps the current one; one decision per conflict.</p>
     </app-page-header>
+    <app-review-tabs open="conflicts" />
     <nav class="filters" aria-label="Which conflicts">
       @for (f of filters; track f.value) {
         <a class="filter" [routerLink]="[]" [queryParams]="{ state: f.value }" queryParamsHandling="merge"

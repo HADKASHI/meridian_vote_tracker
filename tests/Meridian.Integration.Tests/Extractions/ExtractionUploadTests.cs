@@ -143,4 +143,36 @@ public sealed class ExtractionUploadTests(PostgresFixture postgres, AzuriteFixtu
         var jobs = await client.GetFromJsonAsync<JsonElement>("/api/jobs", Ct);
         Assert.Equal("done", Assert.Single(jobs.GetProperty("items").EnumerateArray()).GetProperty("state").GetString());
     }
+
+    [Fact]
+    public async Task The_list_can_be_narrowed_to_one_status_where_failed_includes_a_job_that_failed()
+    {
+        await using var api = await ApiFactory.CreateAsync(postgres, azurite);
+        var client = api.ClientAs("dana");
+        var waiting = await ExtractionApi.UploadOkAsync(client, "waiting.pdf", [.. "%PDF-1.4 waiting"u8]);
+        var broken = await ExtractionApi.UploadOkAsync(client, "broken.pdf", [.. "%PDF-1.4 broken"u8]);
+        await ExtractionApi.RunJobsAsync(api, new FlakySheetReader(call => call == 1 ? null : new HttpRequestException("503"), SheetFixtures.Sheet()));
+        var reading = await ExtractionApi.UploadOkAsync(client, "reading.pdf", [.. "%PDF-1.4 reading"u8]);
+
+        async Task<long[]> Ids(string status) =>
+            (await ImportApi.GetAsync<PageDto<ExtractionSummaryDto>>(client, $"/api/extractions?status={status}")).Items.Select(i => i.Id).ToArray();
+
+        Assert.Equal([waiting.ExtractionId], await Ids("needs_review"));
+        Assert.Equal([reading.ExtractionId], await Ids("extracting"));
+        Assert.Equal([broken.ExtractionId], await Ids("failed"));
+        Assert.Empty(await Ids("approved"));
+        Assert.Equal(3, (await ImportApi.GetAsync<PageDto<ExtractionSummaryDto>>(client, "/api/extractions")).Total);
+        Assert.Equal(1, (await ImportApi.GetAsync<PageDto<ExtractionSummaryDto>>(client, "/api/extractions?status=needs_review&pageSize=1")).Total);
+    }
+
+    [Fact]
+    public async Task An_unknown_status_filter_is_a_validation_problem_on_status()
+    {
+        await using var api = await ApiFactory.CreateAsync(postgres, azurite);
+
+        var response = await api.ClientAs("dana").GetAsync("/api/extractions?status=nope", Ct);
+
+        var problem = await response.AssertProblemAsync(400, "validation");
+        Assert.True(problem.GetProperty("errors").TryGetProperty("status", out _));
+    }
 }

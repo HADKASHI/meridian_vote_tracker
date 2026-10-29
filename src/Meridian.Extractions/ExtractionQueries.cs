@@ -11,12 +11,23 @@ namespace Meridian.Extractions;
 /// <summary>The extraction reads. Issue counts come from the stored check; the job comes from the job table.</summary>
 internal static class ExtractionQueries
 {
-    public static async Task<PageDto<ExtractionSummaryDto>> ListAsync(MeridianDbContext db, int page, int pageSize, CancellationToken ct)
+    /// <param name="status">Narrows to one status as the analyst sees it, so <c>failed</c> includes a job that failed.</param>
+    public static async Task<PageDto<ExtractionSummaryDto>> ListAsync(
+        MeridianDbContext db, ExtractionStatus? status, int page, int pageSize, CancellationToken ct)
     {
         page = Math.Max(page, 1);
         pageSize = Math.Clamp(pageSize, 1, 200);
-        var total = await db.Extractions.CountAsync(ct);
-        var extractions = await db.Extractions.AsNoTracking().OrderByDescending(x => x.Id)
+        var matching = from x in db.Extractions
+                       join j in db.Jobs on x.Id equals j.ExtractionId
+                       where status == null
+                           || (status == ExtractionStatus.Failed
+                               ? x.Status == ExtractionStatus.Failed || (x.Status == ExtractionStatus.Extracting && j.State == JobState.Failed)
+                               : status == ExtractionStatus.Extracting
+                                   ? x.Status == ExtractionStatus.Extracting && j.State != JobState.Failed
+                                   : x.Status == status)
+                       select x;
+        var total = await matching.CountAsync(ct);
+        var extractions = await matching.AsNoTracking().OrderByDescending(x => x.Id)
             .Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
         var ids = extractions.Select(x => x.Id).ToList();
         var jobs = (await JobQueries.LoadAsync(db, db.Jobs.Where(j => j.ExtractionId != null && ids.Contains(j.ExtractionId.Value)), ct))

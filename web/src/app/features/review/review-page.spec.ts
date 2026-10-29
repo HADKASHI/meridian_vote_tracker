@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
+import { flushReviewTabs } from '../../shared/ui/review-counts.testing';
 import { listItem, page } from './review.testing';
 import reviewRoutes from './review.routes';
 
@@ -23,6 +24,7 @@ describe('Review inbox', () => {
   async function open(url: string): Promise<RouterTestingHarness> {
     const harness = await RouterTestingHarness.create(url);
     TestBed.tick();
+    flushReviewTabs(http);
     return harness;
   }
 
