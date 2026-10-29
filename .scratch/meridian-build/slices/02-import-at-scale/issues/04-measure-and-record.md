@@ -2,7 +2,7 @@
 
 **What to build:** Run the `Performance` test, write the measured time and peak memory into ADR 5 (data access), and confirm the slice 1 tests still pass. If the 5-minute budget or about 1 GB of peak memory is missed, stop and add a fix ticket (COPY inside `ImportWriter`, or a two-pass parser) before closing this one; classification stays untouched.
 
-**Blocked by:** 02 Performance test.
+**Blocked by:** 02 Performance test, 05 Write a vote's rows with COPY (if the budget was missed).
 
 **Status:** ready-for-agent
 
