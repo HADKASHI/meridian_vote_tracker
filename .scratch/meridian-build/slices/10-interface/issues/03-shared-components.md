@@ -4,12 +4,12 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Outcome chip and job-state chip show the glossary word exactly, with a distinct theme-token tone per value
-- [ ] From → to shows both values with an arrow that reads as "to" for screen readers
-- [ ] Score with basis shows the score to 1 decimal and its basis, n/a when nothing is countable
-- [ ] Problem banner and already-decided card restyled from Material tokens, with their trace reference
-- [ ] A long list (e.g. 69 missing states) shows its count and expands to the items by keyboard or click; a short one shows inline
-- [ ] Loading, empty and error states share one look
-- [ ] Vitest proves the words shown, the score format and the expand; lint and build pass
+- [x] Outcome chip and job-state chip show the glossary word exactly, with a distinct theme-token tone per value
+- [x] From → to shows both values with an arrow that reads as "to" for screen readers
+- [x] Score with basis shows the score to 1 decimal and its basis, n/a when nothing is countable
+- [x] Problem banner and already-decided card restyled from Material tokens, with their trace reference
+- [x] A long list (e.g. 69 missing states) shows its count and expands to the items by keyboard or click; a short one shows inline
+- [x] Loading, empty and error states share one look
+- [x] Vitest proves the words shown, the score format and the expand; lint and build pass

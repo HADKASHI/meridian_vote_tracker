@@ -104,3 +104,86 @@ h3 {
 .field-error {
   color: var(--mat-sys-error);
 }
+
+// Read by screen readers, not shown.
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+// A status chip: always its word, with a tone from the theme for scanning.
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 8px;
+  font: var(--mat-sys-label-medium);
+  white-space: nowrap;
+  background: var(--mat-sys-surface-container-high);
+  color: var(--mat-sys-on-surface);
+  border: 1px solid transparent;
+}
+.chip[data-tone='primary'] {
+  background: var(--mat-sys-primary-container);
+  color: var(--mat-sys-on-primary-container);
+}
+.chip[data-tone='secondary'] {
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+}
+.chip[data-tone='tertiary'] {
+  background: var(--mat-sys-tertiary-container);
+  color: var(--mat-sys-on-tertiary-container);
+}
+.chip[data-tone='strong'] {
+  background: var(--mat-sys-tertiary);
+  color: var(--mat-sys-on-tertiary);
+}
+.chip[data-tone='error'] {
+  background: var(--mat-sys-error-container);
+  color: var(--mat-sys-on-error-container);
+}
+.chip[data-tone='outline'] {
+  background: transparent;
+  border-color: var(--mat-sys-outline);
+}
+
+// A notice inside a page: info (primary), warning (tertiary) or blocking (error).
+.notice {
+  display: block;
+  border-inline-start: 4px solid var(--mat-sys-primary);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-block: 0 16px;
+  background: var(--mat-sys-primary-container);
+  color: var(--mat-sys-on-primary-container);
+  overflow-wrap: anywhere;
+}
+.notice[data-tone='warning'] {
+  border-color: var(--mat-sys-tertiary);
+  background: var(--mat-sys-tertiary-container);
+  color: var(--mat-sys-on-tertiary-container);
+}
+.notice[data-tone='error'] {
+  border-color: var(--mat-sys-error);
+  background: var(--mat-sys-error-container);
+  color: var(--mat-sys-on-error-container);
+}
+.notice a {
+  color: inherit;
+}
+.notice > :first-child {
+  margin-block-start: 0;
+}
+.notice > :last-child {
+  margin-block-end: 0;
+}
+.notice ul {
+  margin-block: 4px;
+  padding-inline-start: 20px;
+}

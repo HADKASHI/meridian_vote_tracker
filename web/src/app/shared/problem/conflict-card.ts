@@ -20,23 +20,33 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
   `,
   styles: `
     .card {
-      border: 1px solid var(--mat-sys-outline);
+      background: var(--mat-sys-surface-container);
+      border: 1px solid var(--mat-sys-outline-variant);
       border-inline-start: 4px solid var(--mat-sys-tertiary);
-      border-radius: 8px;
-      padding: 12px 16px;
+      border-radius: 12px;
+      padding: 16px;
+      margin-block: 12px;
+      overflow-wrap: anywhere;
     }
     h3 {
+      font: var(--mat-sys-title-medium);
       margin-block: 0 8px;
     }
     .actions {
       display: flex;
+      flex-wrap: wrap;
+      align-items: center;
       gap: 8px;
-      margin-block-start: 8px;
+      margin-block-start: 12px;
+    }
+    .actions:empty {
+      display: none;
     }
     .reference {
-      font-family: monospace;
-      opacity: 0.7;
+      font-family: var(--app-mono);
+      color: var(--mat-sys-on-surface-variant);
       font-size: 0.85em;
+      margin-block: 8px 0;
     }
   `,
 })
