@@ -6,15 +6,14 @@ ASP.NET Core API and background worker on .NET 10, PostgreSQL 18, Azure Blob Sto
 
 ## Beyond the brief
 
-Every core requirement in sections 7.1 to 7.7 is built. On top of them:
+The core of sections 7.1 to 7.7 is built. Each extra below answers a question an analyst or the Institute would otherwise answer by hand:
 
-- **Scanned voting sheets (the section 8 bonus, built in full):** Azure AI Document Intelligence reads each sheet in the background, and a plain C# mapper turns the grid into country votes. Unknown codes, duplicates, unreadable cells and counts that don't match the printed totals are flagged, and they block approval until they are fixed. An analyst can edit or remove rows, then approve or reject the sheet. Approval goes through the same import rules as a CSV. A failed reading shows its reason and can be retried.
-- **Alignment rule sets and evidence metrics:** the admin can score a snapshot under a named, immutable rule set (the default, abstain as miss, half credit, strict). Every score shows completeness, abstention rate, missing data and a High, Medium or Low confidence band, so a thin score is visible without being hidden or reordered.
-- **Snapshot drift:** a snapshot's page lists what would differ if it were created now: changed positions, country votes and vote details, and votes that now match its selection or no longer do. Nothing is recalculated.
-- **Snapshot comparison:** two snapshots side by side, with each state's rank and score movement and the votes that explain it.
-- **Downloads:** the original file of any import (CSV or approved sheet PDF), and any sheet waiting in Review, downloads through the API's role checks. There are no public links.
-- **Azure:** one override file runs the app on Azure Blob Storage and Azure Database for PostgreSQL. Blob and Document Intelligence can sign in with Microsoft Entra ID, and a guided script checks the live services. PostgreSQL 17 and 18 are both tested in CI.
-- **Proof:** race tests (20 rounds, two real connections), a role matrix generated from every write endpoint, a database guard test over every table, a timed one-million-row import test, and a browser smoke test in CI.
+- **Scanned voting sheets (the bonus):** records before 2015 exist only as scans, and analysts type them in by hand today. Now the system proposes the country votes and checks them against the sheet's printed totals, and a person only reviews them.
+- **Snapshot drift:** a snapshot never changes, so after decisions or corrections an analyst needs to know whether a new one is worth creating. The snapshot's page lists what has changed since it was created.
+- **Snapshot comparison:** when a state's rank moves between two snapshots, the analyst can see which votes moved it before the index goes to journalists.
+- **Alignment rule sets and evidence metrics:** abstentions are a judgement call, so the admin can see how the ranking looks under other named rules. Each score also shows whether it rests on solid evidence or on a handful of votes.
+- **Downloads:** an analyst can open the original file behind any import or sheet to check a value at its source, without asking anyone for it.
+- **Azure by configuration:** moving from the local setup to Azure Blob Storage and Azure Database for PostgreSQL is a settings change, with a guided check that the live services answer.
 
 ## Run it
 
