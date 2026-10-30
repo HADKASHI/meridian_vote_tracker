@@ -4,7 +4,7 @@ The whole schema is migration 1 (`src/Meridian.Data/Migrations`), so parallel sl
 
 ## Conventions
 
-- PostgreSQL 18, EF Core code-first, snake_case names (`EFCore.NamingConventions`).
+- PostgreSQL 18 (17 also supported, ADR 0009), EF Core code-first, snake_case names (`EFCore.NamingConventions`).
 - **Keys**: `bigint` everywhere. Every guarded table with an `id` takes it from one shared sequence, `history_seq` (`DEFAULT nextval('history_seq')`), so ordering by id gives the true order across tables. Per vote this is exact, because the per-vote lock serialises everything that touches a vote. `job` uses its own identity. Natural keys: `member_state.code char(3)`, `app_user.id text`.
 - **Fixed value lists** are `text`:
   - Integrity values (outcome, ballot, stance, weight, subject, decision, category, job state and kind, role) get a database CHECK.

@@ -152,14 +152,21 @@ A web application (ASP.NET Core API, background worker, PostgreSQL, Angular, run
 
 ### Snapshot drift (extra)
 
-103. As an analyst, I want a snapshot's page to tell me what would differ if I created it now (positions, country votes and vote details that changed, votes that now match its selection and votes that no longer do), without recalculating anything, so that I can tell whether a published index is still current.
+119. As an analyst, I want a snapshot's page to tell me what would differ if I created it now (positions, country votes and vote details that changed, votes that now match its selection and votes that no longer do), without recalculating anything, so that I can tell whether a published index is still current.
 
 ### Alignment rules and evidence (extra)
 
-104. As the admin, I want to choose a named rule set when creating a snapshot (today's rules by default), so that I can see how an index changes when abstentions or absences count differently, and every snapshot, publication and comparison names the rule set it used.
-105. As an analyst, I want each state's score paired with its completeness, abstention rate and missing data, so that I can tell a score backed by comprehensive evidence from one resting on a few votes.
-106. As an analyst, I want each score to carry a confidence band and a "low evidence" flag, with the ranking filterable and sortable by it and the rank itself unchanged, so that thin evidence is visible without hiding states.
-107. As an analyst, I want the comparison to warn when two snapshots were scored under different rule sets, so that I don't mistake a change of rules for a change in the data.
+120. As the admin, I want to choose a named rule set when creating a snapshot (today's rules by default), so that I can see how an index changes when abstentions or absences count differently, and every snapshot, publication and comparison names the rule set it used.
+121. As an analyst, I want each state's score paired with its completeness, abstention rate and missing data, so that I can tell a score backed by comprehensive evidence from one resting on a few votes.
+122. As an analyst, I want each score to carry a confidence band and a "low evidence" flag, with the ranking filterable and sortable by it and the rank itself unchanged, so that thin evidence is visible without hiding states.
+123. As an analyst, I want the comparison to warn when two snapshots were scored under different rule sets, so that I don't mistake a change of rules for a change in the data.
+
+### Azure services and file download (extra)
+
+124. As an analyst, I want to download the original file of an import (a CSV, or a voting sheet PDF) from the Imports page, and of a sheet waiting in Review, so that I can check exactly what was uploaded.
+125. As an operator, I want to run the app against Azure Blob Storage and Azure Database for PostgreSQL by an override file, with TLS to the database and a clear message naming the failing connection, while plain `docker compose up` stays unchanged.
+126. As an operator, I want the app to work on PostgreSQL 17 and 18, proven by the whole integration suite on both, so that a managed server on either version runs it.
+127. As an operator, I want a guided check I run with my own credentials that proves Blob, the database, Document Intelligence and Application Insights work live, so that nothing secret leaves my machine and the fixture-only limit in ADR 0008 is closed.
 
 ### Jobs
 
@@ -234,6 +241,7 @@ Detailed reasoning lives in the resolved map tickets; the locked schema is in `.
 - Scoring: score = 100 × matched ÷ counted over yes/no ballots of members; abstain, absent, non-member and no-data excluded and labelled; counted 0 means n/a and no rank; competition ranking on the exact value; ties ordered by code. The database checks `matched ≤ counted` and that rank is null exactly when counted is 0.
 - Publication: an insert-only chain (snapshot, quarter `YYYY-Qn`, who, when, reason, supersedes). Partial unique indexes allow one first publication per quarter and one successor per publication; a reason is required exactly when superseding. A unique violation becomes 409 `quarter-published`.
 - Rule sets and evidence (extra, ADR 0007): a rule set is a named, immutable set of rules in code, stored on the snapshot in `scoring_rules_version`; it decides only how abstentions and absences count, and declares a weight unit so stored weights stay integers. Only the admin may choose a non-default rule set at create (403 otherwise). Each result also carries, derived from the stored lines and the same under every rule set, completeness (yes and no ballots ÷ member votes), abstention rate, missing data and a confidence band (High at least 90% completeness and 10 countable votes, Medium at least 70% and 5, otherwise Low; none when nothing is countable). Confidence never changes the rank. The comparison warns when the two snapshots used different rule sets, and its reasons use each snapshot's rule set.
+- Azure services and file download (extra, ADR 0009): `GET /api/imports/{importId}/file` and `GET /api/extractions/{extractionId}/file` stream the stored original from Blob as an attachment (original file name, stored content type, no whole-file buffering) for analysts and the admin, through one shared download helper beside the upload helper in `Meridian.Platform`; there is no public Blob link. `compose.azure.yaml` is an override that replaces the local database and Azurite with the Azure connection strings from `.env`; the Postgres image is a variable (default 18) and CI runs the integration suite on 17 as well. Application Insights stays configuration only. A guided script checks the live services on the operator's machine.
 - Drift (extra): `GET /api/snapshots/{snapshotId}/changes` for a calculated snapshot compares the stored position, details and country vote revision ids with the current ones, and re-resolves the saved selection against today's votes. It returns, per kind (position changed, country votes changed, details changed, now selected but not in the snapshot, no longer selected), the real count and the first 20 votes with the old and new value, who or what changed it and when, plus the time it was read. It never reads or returns a score or rank and runs no job. Pending conflicts are not changes.
 - Comparison (extra): a pure read over two snapshots' stored results, lines, votes and the ballots they used. `GET /api/snapshots/compare` returns each state's rank and score in A and B with their basis and the change, and its **reasons**: the votes whose matched or counted weight differs (vote only in one snapshot, a different ballot, a different stance or weight). The reasons are in the same response, not a second endpoint.
 
@@ -281,6 +289,7 @@ The build is cut into **slices**: vertical pieces (API, worker, screen and tests
 7. **Extra: snapshot comparison.**
 11. **Extra: snapshot drift**: a summary on a snapshot's page of what would differ if it were created now, added after slice 7 shipped.
 12. **Extra: alignment rules and evidence**: rule sets and per-score completeness and confidence metrics, added after slice 11 was planned (ADR 0007).
+13. **Extra: Azure services and file download**: download of the original import and sheet files, a documented and tested run against Azure Blob and PostgreSQL, PostgreSQL 17 support, and a guided live check of the Azure services (ADR 0009). Runs before the finishing pass so the README can describe it.
 8. **Finishing pass** (protected): clean-clone run, README, DECISIONS.md rewritten to ~1,000 words, AI_USAGE.md, skills trim, and a Playwright smoke test across the merged slices.
 9. **Bonus: PDF extraction**: designed first, then built, with a hard half-day limit.
 
@@ -299,12 +308,13 @@ The build is cut into **slices**: vertical pieces (API, worker, screen and tests
 | 7 Snapshot comparison | 6, 10 | 2 |
 | 11 Snapshot drift | 6, 7 | 8 |
 | 12 Alignment rules and evidence | 6, 7, 11 | 8 |
-| 8 Finishing pass | 0–7, 10 | nothing |
+| 13 Azure services and file download | 9 | 8 |
+| 8 Finishing pass | 0–7, 10, 13 | nothing |
 | 9 PDF extraction | 8 | nothing |
 
 Slices 3, 4 and 6 arrange their data with slice 0's fixture builders, never with the importer, so they don't wait for slice 1. Once slice 1 is merged, any slice still open rebases and may add one end-to-end test through a real import.
 
-**Cut rule**: if time runs short, the PDF bonus goes first, then the alignment, drift and comparison extras, then the interface slice. The finishing pass is never cut.
+**Cut rule**: if time runs short, the PDF bonus goes first, then the Azure services, alignment, drift and comparison extras, then the interface slice. The finishing pass is never cut.
 
 ### Delivery
 
