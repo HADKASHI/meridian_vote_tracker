@@ -63,8 +63,7 @@ internal static class ExtractionDecisions
     /// <summary>Why this extraction can't be edited or decided now: unknown, already decided (with the winner) or not yet read.</summary>
     public static ProblemHttpResult RefusalFor(Extraction? x, long id) => x switch
     {
-        null => ProblemDetailsSetup.Problem(StatusCodes.Status404NotFound, ProblemTypes.NotFound, "Extraction not found",
-            $"There is no extraction #{id}."),
+        null => ProblemDetailsSetup.NotFound("extraction", id),
         { DecidedBy: not null } => AlreadyDecided(x),
         _ => ProblemDetailsSetup.Problem(StatusCodes.Status409Conflict, ProblemTypes.NotReviewable, "Not ready for review",
             "Only a sheet that has been read and is waiting for review can be edited or decided."),

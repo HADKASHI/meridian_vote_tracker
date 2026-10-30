@@ -3,6 +3,7 @@ using Meridian.Domain;
 using Meridian.Platform.Contracts;
 using Meridian.Platform.Hosting;
 using Meridian.Platform.Http;
+using Meridian.Platform.Problems;
 using Meridian.Platform.Storage;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -57,9 +58,9 @@ public static class ImportsModule
             .WithSummary("Every import, newest first, with its job and counts per outcome.")
             .ForAnalysts();
 
-        imports.MapGet("/{importId:long}", async Task<Results<Ok<ImportDto>, NotFound>> (
+        imports.MapGet("/{importId:long}", async Task<Results<Ok<ImportDto>, ProblemHttpResult>> (
                     long importId, MeridianDbContext db, CancellationToken ct) =>
-                await ImportQueries.GetAsync(db, importId, ct) is { } import ? TypedResults.Ok(import) : TypedResults.NotFound())
+                await ImportQueries.GetAsync(db, importId, ct) is { } import ? TypedResults.Ok(import) : ProblemDetailsSetup.NotFound("import", importId))
             .WithName("getImport")
             .ProducesProblems(StatusCodes.Status404NotFound)
             .ForAnalysts();
@@ -80,7 +81,7 @@ public static class ImportsModule
 
         // The outcome is bound as text, because minimal APIs parse enums case-sensitively and
         // the client sends the glossary word (`invalid`); the contract still names the enum.
-        imports.MapGet("/{importId:long}/rows", async Task<Results<Ok<PageDto<ImportRowDto>>, NotFound, ProblemHttpResult>> (
+        imports.MapGet("/{importId:long}/rows", async Task<Results<Ok<PageDto<ImportRowDto>>, ProblemHttpResult>> (
                     long importId, MeridianDbContext db, CancellationToken ct,
                     [FromQuery] string? outcome, long? voteId, int page = 1, int pageSize = 100) =>
             {
@@ -94,7 +95,7 @@ public static class ImportsModule
                 }
                 return await ImportQueries.RowsAsync(db, importId, filter, voteId, page, pageSize, ct) is { } rows
                     ? TypedResults.Ok(rows)
-                    : TypedResults.NotFound();
+                    : ProblemDetailsSetup.NotFound("import", importId);
             })
             .AddOpenApiOperationTransformer((operation, context, _) =>
             {
@@ -107,11 +108,11 @@ public static class ImportsModule
             .ProducesProblems(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound)
             .ForAnalysts();
 
-        imports.MapGet("/{importId:long}/votes", async Task<Results<Ok<IReadOnlyList<ImportVoteCountsDto>>, NotFound>> (
+        imports.MapGet("/{importId:long}/votes", async Task<Results<Ok<IReadOnlyList<ImportVoteCountsDto>>, ProblemHttpResult>> (
                     long importId, MeridianDbContext db, CancellationToken ct) =>
                 await ImportQueries.VoteCountsAsync(db, importId, ct) is { } counts
                     ? TypedResults.Ok(counts)
-                    : TypedResults.NotFound())
+                    : ProblemDetailsSetup.NotFound("import", importId))
             .WithName("listImportVoteCounts")
             .WithSummary("Counts per outcome for each vote the import touched.")
             .ProducesProblems(StatusCodes.Status404NotFound)

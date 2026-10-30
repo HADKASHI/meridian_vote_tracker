@@ -81,8 +81,7 @@ public static class ConflictsModule
             new Dictionary<string, object?> { ["decision"] = winner });
 
     private static ProblemHttpResult NotFound(long conflictId) =>
-        ProblemDetailsSetup.Problem(StatusCodes.Status404NotFound, ProblemTypes.NotFound, "Conflict not found",
-            $"There is no conflict #{conflictId}.");
+        ProblemDetailsSetup.NotFound("conflict", conflictId);
 
     private static ValidationProblem InvalidFilter() =>
         TypedResults.ValidationProblem(new Dictionary<string, string[]>

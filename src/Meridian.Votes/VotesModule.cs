@@ -50,6 +50,5 @@ public static class VotesModule
     }
 
     private static ProblemHttpResult VoteNotFound(long voteId) =>
-        ProblemDetailsSetup.Problem(StatusCodes.Status404NotFound, ProblemTypes.NotFound, "Vote not found",
-            $"There is no vote {voteId}.");
+        ProblemDetailsSetup.NotFound("vote", voteId);
 }

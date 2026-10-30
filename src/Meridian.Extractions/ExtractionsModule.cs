@@ -3,6 +3,7 @@ using Meridian.Domain;
 using Meridian.Platform.Contracts;
 using Meridian.Platform.Hosting;
 using Meridian.Platform.Http;
+using Meridian.Platform.Problems;
 using Meridian.Platform.Storage;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -80,9 +81,9 @@ public static class ExtractionsModule
             .ProducesProblems(StatusCodes.Status400BadRequest)
             .ForAnalysts();
 
-        extractions.MapGet("/{extractionId:long}", async Task<Results<Ok<ExtractionDto>, NotFound>> (
+        extractions.MapGet("/{extractionId:long}", async Task<Results<Ok<ExtractionDto>, ProblemHttpResult>> (
                     long extractionId, MeridianDbContext db, CancellationToken ct) =>
-                await ExtractionQueries.GetAsync(db, extractionId, ct) is { } extraction ? TypedResults.Ok(extraction) : TypedResults.NotFound())
+                await ExtractionQueries.GetAsync(db, extractionId, ct) is { } extraction ? TypedResults.Ok(extraction) : ProblemDetailsSetup.NotFound("extraction", extractionId))
             .WithName("getExtraction")
             .WithSummary("One extraction: the sheet as read, its counts against the printed totals and its issues.")
             .ProducesProblems(StatusCodes.Status404NotFound)

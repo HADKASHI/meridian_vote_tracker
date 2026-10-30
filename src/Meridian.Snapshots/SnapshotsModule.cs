@@ -177,7 +177,7 @@ public static class SnapshotsModule
             new Dictionary<string, object?> { ["name"] = name });
 
     private static ProblemHttpResult NotFound(string what) =>
-        ProblemDetailsSetup.Problem(StatusCodes.Status404NotFound, ProblemTypes.NotFound, $"No such {what}");
+        ProblemDetailsSetup.NotFound(what);
 
     private static ProblemHttpResult NoVotesMatch() =>
         ProblemDetailsSetup.Problem(StatusCodes.Status400BadRequest, ProblemTypes.NoVotesMatch,
