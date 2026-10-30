@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
+using Azure.Core;
+using Meridian.Data;
 using System.Text.Json;
 using Meridian.Domain.Sheets;
 using Microsoft.Extensions.Logging;
@@ -15,10 +17,12 @@ namespace Meridian.Extractions;
 /// The call runs through an <see cref="HttpClient"/>, so it is a span in the job's trace.
 /// </summary>
 public sealed class DocumentIntelligenceSheetReader(
-    HttpClient http, IOptions<DocumentIntelligenceOptions> options, ILogger<DocumentIntelligenceSheetReader> logger)
+    HttpClient http, IOptions<DocumentIntelligenceOptions> options, ILogger<DocumentIntelligenceSheetReader> logger,
+    TokenCredential? credential = null)
     : IVoteSheetReader
 {
     private const string KeyHeader = "Ocp-Apim-Subscription-Key";
+    private const string TokenScope = "https://cognitiveservices.azure.com/.default";
 
     /// <summary>The error codes of a failed analysis that say the service, not the file, was the trouble.</summary>
     private static readonly HashSet<string> TransientCodes =
@@ -64,12 +68,32 @@ public sealed class DocumentIntelligenceSheetReader(
         }
     }
 
+    /// <summary>The key when there is one; otherwise a Microsoft Entra ID access token, fetched again (and cached by the credential) for each request.</summary>
+    private async Task AuthorizeAsync(HttpRequestMessage request, DocumentIntelligenceOptions settings, CancellationToken cancellationToken)
+    {
+        if (settings.UsesKey)
+        {
+            request.Headers.Add(KeyHeader, settings.Key);
+            return;
+        }
+        try
+        {
+            var token = await (credential ?? AzureCredentials.Default).GetTokenAsync(new TokenRequestContext([TokenScope]), cancellationToken);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token.Token);
+        }
+        catch (Exception error) when (error is not OperationCanceledException)
+        {
+            // Never the credential's own message: it can quote account and tenant details.
+            throw new SheetReaderException("Could not sign in to the sheet reader with Microsoft Entra ID (run 'az login' or configure an identity).", permanent: true);
+        }
+    }
+
     private async Task<Uri> StartAsync(DocumentIntelligenceOptions settings, Stream pdf, CancellationToken cancellationToken)
     {
         var url = $"{settings.Endpoint!.TrimEnd('/')}/documentintelligence/documentModels/{settings.ModelId}:analyze?api-version={settings.ApiVersion}";
         using var request = new HttpRequestMessage(HttpMethod.Post, url) { Content = new StreamContent(pdf) };
         request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
-        request.Headers.Add(KeyHeader, settings.Key);
+        await AuthorizeAsync(request, settings, cancellationToken);
 
         using var response = await http.SendAsync(request, cancellationToken);
         if (response.StatusCode != HttpStatusCode.Accepted) throw Refusal(response.StatusCode);
@@ -88,7 +112,7 @@ public sealed class DocumentIntelligenceSheetReader(
         while (true)
         {
             using var request = new HttpRequestMessage(HttpMethod.Get, operation);
-            request.Headers.Add(KeyHeader, settings.Key);
+            await AuthorizeAsync(request, settings, cancellationToken);
             using var response = await http.SendAsync(request, cancellationToken);
             if (!response.IsSuccessStatusCode) throw Refusal(response.StatusCode);
 

@@ -1,6 +1,8 @@
 using System.Text.RegularExpressions;
 using Azure.Core;
 using Azure.Storage.Blobs;
+using Meridian.Data;
+using Meridian.Platform.Storage;
 using Npgsql;
 
 namespace Meridian.Platform.Hosting;
@@ -17,16 +19,25 @@ public static partial class ConnectionCheck
 {
     public static readonly TimeSpan Timeout = TimeSpan.FromSeconds(15);
 
+    private const string EntraHint = "It signs in with Microsoft Entra ID; run 'az login' (or give the process a service principal or managed identity) and check the account has access.";
+
+    /// <param name="blobServiceUri">The Blob service address; with it, Blob is reached with the Entra sign-in instead of a key.</param>
+    /// <param name="credential">The Entra sign-in to use; the process's own when null.</param>
+    /// <param name="checkBlob">Report Blob as failed when no Blob setting exists at all, instead of skipping it.</param>
     public static async Task<IReadOnlyList<ConnectionFailure>> RunAsync(
-        string? databaseConnectionString, string? blobConnectionString, bool requireTls, CancellationToken cancellationToken)
+        string? databaseConnectionString, string? blobConnectionString, bool requireTls, CancellationToken cancellationToken,
+        string? blobServiceUri = null, TokenCredential? credential = null, bool checkBlob = false)
     {
         var checks = new List<Task<ConnectionFailure?>>();
-        if (databaseConnectionString is not null) checks.Add(CheckDatabaseAsync(databaseConnectionString, requireTls, cancellationToken));
-        if (blobConnectionString is not null) checks.Add(CheckBlobAsync(blobConnectionString, cancellationToken));
+        if (!string.IsNullOrWhiteSpace(databaseConnectionString))
+            checks.Add(CheckDatabaseAsync(databaseConnectionString, requireTls, credential, cancellationToken));
+        if (checkBlob || !string.IsNullOrWhiteSpace(blobConnectionString) || !string.IsNullOrWhiteSpace(blobServiceUri))
+            checks.Add(CheckBlobAsync(blobConnectionString, blobServiceUri, credential, cancellationToken));
         return [.. (await Task.WhenAll(checks)).OfType<ConnectionFailure>()];
     }
 
-    private static async Task<ConnectionFailure?> CheckDatabaseAsync(string connectionString, bool requireTls, CancellationToken cancellationToken)
+    private static async Task<ConnectionFailure?> CheckDatabaseAsync(
+        string connectionString, bool requireTls, TokenCredential? credential, CancellationToken cancellationToken)
     {
         NpgsqlConnectionStringBuilder builder;
         try
@@ -43,41 +54,53 @@ public static partial class ConnectionCheck
             return new("database", $"The connection to the database at {where} does not require TLS, which Azure Database for PostgreSQL does. Add SSL Mode=Require to its connection string.");
 
         builder.Timeout = (int)Timeout.TotalSeconds;
+        var entra = DatabaseAccess.UsesEntra(builder.ConnectionString);
         try
         {
-            await using var connection = new NpgsqlConnection(builder.ConnectionString);
+            await using var dataSource = entra ? DatabaseAccess.EntraDataSource(builder.ConnectionString, credential ?? AzureCredentials.Default) : null;
+            await using var connection = dataSource is null ? new NpgsqlConnection(builder.ConnectionString) : dataSource.CreateConnection();
             await connection.OpenAsync(cancellationToken);
             return null;
         }
         catch (Exception error) when (error is not OperationCanceledException)
         {
-            return new("database", $"Could not connect to the database at {where}: {Reason(error, builder.Password)}");
+            return new("database", $"Could not connect to the database at {where}: {Reason(error, builder.Password)}{(entra ? " " + EntraHint : "")}");
         }
     }
 
-    private static async Task<ConnectionFailure?> CheckBlobAsync(string connectionString, CancellationToken cancellationToken)
+    private static async Task<ConnectionFailure?> CheckBlobAsync(
+        string? connectionString, string? serviceUri, TokenCredential? credential, CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(connectionString) && string.IsNullOrWhiteSpace(serviceUri))
+            return new("blob", "No Blob storage is configured. Set Blob__ServiceUri (an Entra ID sign-in) or Blob__ConnectionString.");
+
+        var entra = !string.IsNullOrWhiteSpace(serviceUri);
         BlobServiceClient client;
         try
         {
-            client = new BlobServiceClient(connectionString, new BlobClientOptions
+            client = BlobAccess.Service(connectionString, serviceUri, credential, new BlobClientOptions
             {
                 Retry = { MaxRetries = 0, Mode = RetryMode.Fixed, NetworkTimeout = Timeout },
             });
         }
-        catch (Exception error) when (error is ArgumentException or FormatException)
+        catch (Exception error) when (error is ArgumentException or FormatException or UriFormatException)
         {
-            return new("blob", "The Blob connection string is not valid. Check Blob__ConnectionString.");
+            return new("blob", entra
+                ? "The Blob service address is not valid. Check Blob__ServiceUri."
+                : "The Blob connection string is not valid. Check Blob__ConnectionString.");
         }
 
         try
         {
-            await client.GetPropertiesAsync(cancellationToken);
+            // Listing one page of containers needs only a data role, with a key or with an Entra sign-in.
+            await client.GetBlobContainersAsync(cancellationToken: cancellationToken).AsPages(pageSizeHint: 1)
+                .GetAsyncEnumerator(cancellationToken).MoveNextAsync();
             return null;
         }
         catch (Exception error) when (error is not OperationCanceledException)
         {
-            return new("blob", $"Could not reach the Blob storage account '{client.AccountName}': {Reason(error, null, connectionString)}");
+            return new("blob", $"Could not reach the Blob storage account '{client.AccountName}': " +
+                $"{Reason(error, null, connectionString)}{(entra ? " " + EntraHint : "")}");
         }
     }
 

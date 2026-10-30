@@ -26,7 +26,7 @@ public static class ExtractionsModule
 {
     /// <summary>
     /// The worker side: the job handler, and the sheet reader. Document Intelligence reads sheets when
-    /// <c>DocumentIntelligence:Endpoint</c> and <c>:Key</c> are set; otherwise a sheet fails once, saying so. A reader
+    /// <c>DocumentIntelligence:Endpoint</c> is set (with <c>:Key</c>, or an Entra ID sign-in without it); otherwise a sheet fails once, saying so. A reader
     /// registered after this call (a test's fake) replaces both.
     /// </summary>
     public static IServiceCollection AddExtractionsJobs(this IServiceCollection services)

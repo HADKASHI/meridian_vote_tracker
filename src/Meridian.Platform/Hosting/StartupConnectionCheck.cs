@@ -24,7 +24,8 @@ public static class StartupConnectionCheck
 
             var failures = await ConnectionCheck.RunAsync(
                 configuration.GetConnectionString("Meridian"), configuration["Blob:ConnectionString"],
-                configuration.GetValue<bool>("Database:RequireTls"), stoppingToken);
+                configuration.GetValue<bool>("Database:RequireTls"), stoppingToken,
+                blobServiceUri: configuration["Blob:ServiceUri"], checkBlob: true);
             foreach (var failure in failures)
                 logger.LogError("Startup check failed for {Service}: {Message}", failure.Service, failure.Message);
             if (failures.Count == 0) logger.LogInformation("Startup check passed: the database and Blob storage answer.");
