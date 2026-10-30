@@ -1,4 +1,4 @@
-// Setup shared by the development-only browser scripts: the compose stack's address, the
+// Setup shared by the browser scripts: the compose stack's address, the
 // API as a seeded user, synthetic data, and a browser tab acting as a chosen user.
 // Start the stack with the synthetic member states first:
 //   DATA_DIR=./tests/data docker compose up -d --build --wait

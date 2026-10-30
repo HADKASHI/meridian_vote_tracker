@@ -84,6 +84,17 @@ jobs:
           curl -fsS http://127.0.0.1:8080/ | grep -q '<app-root>'
           curl -fsS -H 'X-User-Id: dana' http://127.0.0.1:8080/api/status | grep -q '"pendingConflicts"'
           curl -fsS http://127.0.0.1:8080/api/users | grep -q '"lena"'
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+      - name: Browser smoke test (switch user, upload, report, decision race in two tabs)
+        working-directory: e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          npm test
       - name: Logs
         if: failure()
         run: docker compose logs --no-color
