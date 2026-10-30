@@ -3,6 +3,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { JobDto, JobState } from '../../api/model';
 import { CurrentUser } from '../identity/current-user';
+import { jobTarget } from './job-target';
 import { ShellStatus } from './shell-status';
 
 /** Announces once, with a link, when a job the current user started is done or has failed. */
@@ -34,9 +35,8 @@ export class JobNotices {
   }
 
   private announce(job: JobDto): void {
-    const what = job.kind === 'import' ? `Import #${job.importId}` : `Snapshot #${job.snapshotId}`;
+    const { label: what, link } = jobTarget(job);
     const message = job.state === JobState.done ? `${what} is done.` : `${what} failed: ${job.lastError ?? 'see the job'}`;
-    const link = job.kind === 'import' ? ['/imports', job.importId] : ['/snapshots', job.snapshotId];
     this.snackBar
       .open(message, 'Open', { duration: 8000 })
       .onAction()
