@@ -35,3 +35,7 @@ A CSV import and an approved voting sheet import arranged with slice 0's fixture
 ## Tickets
 
 In `issues/` beside this file, one per ticket, written by `/to-tickets` from this brief. The rules for building, committing and opening the PR are in the `build-slice` skill.
+
+## Scope change after merge
+
+The guided check covers Blob and Document Intelligence only. The database and Application Insights were dropped from it, and an Entra sign-in built for PostgreSQL was removed again (dev-ops problems reaching the managed server from the cloud session; see ADR 0009's update and DECISIONS.md). Entra ID sign-in stays for Blob and Document Intelligence.

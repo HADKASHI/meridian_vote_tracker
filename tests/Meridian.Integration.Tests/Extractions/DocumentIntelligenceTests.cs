@@ -91,14 +91,15 @@ public sealed class DocumentIntelligenceTests(PostgresFixture postgres, AzuriteF
         private int _next;
         public readonly List<Captured> Requests = [];
 
-        public sealed record Captured(HttpMethod Method, Uri Uri, string? Key, string? ContentType, byte[]? Body);
+        public sealed record Captured(HttpMethod Method, Uri Uri, string? Key, string? ContentType, byte[]? Body, string? Authorization = null);
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Requests.Add(new Captured(request.Method, request.RequestUri!,
                 request.Headers.TryGetValues("Ocp-Apim-Subscription-Key", out var key) ? key.Single() : null,
                 request.Content?.Headers.ContentType?.MediaType,
-                request.Content is null ? null : await request.Content.ReadAsByteArrayAsync(cancellationToken)));
+                request.Content is null ? null : await request.Content.ReadAsByteArrayAsync(cancellationToken),
+                request.Headers.Authorization?.ToString()));
             return responses[Math.Min(_next++, responses.Length - 1)](request);
         }
     }
@@ -126,6 +127,55 @@ public sealed class DocumentIntelligenceTests(PostgresFixture postgres, AzuriteF
 
     private static Task<SheetRead> ReadAsync(DocumentIntelligenceSheetReader reader, CancellationToken? token = null) =>
         reader.ReadAsync(new MemoryStream(Pdf), token ?? Ct);
+
+    // ---- Microsoft Entra ID instead of a key ----
+
+    private sealed class FakeCredential : global::Azure.Core.TokenCredential
+    {
+        public readonly List<string> Scopes = [];
+
+        public override global::Azure.Core.AccessToken GetToken(global::Azure.Core.TokenRequestContext context, CancellationToken cancellationToken) =>
+            GetTokenAsync(context, cancellationToken).AsTask().GetAwaiter().GetResult();
+
+        public override ValueTask<global::Azure.Core.AccessToken> GetTokenAsync(global::Azure.Core.TokenRequestContext context, CancellationToken cancellationToken)
+        {
+            Scopes.AddRange(context.Scopes);
+            return new(new global::Azure.Core.AccessToken("entra-token", DateTimeOffset.UtcNow.AddHours(1)));
+        }
+    }
+
+    [Fact]
+    public async Task Without_a_key_the_reader_signs_in_with_Entra_and_sends_a_bearer_token_and_no_key()
+    {
+        var stub = new Stub(_ => Accepted(), _ => Json(SmallSheet()));
+        var credential = new FakeCredential();
+        var options = new DocumentIntelligenceOptions { Endpoint = Endpoint, PollInterval = TimeSpan.Zero };
+        Assert.True(options.IsConfigured);
+        var reader = new DocumentIntelligenceSheetReader(new HttpClient(stub), Options.Create(options), new CapturingLogger(), credential);
+
+        await ReadAsync(reader);
+
+        Assert.All(stub.Requests, r =>
+        {
+            Assert.Equal("Bearer entra-token", r.Authorization);
+            Assert.Null(r.Key);
+        });
+        Assert.Equal(["https://cognitiveservices.azure.com/.default"], credential.Scopes.Distinct());
+    }
+
+    [Fact]
+    public async Task With_a_key_the_reader_still_sends_the_key_and_no_token()
+    {
+        var stub = new Stub(_ => Accepted(), _ => Json(SmallSheet()));
+
+        await ReadAsync(Reader(stub));
+
+        Assert.All(stub.Requests, r =>
+        {
+            Assert.Equal("secret-key", r.Key);
+            Assert.Null(r.Authorization);
+        });
+    }
 
     // ---- what is sent ----
 

@@ -1,11 +1,21 @@
 # Run against Azure Blob Storage and Azure Database for PostgreSQL (ADR 0009, docs/azure.md):
 #   docker compose -f compose.yaml -f compose.azure.yaml up --build
-# Needs AZURE_POSTGRES_CONNECTION_STRING and BLOB_CONNECTION_STRING in .env. Plain `docker compose up` never reads this file.
+# Needs AZURE_POSTGRES_CONNECTION_STRING and one of BLOB_SERVICE_URI (Entra ID sign-in) or BLOB_CONNECTION_STRING (key) in .env.
+# A Blob service address (and a Document Intelligence endpoint with no key) sign in with Microsoft Entra ID: a container has no
+# `az login`, so give it a service principal (AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET) or see docs/azure.md
+# for running the services on the host. Plain `docker compose up` never reads this file.
 # The database should be empty or already migrated, and dedicated to this app: migrate applies the migrations to it.
 
 x-azure-env: &azure-env
-  ConnectionStrings__Meridian: ${AZURE_POSTGRES_CONNECTION_STRING:?Set AZURE_POSTGRES_CONNECTION_STRING in .env (Npgsql format, with SSL Mode=Require)}
-  Blob__ConnectionString: ${BLOB_CONNECTION_STRING:?Set BLOB_CONNECTION_STRING in .env (the storage account's connection string)}
+  ConnectionStrings__Meridian: ${AZURE_POSTGRES_CONNECTION_STRING:?Set AZURE_POSTGRES_CONNECTION_STRING in .env (Npgsql format, with Password and SSL Mode=Require)}
+  # Replaces Azurite's connection string from compose.yaml; a service address, when set, wins over a connection string.
+  Blob__ConnectionString: ${BLOB_CONNECTION_STRING:-}
+  Blob__ServiceUri: ${BLOB_SERVICE_URI:-}
+  # Read by DefaultAzureCredential when a service principal is used. No value here passes the one from .env or the shell
+  # through, and leaves the variable out of the container when it is not set (an empty one could be mistaken for an id).
+  AZURE_TENANT_ID:
+  AZURE_CLIENT_ID:
+  AZURE_CLIENT_SECRET:
   # TLS to the database is required, and each service names a connection that fails when it starts.
   Database__RequireTls: "true"
   Startup__CheckConnections: "true"
@@ -33,6 +43,6 @@ services:
     environment:
       <<: *azure-env
       DocumentIntelligence__Endpoint: ${DOCINTEL_ENDPOINT:-}
-      DocumentIntelligence__Key: ${DOCINTEL_KEY:-}
+      DocumentIntelligence__Key: ${DOCINTEL_KEY:-} # empty with an endpoint set: sign in with Entra ID
     depends_on: !override
       migrate: { condition: service_completed_successfully }

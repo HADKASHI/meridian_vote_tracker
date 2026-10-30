@@ -1,6 +1,8 @@
 using System.Text.RegularExpressions;
 using Azure.Core;
 using Azure.Storage.Blobs;
+using Meridian.Data;
+using Meridian.Platform.Storage;
 using Npgsql;
 
 namespace Meridian.Platform.Hosting;
@@ -17,16 +19,47 @@ public static partial class ConnectionCheck
 {
     public static readonly TimeSpan Timeout = TimeSpan.FromSeconds(15);
 
+    /// <summary>
+    /// Wraps the sign-in so a failure says only that no token could be had, and which kind of error it was: the
+    /// credential's own message can quote tenant and account details that do not belong in a report.
+    /// </summary>
+    private sealed class QuietCredential(TokenCredential inner) : TokenCredential
+    {
+        public override AccessToken GetToken(TokenRequestContext requestContext, CancellationToken cancellationToken)
+        {
+            try { return inner.GetToken(requestContext, cancellationToken); }
+            catch (Exception error) when (!cancellationToken.IsCancellationRequested) { throw Quiet(error); }
+        }
+
+        public override async ValueTask<AccessToken> GetTokenAsync(TokenRequestContext requestContext, CancellationToken cancellationToken)
+        {
+            try { return await inner.GetTokenAsync(requestContext, cancellationToken); }
+            catch (Exception error) when (!cancellationToken.IsCancellationRequested) { throw Quiet(error); }
+        }
+
+        private static InvalidOperationException Quiet(Exception error) =>
+            new($"no Microsoft Entra ID token could be obtained ({error.GetType().Name}).");
+    }
+
+    private const string EntraHint = "It signs in with Microsoft Entra ID; run 'az login' (or give the process a service principal or managed identity) and check the account has access.";
+
+    /// <param name="blobServiceUri">The Blob service address; with it, Blob is reached with the Entra sign-in instead of a key.</param>
+    /// <param name="credential">The Entra sign-in to use for Blob; the process's own when null.</param>
+    /// <param name="checkBlob">Report Blob as failed when no Blob setting exists at all, instead of skipping it.</param>
     public static async Task<IReadOnlyList<ConnectionFailure>> RunAsync(
-        string? databaseConnectionString, string? blobConnectionString, bool requireTls, CancellationToken cancellationToken)
+        string? databaseConnectionString, string? blobConnectionString, bool requireTls, CancellationToken cancellationToken,
+        string? blobServiceUri = null, TokenCredential? credential = null, bool checkBlob = false)
     {
         var checks = new List<Task<ConnectionFailure?>>();
-        if (databaseConnectionString is not null) checks.Add(CheckDatabaseAsync(databaseConnectionString, requireTls, cancellationToken));
-        if (blobConnectionString is not null) checks.Add(CheckBlobAsync(blobConnectionString, cancellationToken));
+        if (!string.IsNullOrWhiteSpace(databaseConnectionString))
+            checks.Add(CheckDatabaseAsync(databaseConnectionString, requireTls, cancellationToken));
+        if (checkBlob || !string.IsNullOrWhiteSpace(blobConnectionString) || !string.IsNullOrWhiteSpace(blobServiceUri))
+            checks.Add(CheckBlobAsync(blobConnectionString, blobServiceUri, credential, cancellationToken));
         return [.. (await Task.WhenAll(checks)).OfType<ConnectionFailure>()];
     }
 
-    private static async Task<ConnectionFailure?> CheckDatabaseAsync(string connectionString, bool requireTls, CancellationToken cancellationToken)
+    private static async Task<ConnectionFailure?> CheckDatabaseAsync(
+        string connectionString, bool requireTls, CancellationToken cancellationToken)
     {
         NpgsqlConnectionStringBuilder builder;
         try
@@ -49,35 +82,45 @@ public static partial class ConnectionCheck
             await connection.OpenAsync(cancellationToken);
             return null;
         }
-        catch (Exception error) when (error is not OperationCanceledException)
+        catch (Exception error) when (!cancellationToken.IsCancellationRequested)
         {
             return new("database", $"Could not connect to the database at {where}: {Reason(error, builder.Password)}");
         }
     }
 
-    private static async Task<ConnectionFailure?> CheckBlobAsync(string connectionString, CancellationToken cancellationToken)
+    private static async Task<ConnectionFailure?> CheckBlobAsync(
+        string? connectionString, string? serviceUri, TokenCredential? credential, CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(connectionString) && string.IsNullOrWhiteSpace(serviceUri))
+            return new("blob", "No Blob storage is configured. Set Blob__ServiceUri (an Entra ID sign-in) or Blob__ConnectionString.");
+
+        var entra = !string.IsNullOrWhiteSpace(serviceUri);
         BlobServiceClient client;
         try
         {
-            client = new BlobServiceClient(connectionString, new BlobClientOptions
+            client = BlobAccess.Service(connectionString, serviceUri, new QuietCredential(credential ?? AzureCredentials.Default), new BlobClientOptions
             {
                 Retry = { MaxRetries = 0, Mode = RetryMode.Fixed, NetworkTimeout = Timeout },
             });
         }
-        catch (Exception error) when (error is ArgumentException or FormatException)
+        catch (Exception error) when (error is ArgumentException or FormatException or UriFormatException)
         {
-            return new("blob", "The Blob connection string is not valid. Check Blob__ConnectionString.");
+            return new("blob", entra
+                ? "The Blob service address is not valid. Check Blob__ServiceUri."
+                : "The Blob connection string is not valid. Check Blob__ConnectionString.");
         }
 
         try
         {
-            await client.GetPropertiesAsync(cancellationToken);
+            // Listing one page of containers needs only a data role, with a key or with an Entra sign-in.
+            await client.GetBlobContainersAsync(cancellationToken: cancellationToken).AsPages(pageSizeHint: 1)
+                .GetAsyncEnumerator(cancellationToken).MoveNextAsync();
             return null;
         }
-        catch (Exception error) when (error is not OperationCanceledException)
+        catch (Exception error) when (!cancellationToken.IsCancellationRequested)
         {
-            return new("blob", $"Could not reach the Blob storage account '{client.AccountName}': {Reason(error, null, connectionString)}");
+            return new("blob", $"Could not reach the Blob storage account '{client.AccountName}': " +
+                $"{Reason(error, null, connectionString)}{(entra ? " " + EntraHint : "")}");
         }
     }
 

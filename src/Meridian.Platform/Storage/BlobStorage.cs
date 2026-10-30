@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Meridian.Platform.Storage;
 
-/// <summary>Uploaded files live in Azure Blob (Azurite locally); switching is a connection string.</summary>
+/// <summary>Uploaded files live in Azure Blob (Azurite locally); switching is configuration: a connection string, or a service address with an Entra ID sign-in.</summary>
 public static class BlobStorage
 {
     public static IServiceCollection AddMeridianBlobStorage(this IServiceCollection services)
@@ -14,9 +14,9 @@ public static class BlobStorage
         services.AddSingleton(provider =>
         {
             var configuration = provider.GetRequiredService<IConfiguration>();
-            return new BlobContainerClient(
-                configuration["Blob:ConnectionString"] ?? throw new InvalidOperationException("Blob:ConnectionString is not set."),
-                configuration["Blob:Container"] ?? "imports");
+            return BlobAccess
+                .Service(configuration["Blob:ConnectionString"], configuration["Blob:ServiceUri"])
+                .GetBlobContainerClient(configuration["Blob:Container"] ?? "imports");
         });
         services.AddHostedService<BlobContainerInitializer>();
         return services;
