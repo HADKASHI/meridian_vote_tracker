@@ -8,8 +8,8 @@ namespace Meridian.Fixtures;
 
 /// <summary>
 /// Writes approved data, conflicts, positions and snapshots straight into the database,
-/// exactly as the real use cases would leave them, so a slice arranges its data without
-/// any other slice's code. Every approved value gets a real origin: a row of a fixture
+/// exactly as the real use cases would leave them, so a caller arranges its data without
+/// any other feature's code. Every approved value gets a real origin: a row of a fixture
 /// import, or a conflict decision. Everything is inserted; nothing guarded is updated.
 /// </summary>
 public sealed class Fixtures : IAsyncDisposable
@@ -139,7 +139,7 @@ public sealed class Fixtures : IAsyncDisposable
         {
             VoteId = vote.Id, Subject = ConflictSubject.Details, OpenedByImportId = openedBy.Id,
             IncomingSession = incoming.Session, IncomingVoteDate = incoming.Date, IncomingTitle = incoming.Title,
-            // A stand-in for the comparison key; the real rule (map ticket 08 rule 2) is slice 1's.
+            // A stand-in for the comparison key; the real rule lives in the import normaliser.
             IncomingTitleKey = incoming.Title.Trim().ToLowerInvariant(),
             ComparedDetailsRevisionId = current.DetailsRevisionId,
         };
@@ -210,7 +210,7 @@ public sealed class Fixtures : IAsyncDisposable
     /// A calculated snapshot over <paramref name="votes"/> (each must have a position): the
     /// exact revisions used, a categorised line per vote and member state, and results,
     /// with its job done. The categories and results follow the scoring rules in their
-    /// simplest form, for arranging data only; the product's scoring lives in slice 6.
+    /// simplest form, for arranging data only; the product's scoring lives in the snapshot code.
     /// </summary>
     public async Task<Snapshot> SnapshotAsync(string name, IReadOnlyList<Vote> votes, string createdBy = "dana",
         string? note = null)

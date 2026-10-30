@@ -12,7 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Meridian.Positions;
 
-/// <summary>POS: the positions worklist and setting a stance and weight. Owned by slice 5.</summary>
+/// <summary>The positions worklist and setting a stance and weight.</summary>
 public static class PositionsModule
 {
     public static IServiceCollection AddPositionsModule(this IServiceCollection services) => services;
@@ -20,8 +20,9 @@ public static class PositionsModule
     public static IEndpointRouteBuilder MapPositionsModule(this IEndpointRouteBuilder api)
     {
         api.MapGet("/positions", async Task<Results<Ok<PageDto<PositionWorklistItemDto>>, ProblemHttpResult>> (
-                    MeridianDbContext db, CancellationToken ct, bool noPosition = false, int page = 1, int pageSize = 50) =>
-                TypedResults.Ok(await PositionWorklist.PageAsync(db, noPosition, page, pageSize, ct)))
+                    MeridianDbContext db, CancellationToken ct, [AsParameters] PositionsQuery query) =>
+                TypedResults.Ok(await PositionWorklist.PageAsync(db, query.NoPosition ?? false, query.EffectivePage, query.EffectivePageSize, ct)))
+            .ProducesProblems(StatusCodes.Status400BadRequest)
             .WithTags("Positions")
             .WithName("listPositions")
             .WithSummary("Votes with their stance and weight, votes without a position first.")

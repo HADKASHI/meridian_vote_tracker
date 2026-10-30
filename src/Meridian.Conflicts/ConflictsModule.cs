@@ -15,7 +15,7 @@ namespace Meridian.Conflicts;
 
 public enum ConflictFilter { Pending, Decided, All }
 
-/// <summary>CON: the Review inbox and conflict decisions. Owned by slice 3.</summary>
+/// <summary>The Review inbox and conflict decisions.</summary>
 public static class ConflictsModule
 {
     public static IServiceCollection AddConflictsModule(this IServiceCollection services) => services;
@@ -81,8 +81,7 @@ public static class ConflictsModule
             new Dictionary<string, object?> { ["decision"] = winner });
 
     private static ProblemHttpResult NotFound(long conflictId) =>
-        ProblemDetailsSetup.Problem(StatusCodes.Status404NotFound, ProblemTypes.NotFound, "Conflict not found",
-            $"There is no conflict #{conflictId}.");
+        ProblemDetailsSetup.NotFound("conflict", conflictId);
 
     private static ValidationProblem InvalidFilter() =>
         TypedResults.ValidationProblem(new Dictionary<string, string[]>

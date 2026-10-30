@@ -7,7 +7,7 @@ namespace Meridian.Conflicts;
 
 /// <summary>
 /// Every vote-details decision recalculates membership for its vote against the approved
-/// date after the decision (map ticket 08 rule 8). Ballots from rows that were invalid only
+/// date after the decision. Ballots from rows that were invalid only
 /// because the state was not a member, and that pass now, are approved with the decision as
 /// origin; the row records keep the verdict given at import. Approved ballots now outside
 /// membership stay stored and simply stop counting, because scoring reads the current date.
@@ -16,7 +16,7 @@ public static class MembershipRecalculation
 {
     /// <summary>
     /// The importer's reason code for a row whose state was not a member on the vote date
-    /// (slice 1 writes it). Being the only reason a row records, it means the row was
+    /// (the importer writes it). Being the only reason a row records, it means the row was
     /// invalid for nothing else.
     /// </summary>
     public const string NotMemberReasonCode = "not_member_on_vote_date";

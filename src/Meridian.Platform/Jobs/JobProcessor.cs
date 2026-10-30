@@ -145,24 +145,31 @@ public sealed class JobProcessor(
 
         var limit = policy.Timeout;
         using var timeout = new CancellationTokenSource(limit);
-        using var running = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken, timeout.Token);
+        // Cancelled when an update finds this attempt was swept or superseded, so the stale handler stops writing.
+        using var superseded = new CancellationTokenSource();
+        using var running = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken, timeout.Token, superseded.Token);
         using var heartbeatStop = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
-        var heartbeat = HeartbeatAsync(job, heartbeatStop.Token);
-        var context = new JobContext(job, (rows, done, total, ct) => ReportAsync(job, rows, done, total, ct));
+        var heartbeat = HeartbeatAsync(job, superseded, heartbeatStop.Token);
+        var context = new JobContext(job, (rows, done, total, ct) => ReportAsync(job, superseded, rows, done, total, ct));
 
         logger.LogInformation("Job {JobId} started, attempt {Attempt}", job.Id, job.Attempts);
         var started = Stopwatch.GetTimestamp();
         try
         {
             await handler.RunAsync(context, running.Token);
-            await FinishAsync(job, JobState.Done, null, CancellationToken.None);
-            logger.LogInformation("Job {JobId} done in {ElapsedMs} ms", job.Id, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+            if (await FinishAsync(job, JobState.Done, null, CancellationToken.None))
+                logger.LogInformation("Job {JobId} done in {ElapsedMs} ms", job.Id, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
             // A graceful stop is not a failed attempt: give the job back for the next worker.
             await RequeueAsync(job, CancellationToken.None);
             logger.LogInformation("Job {JobId} handed back to the queue on shutdown", job.Id);
+        }
+        catch (OperationCanceledException) when (superseded.IsCancellationRequested)
+        {
+            // Swept and requeued (or taken by another worker): the job is no longer ours to update.
+            logger.LogWarning("Job {JobId} attempt {Attempt} was superseded; its handler was cancelled", job.Id, job.Attempts);
         }
         catch (OperationCanceledException) when (timeout.IsCancellationRequested)
         {
@@ -202,13 +209,17 @@ public sealed class JobProcessor(
         return activity.Start();
     }
 
-    private async Task HeartbeatAsync(ClaimedJob job, CancellationToken cancellationToken)
+    private async Task HeartbeatAsync(ClaimedJob job, CancellationTokenSource superseded, CancellationToken cancellationToken)
     {
         using var timer = new PeriodicTimer(Options.HeartbeatInterval);
         try
         {
             while (await timer.WaitForNextTickAsync(cancellationToken))
-                await ExecuteForAttemptAsync(job, "UPDATE job SET heartbeat_at = now()", cancellationToken);
+            {
+                if (await ExecuteForAttemptAsync(job, "UPDATE job SET heartbeat_at = now()", cancellationToken)) continue;
+                await LoseClaimAsync(job, superseded);
+                return;
+            }
         }
         catch (OperationCanceledException) { }
         catch (Exception error)
@@ -218,37 +229,60 @@ public sealed class JobProcessor(
         }
     }
 
-    private async Task ReportAsync(ClaimedJob job, int? rowsRead, int? votesDone, int? votesTotal, CancellationToken cancellationToken)
+    /// <summary>Stops the stale attempt's handler, so it cannot keep writing beside the attempt that replaced it.</summary>
+    private async Task LoseClaimAsync(ClaimedJob job, CancellationTokenSource superseded)
     {
-        await ExecuteForAttemptAsync(job, """
+        logger.LogWarning("Job {JobId} attempt {Attempt} lost its claim (swept or superseded); cancelling its handler",
+            job.Id, job.Attempts);
+        await superseded.CancelAsync();
+    }
+
+    private async Task ReportAsync(ClaimedJob job, CancellationTokenSource superseded, int? rowsRead, int? votesDone, int? votesTotal, CancellationToken cancellationToken)
+    {
+        var held = await ExecuteForAttemptAsync(job, """
             UPDATE job SET rows_read = coalesce(@rowsRead, rows_read), votes_done = coalesce(@votesDone, votes_done),
                            votes_total = coalesce(@votesTotal, votes_total), heartbeat_at = now()
             """, cancellationToken,
             new NpgsqlParameter<int?>("rowsRead", rowsRead) { DataTypeName = "integer" },
             new NpgsqlParameter<int?>("votesDone", votesDone) { DataTypeName = "integer" },
             new NpgsqlParameter<int?>("votesTotal", votesTotal) { DataTypeName = "integer" });
+        if (held) return;
+        await LoseClaimAsync(job, superseded);
+        cancellationToken.ThrowIfCancellationRequested();
+        superseded.Token.ThrowIfCancellationRequested();
     }
 
-    private Task FinishAsync(ClaimedJob job, JobState state, string? error, CancellationToken cancellationToken) =>
-        ExecuteForAttemptAsync(job, """
+    /// <summary>Returns false when this worker no longer holds the attempt; the new attempt's state is left alone.</summary>
+    private async Task<bool> FinishAsync(ClaimedJob job, JobState state, string? error, CancellationToken cancellationToken)
+    {
+        var held = await ExecuteForAttemptAsync(job, """
             UPDATE job SET state = @state, last_error = @error, heartbeat_at = now(),
                            finished_at = CASE WHEN @state IN ('done', 'failed') THEN now() END
             """, cancellationToken,
             new NpgsqlParameter("state", SnakeCaseEnumConverter<JobState>.ToName(state)),
             new NpgsqlParameter<string?>("error", error) { DataTypeName = "text" });
+        if (!held)
+            logger.LogWarning("Job {JobId} attempt {Attempt} lost its claim before it could finish as {State}; leaving the job as it is",
+                job.Id, job.Attempts, state);
+        return held;
+    }
 
-    private Task RequeueAsync(ClaimedJob job, CancellationToken cancellationToken) =>
-        ExecuteForAttemptAsync(job, "UPDATE job SET state = 'queued', attempts = attempts - 1, heartbeat_at = NULL",
-            cancellationToken);
+    private async Task RequeueAsync(ClaimedJob job, CancellationToken cancellationToken)
+    {
+        if (!await ExecuteForAttemptAsync(job, "UPDATE job SET state = 'queued', attempts = attempts - 1, heartbeat_at = NULL",
+                cancellationToken))
+            logger.LogWarning("Job {JobId} attempt {Attempt} lost its claim before it could be handed back; leaving the job as it is",
+                job.Id, job.Attempts);
+    }
 
-    /// <summary>Runs an update on the job only while this worker still holds this attempt.</summary>
-    private async Task ExecuteForAttemptAsync(ClaimedJob job, string update, CancellationToken cancellationToken,
+    /// <summary>Runs an update on the job only while this worker still holds this attempt. False means it does not.</summary>
+    private async Task<bool> ExecuteForAttemptAsync(ClaimedJob job, string update, CancellationToken cancellationToken,
         params NpgsqlParameter[] parameters)
     {
         await using var command = dataSource.CreateCommand($"{update} WHERE id = @id AND state = 'running' AND attempts = @attempt");
         command.Parameters.AddWithValue("id", job.Id);
         command.Parameters.AddWithValue("attempt", job.Attempts);
         command.Parameters.AddRange(parameters);
-        await command.ExecuteNonQueryAsync(cancellationToken);
+        return await command.ExecuteNonQueryAsync(cancellationToken) > 0;
     }
 }

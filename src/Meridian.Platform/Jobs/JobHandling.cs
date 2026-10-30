@@ -6,8 +6,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Meridian.Platform.Jobs;
 
 /// <summary>
-/// The work of one job kind. Slices plug theirs in (the import handler in slice 1, the
-/// snapshot handler in slice 6); the runner owns claiming, heartbeats, retries and limits.
+/// The work of one job kind. Modules plug their handlers in (the import handler and the
+/// snapshot handler); the runner owns claiming, heartbeats, retries and limits.
 /// A handler may run again after a crash, so it must resume from what it committed.
 /// </summary>
 public interface IJobHandler

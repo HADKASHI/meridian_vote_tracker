@@ -10,7 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Meridian.Votes;
 
-/// <summary>HIS: vote search, the vote page and its timeline. Owned by slice 4.</summary>
+/// <summary>Vote search, the vote page and its timeline.</summary>
 public static class VotesModule
 {
     public static IServiceCollection AddVotesModule(this IServiceCollection services) => services;
@@ -20,11 +20,12 @@ public static class VotesModule
         var votes = api.MapGroup("/votes").WithTags("Votes");
 
         votes.MapGet("", async Task<Results<Ok<PageDto<VoteSummaryDto>>, ProblemHttpResult>> (
-                    MeridianDbContext db, CancellationToken ct,
-                    string? q, int? session, DateOnly? from, DateOnly? to, bool noPosition = false,
-                    int page = 1, int pageSize = 50) =>
-                TypedResults.Ok(await VoteSearch.SearchAsync(db, new(q, session, from, to, noPosition), page, pageSize, ct)))
+                    MeridianDbContext db, CancellationToken ct, [AsParameters] VoteSearchQuery query) =>
+                TypedResults.Ok(await VoteSearch.SearchAsync(db,
+                    new(query.Q, query.Session, query.From, query.To, query.NoPosition ?? false),
+                    query.EffectivePage, query.EffectivePageSize, ct)))
             .WithName("searchVotes")
+            .ProducesProblems(StatusCodes.Status400BadRequest)
             .WithSummary("Search by assembly vote id or title, session, date range, or votes with no position.")
             .ForAnalysts();
 
@@ -36,19 +37,18 @@ public static class VotesModule
             .ForAnalysts();
 
         votes.MapGet("/{voteId:long}/timeline", async Task<Results<Ok<TimelinePageDto>, ProblemHttpResult>> (
-                    long voteId, MeridianDbContext db, CancellationToken ct, long? before, int pageSize = 50) =>
-                await VoteTimeline.LoadAsync(db, voteId, before, pageSize, ct) is { } page
+                    long voteId, MeridianDbContext db, CancellationToken ct, [AsParameters] TimelineQuery query) =>
+                await VoteTimeline.LoadAsync(db, voteId, query.Before, query.EffectivePageSize, ct) is { } page
                     ? TypedResults.Ok(page)
                     : VoteNotFound(voteId))
             .WithName("getVoteTimeline")
             .WithSummary("The vote's timeline, newest first, paged by history id.")
-            .ProducesProblems(StatusCodes.Status404NotFound)
+            .ProducesProblems(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound)
             .ForAnalysts();
 
         return api;
     }
 
     private static ProblemHttpResult VoteNotFound(long voteId) =>
-        ProblemDetailsSetup.Problem(StatusCodes.Status404NotFound, ProblemTypes.NotFound, "Vote not found",
-            $"There is no vote {voteId}.");
+        ProblemDetailsSetup.NotFound("vote", voteId);
 }

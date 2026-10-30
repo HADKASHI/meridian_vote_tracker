@@ -191,6 +191,40 @@ public sealed class JobRunnerTests(PostgresFixture postgres, AzuriteFixture azur
     }
 
     [Fact]
+    public async Task A_swept_attempt_is_cancelled_and_does_not_overwrite_the_new_attempt()
+    {
+        var connectionString = await postgres.CreateDatabaseAsync();
+        var jobId = await QueueImportJobAsync(connectionString);
+        var cancelled = new TaskCompletionSource();
+        using var worker = WorkerHost.Build(connectionString, [new TestJobHandler(JobKind.Import, async (_, ct) =>
+        {
+            try { await Task.Delay(Timeout.Infinite, ct); }
+            catch (OperationCanceledException) { cancelled.TrySetResult(); throw; }
+        })], new Dictionary<string, string?> { ["Jobs:HeartbeatInterval"] = "00:00:00.100" });
+        var processor = worker.Processor();
+        var job = await processor.ClaimNextAsync(Ct);
+        Assert.NotNull(job);
+
+        var run = processor.RunClaimedAsync(job, Ct);
+        // Simulate the sweeper requeueing this attempt and another worker claiming it again.
+        await using (var connection = new Npgsql.NpgsqlConnection(connectionString))
+        {
+            await connection.OpenAsync(Ct);
+            await using var command = new Npgsql.NpgsqlCommand("UPDATE job SET attempts = attempts + 1 WHERE id = @id", connection);
+            command.Parameters.AddWithValue("id", jobId);
+            await command.ExecuteNonQueryAsync(Ct);
+        }
+
+        await cancelled.Task.WaitAsync(TimeSpan.FromSeconds(10), Ct);
+        await run.WaitAsync(TimeSpan.FromSeconds(10), Ct);
+
+        var after = await JobAsync(connectionString, jobId);
+        Assert.Equal(JobState.Running, after.State);
+        Assert.Equal(2, after.Attempts);
+        Assert.Null(after.LastError);
+    }
+
+    [Fact]
     public async Task A_worker_stopped_while_polling_the_queue_still_hands_its_job_back()
     {
         var connectionString = await postgres.CreateDatabaseAsync();

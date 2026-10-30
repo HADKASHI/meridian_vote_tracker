@@ -4,13 +4,13 @@ using System.Text.RegularExpressions;
 
 namespace Meridian.Domain.Imports;
 
-/// <summary>A row after map ticket 08 rule 2, with the first invalid reason found, if any.</summary>
+/// <summary>A row after normalisation, with the first invalid reason found, if any.</summary>
 public sealed record NormalisedRow(
     RowValues Values, IReadOnlyList<string> Normalisations, ReasonCode? Invalid, string? Message,
     VoteDetails? Details, Ballot? Ballot);
 
 /// <summary>
-/// Map ticket 08 rule 2 and the invalid checks of rule 3, except membership, which the
+/// Normalisation and the invalid checks, except membership, which the
 /// classifier checks because its date depends on the approved details. Only documented, mechanical
 /// changes are made, each recorded: trimming, Unicode NFC, invisible characters removed,
 /// codes and single-letter ballots upper-cased, day-first dates rewritten as ISO. Ballot
@@ -143,7 +143,7 @@ public static partial class RowNormaliser
             (year, month, day) = (Int(longForm, "y"), m + 1, Int(longForm, "d"));
         else return null;
 
-        return month is >= 1 and <= 12 && day >= 1 && day <= DateTime.DaysInMonth(year, month)
+        return year is >= 1 and <= 9999 && month is >= 1 and <= 12 && day >= 1 && day <= DateTime.DaysInMonth(year, month)
             ? new DateOnly(year, month, day)
             : null;
     }

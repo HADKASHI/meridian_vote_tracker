@@ -22,7 +22,7 @@ public sealed class Conflict
     public int? IncomingSession { get; init; }
     public DateOnly? IncomingVoteDate { get; init; }
     public string? IncomingTitle { get; init; }
-    /// <summary>The title's comparison key (map ticket 08 rule 2).</summary>
+    /// <summary>The title's comparison key.</summary>
     public string? IncomingTitleKey { get; init; }
     public long? ComparedDetailsRevisionId { get; init; }
 

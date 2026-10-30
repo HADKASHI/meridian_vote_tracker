@@ -1,7 +1,7 @@
 namespace Meridian.Domain.Imports;
 
 /// <summary>
-/// Classifies one vote's rows against what is approved for it (map ticket 08 rules 3 to 7).
+/// Classifies one vote's rows against what is approved for it.
 /// Pure: the caller reads the approved values under the vote's lock and writes the verdict.
 /// </summary>
 public static class Classifier

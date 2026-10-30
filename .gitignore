@@ -9,3 +9,15 @@ obj/
 node_modules/
 .env
 *.user
+
+# Local env files, databases, editor/OS junk, and local Claude settings
+.env.*
+!.env.example
+*.db
+*.sqlite
+*.sqlite3
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+.claude/settings.local.json

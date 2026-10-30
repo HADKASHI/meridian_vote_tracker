@@ -1,7 +1,7 @@
 namespace Meridian.Domain.History;
 
 /// <summary>
-/// Builds from → to pairs over an insert-only history (map ticket 04 rule 7, ADR 0001): a
+/// Builds from → to pairs over an insert-only history (ADR 0001): a
 /// change stores only its new value, and "previous" is the earlier revision of the same
 /// subject in history-id order, never by timestamp.
 /// </summary>

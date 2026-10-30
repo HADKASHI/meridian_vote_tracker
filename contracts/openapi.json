@@ -410,22 +410,22 @@
               }
             }
           },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
           "400": {
             "description": "Bad Request",
             "content": {
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             }
@@ -1352,26 +1352,27 @@
             "name": "noPosition",
             "in": "query",
             "schema": {
-              "type": "boolean",
-              "default": false
+              "type": "boolean"
             }
           },
           {
             "name": "page",
             "in": "query",
             "schema": {
+              "maximum": 1000000,
+              "minimum": 1,
               "type": "integer",
-              "format": "int32",
-              "default": 1
+              "format": "int32"
             }
           },
           {
             "name": "pageSize",
             "in": "query",
             "schema": {
+              "maximum": 200,
+              "minimum": 1,
               "type": "integer",
-              "format": "int32",
-              "default": 50
+              "format": "int32"
             }
           }
         ],
@@ -1382,6 +1383,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PageDtoOfVoteSummaryDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
                 }
               }
             }
@@ -1471,6 +1482,8 @@
             "name": "before",
             "in": "query",
             "schema": {
+              "maximum": 9223372036854775807,
+              "minimum": 1,
               "type": "integer",
               "format": "int64"
             }
@@ -1479,9 +1492,10 @@
             "name": "pageSize",
             "in": "query",
             "schema": {
+              "maximum": 200,
+              "minimum": 1,
               "type": "integer",
-              "format": "int32",
-              "default": 50
+              "format": "int32"
             }
           }
         ],
@@ -1492,6 +1506,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TimelinePageDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
                 }
               }
             }
@@ -1531,26 +1555,27 @@
             "name": "noPosition",
             "in": "query",
             "schema": {
-              "type": "boolean",
-              "default": false
+              "type": "boolean"
             }
           },
           {
             "name": "page",
             "in": "query",
             "schema": {
+              "maximum": 1000000,
+              "minimum": 1,
               "type": "integer",
-              "format": "int32",
-              "default": 1
+              "format": "int32"
             }
           },
           {
             "name": "pageSize",
             "in": "query",
             "schema": {
+              "maximum": 200,
+              "minimum": 1,
               "type": "integer",
-              "format": "int32",
-              "default": 50
+              "format": "int32"
             }
           }
         ],
@@ -1561,6 +1586,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PageDtoOfPositionWorklistItemDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
                 }
               }
             }
@@ -1822,6 +1857,26 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/NoPositionProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             }
@@ -4878,6 +4933,8 @@
             "format": "int16"
           },
           "seenRevisionId": {
+            "maximum": 9223372036854775807,
+            "minimum": 1,
             "type": [
               "null",
               "integer"

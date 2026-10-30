@@ -33,11 +33,11 @@ public static class CheckApp
                 catch (Exception error) when (!token.IsCancellationRequested) { Console.WriteLine($"No token for {scope}: {error.GetType().Name}"); }
 
         Console.WriteLine(File.Exists(envPath) ? $"Using {envPath}." : $"No {envPath} found; using the environment.");
+        using var sheetReader = LiveChecks.CreateReader(Setting("DOCINTEL_ENDPOINT"), Setting("DOCINTEL_KEY"), credential);
         var results = new List<CheckResult>
         {
             await LiveChecks.BlobAsync(Setting("BLOB_CONNECTION_STRING"), Setting("BLOB_SERVICE_URI"), Setting("BLOB_CONTAINER") ?? "imports", token, credential),
-            await LiveChecks.DocumentIntelligenceAsync(
-                LiveChecks.CreateReader(Setting("DOCINTEL_ENDPOINT"), Setting("DOCINTEL_KEY"), credential), Option("--sheet"), token),
+            await LiveChecks.DocumentIntelligenceAsync(sheetReader, Option("--sheet"), token),
         };
         Console.WriteLine();
         Console.Write(Report.Render(results));

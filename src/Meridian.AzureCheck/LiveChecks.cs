@@ -100,12 +100,27 @@ public static class LiveChecks
         }
     }
 
+    /// <summary>
+    /// The timeout of each request to the service (the sheet's upload and each poll of its operation). It is per request
+    /// and short on purpose: a service that stops answering must not hang the check, which the token still cancels as a whole.
+    /// </summary>
+    private static readonly TimeSpan SheetRequestTimeout = TimeSpan.FromSeconds(30);
+
     /// <summary>A reader for the endpoint, signing in with the key if there is one and with Entra ID (<c>az login</c>) if not.</summary>
-    public static IVoteSheetReader? CreateReader(string? endpoint, string? key, TokenCredential? credential = null)
+    public static CheckSheetReader? CreateReader(string? endpoint, string? key, TokenCredential? credential = null)
     {
         var options = new DocumentIntelligenceOptions { Endpoint = endpoint, Key = key };
-        return options.IsConfigured
-            ? new DocumentIntelligenceSheetReader(new HttpClient(), Options.Create(options), NullLogger<DocumentIntelligenceSheetReader>.Instance, credential)
-            : null;
+        if (!options.IsConfigured) return null;
+
+        var http = new HttpClient { Timeout = SheetRequestTimeout };
+        return new(http, new DocumentIntelligenceSheetReader(http, Options.Create(options), NullLogger<DocumentIntelligenceSheetReader>.Instance, credential));
     }
+}
+
+/// <summary>The sheet reader of a check. It owns the <see cref="HttpClient"/> it sends through, so disposing it releases that client.</summary>
+public sealed class CheckSheetReader(HttpClient http, DocumentIntelligenceSheetReader reader) : IVoteSheetReader, IDisposable
+{
+    public Task<SheetRead> ReadAsync(Stream pdf, CancellationToken cancellationToken) => reader.ReadAsync(pdf, cancellationToken);
+
+    public void Dispose() => http.Dispose();
 }

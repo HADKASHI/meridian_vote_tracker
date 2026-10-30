@@ -29,6 +29,11 @@ public static class ProblemDetailsSetup
             problem.Extensions["traceId"] = Activity.Current?.TraceId.ToHexString() ?? context.HttpContext.TraceIdentifier;
         });
 
+    /// <summary>The 404 problem for a missing <paramref name="resource"/> (e.g. "vote"), naming its <paramref name="id"/> when known.</summary>
+    public static ProblemHttpResult NotFound(string resource, object? id = null) =>
+        Problem(StatusCodes.Status404NotFound, ProblemTypes.NotFound, $"{char.ToUpperInvariant(resource[0])}{resource[1..]} not found",
+            id is null ? null : $"There is no {resource} #{id}.");
+
     /// <summary>A problem result of the catalogue, for endpoints to return.</summary>
     public static ProblemHttpResult Problem(int status, string type, string title, string? detail = null,
         IDictionary<string, object?>? extensions = null) =>

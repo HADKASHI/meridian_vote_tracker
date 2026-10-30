@@ -82,7 +82,18 @@ public sealed class ExtractionUploadTests(PostgresFixture postgres, AzuriteFixtu
 
         var response = await api.ClientAs("dana").GetAsync("/api/extractions/999", Ct);
 
-        Assert.Equal(404, (int)response.StatusCode);
+        await response.AssertProblemAsync(404, "not-found");
+    }
+
+    [Fact]
+    public async Task A_sheet_over_the_upload_limit_is_refused_with_413()
+    {
+        await using var api = await ApiFactory.CreateAsync(postgres, azurite);
+        await using var limited = api.WithSettings(new() { ["Extractions:MaxUploadBytes"] = "1024" });
+
+        var response = await ExtractionApi.UploadAsync(limited.ClientAs("dana"), "big.pdf", new byte[4096]);
+
+        await response.AssertProblemAsync(413, "payload-too-large");
     }
 
     [Fact]

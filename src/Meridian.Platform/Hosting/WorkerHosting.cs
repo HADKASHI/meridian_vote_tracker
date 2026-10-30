@@ -8,7 +8,7 @@ namespace Meridian.Platform.Hosting;
 
 public static class WorkerHosting
 {
-    /// <summary>The worker's shared services: data, logs and the job runner. Slices add only their job handler.</summary>
+    /// <summary>The worker's shared services: data, logs and the job runner. Each module adds only its job handler.</summary>
     public static void AddMeridianWorkerPlatform(this IHostApplicationBuilder builder)
     {
         builder.AddMeridianObservability();
@@ -34,7 +34,7 @@ public static class WorkerHosting
         return services;
     }
 
-    /// <summary>Registers a slice's handler for its job kind.</summary>
+    /// <summary>Registers a module's handler for its job kind.</summary>
     public static IServiceCollection AddJobHandler<THandler>(this IServiceCollection services)
         where THandler : class, IJobHandler =>
         services.AddScoped<IJobHandler, THandler>();
