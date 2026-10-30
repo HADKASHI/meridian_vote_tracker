@@ -13,6 +13,7 @@ import { pollWhile } from '../../shared/http/poll';
 import { isProblem, Problem, ProblemType, toProblem } from '../../shared/problem/problem';
 import { ConflictCard } from '../../shared/problem/conflict-card';
 import { ProblemBanner } from '../../shared/problem/problem-banner';
+import { FileDownload } from '../../shared/ui/file-download';
 import { JobStateBadge } from '../../shared/ui/job-state-badge';
 import { LoadState } from '../../shared/ui/load-state';
 import { ReviewCounts } from '../../shared/ui/review-counts';
@@ -51,7 +52,7 @@ interface RowEdits {
  */
 @Component({
   selector: 'app-extraction-page',
-  imports: [DatePipe, RouterLink, MatButtonModule, MatFormFieldModule, MatInputModule, ProblemBanner, ConflictCard, LoadState, JobStateBadge],
+  imports: [DatePipe, RouterLink, MatButtonModule, MatFormFieldModule, MatInputModule, ProblemBanner, ConflictCard, LoadState, JobStateBadge, FileDownload],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <article data-testid="extraction-pane">
@@ -61,6 +62,7 @@ interface RowEdits {
           <span class="chip" data-testid="status" [attr.data-tone]="tone(e.status)">{{ label(e.status) }}</span>
           <span>Uploaded by {{ e.uploadedBy }} · {{ e.uploadedAt | date: 'yyyy-MM-dd HH:mm' }}</span>
         </p>
+        <app-file-download [url]="'/api/extractions/' + e.id + '/file'" [fileName]="e.fileName" />
 
         @switch (e.status) {
           @case ('extracting') {

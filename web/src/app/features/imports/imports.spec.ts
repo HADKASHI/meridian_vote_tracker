@@ -239,4 +239,63 @@ describe('imports feature', () => {
     ]);
     expect(items[0].querySelector('a')!.getAttribute('href')).toBe('/review/31');
   });
+
+  describe('downloading the original file', () => {
+    let saved: string[];
+
+    beforeEach(() => {
+      saved = [];
+      URL.createObjectURL = vi.fn(() => 'blob:original');
+      URL.revokeObjectURL = vi.fn();
+      vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+        saved.push(this.download);
+      });
+    });
+
+    afterEach(() => vi.restoreAllMocks());
+
+    it('offers Download on each row of the Imports list and saves the file under its own name', async () => {
+      const harness = await RouterTestingHarness.create('/imports');
+      http.expectOne((r) => r.url === '/api/imports').flush({
+        items: [{ id: 7, fileName: 'q1.csv', uploadedBy: 'dana', uploadedAt: '2024-01-01T00:00:00Z', sizeBytes: 120,
+          job: job('done'), rejectedReason: null, counts }],
+        total: 1, page: 1, pageSize: 50,
+      });
+      await harness.fixture.whenStable();
+
+      harness.routeNativeElement!.querySelector<HTMLButtonElement>('[data-testid=download]')!.click();
+
+      const request = http.expectOne('/api/imports/7/file');
+      expect(request.request.responseType).toBe('blob');
+      request.flush(new Blob(['a,b\n']));
+      expect(saved).toEqual(['q1.csv']);
+    });
+
+    it('offers Download on the import page', async () => {
+      const harness = await RouterTestingHarness.create('/imports/7');
+      http.expectOne('/api/imports/7').flush(importDto('done'));
+      await settle();
+
+      harness.routeNativeElement!.querySelector<HTMLButtonElement>('[data-testid=download]')!.click();
+
+      http.expectOne('/api/imports/7/file').flush(new Blob(['a,b\n']));
+      expect(saved).toEqual(['q1.csv']);
+    });
+
+    it('shows a refused download with its trace id', async () => {
+      const harness = await RouterTestingHarness.create('/imports/7');
+      http.expectOne('/api/imports/7').flush(importDto('done'));
+      await settle();
+
+      harness.routeNativeElement!.querySelector<HTMLButtonElement>('[data-testid=download]')!.click();
+      const problem = { type: 'not-found', title: 'The stored file is missing', status: 404, traceId: 'trace-9' };
+      http.expectOne('/api/imports/7/file').flush(new Blob([JSON.stringify(problem)], { type: 'application/problem+json' }),
+        { status: 404, statusText: 'Not Found' });
+      await vi.waitFor(() => {
+        TestBed.tick();
+        expect(harness.routeNativeElement!.textContent).toContain('trace-9');
+      });
+      expect(saved).toEqual([]);
+    });
+  });
 });

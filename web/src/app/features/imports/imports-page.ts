@@ -9,6 +9,7 @@ import { JobState } from '../../api/model';
 import { pollWhile } from '../../shared/http/poll';
 import { Problem, toProblem } from '../../shared/problem/problem';
 import { ProblemBanner } from '../../shared/problem/problem-banner';
+import { FileDownload } from '../../shared/ui/file-download';
 import { JobStateBadge } from '../../shared/ui/job-state-badge';
 import { LoadState } from '../../shared/ui/load-state';
 import { OutcomeChip } from '../../shared/ui/outcome-chip';
@@ -19,7 +20,7 @@ import { outcomesWithRows } from './import-counts';
 /** Every import, newest first, and the upload that starts a new one. */
 @Component({
   selector: 'app-imports-page',
-  imports: [MatTableModule, MatButtonModule, DatePipe, RouterLink, JobStateBadge, ProblemBanner, PageHeader, LoadState, OutcomeChip, VotingSheetUpload],
+  imports: [MatTableModule, MatButtonModule, DatePipe, RouterLink, JobStateBadge, ProblemBanner, PageHeader, LoadState, OutcomeChip, VotingSheetUpload, FileDownload],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-page-header heading="Imports">
@@ -73,6 +74,12 @@ import { outcomesWithRows } from './import-counts';
                 }
               </td>
             </ng-container>
+            <ng-container matColumnDef="download">
+              <th mat-header-cell *matHeaderCellDef><span class="visually-hidden">Download</span></th>
+              <td mat-cell *matCellDef="let i">
+                <app-file-download [url]="'/api/imports/' + i.id + '/file'" [fileName]="i.fileName" />
+              </td>
+            </ng-container>
             <tr mat-header-row *matHeaderRowDef="columns"></tr>
             <tr mat-row *matRowDef="let row; columns: columns"></tr>
           </table>
@@ -107,7 +114,7 @@ import { outcomesWithRows } from './import-counts';
 export class ImportsPage {
   private readonly service = inject(ImportsService);
   private readonly router = inject(Router);
-  protected readonly columns = ['file', 'uploadedBy', 'uploadedAt', 'state', 'outcomes'];
+  protected readonly columns = ['file', 'uploadedBy', 'uploadedAt', 'state', 'outcomes', 'download'];
   protected readonly imports = listImportsResource(signal({ page: 1, pageSize: 50 }));
   protected readonly uploading = signal(false);
   protected readonly problem = signal<Problem | null>(null);
