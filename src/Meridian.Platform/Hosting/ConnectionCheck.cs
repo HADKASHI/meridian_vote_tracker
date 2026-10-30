@@ -44,7 +44,7 @@ public static partial class ConnectionCheck
     private const string EntraHint = "It signs in with Microsoft Entra ID; run 'az login' (or give the process a service principal or managed identity) and check the account has access.";
 
     /// <param name="blobServiceUri">The Blob service address; with it, Blob is reached with the Entra sign-in instead of a key.</param>
-    /// <param name="credential">The Entra sign-in to use; the process's own when null.</param>
+    /// <param name="credential">The Entra sign-in to use for Blob; the process's own when null.</param>
     /// <param name="checkBlob">Report Blob as failed when no Blob setting exists at all, instead of skipping it.</param>
     public static async Task<IReadOnlyList<ConnectionFailure>> RunAsync(
         string? databaseConnectionString, string? blobConnectionString, bool requireTls, CancellationToken cancellationToken,
@@ -52,14 +52,14 @@ public static partial class ConnectionCheck
     {
         var checks = new List<Task<ConnectionFailure?>>();
         if (!string.IsNullOrWhiteSpace(databaseConnectionString))
-            checks.Add(CheckDatabaseAsync(databaseConnectionString, requireTls, credential, cancellationToken));
+            checks.Add(CheckDatabaseAsync(databaseConnectionString, requireTls, cancellationToken));
         if (checkBlob || !string.IsNullOrWhiteSpace(blobConnectionString) || !string.IsNullOrWhiteSpace(blobServiceUri))
             checks.Add(CheckBlobAsync(blobConnectionString, blobServiceUri, credential, cancellationToken));
         return [.. (await Task.WhenAll(checks)).OfType<ConnectionFailure>()];
     }
 
     private static async Task<ConnectionFailure?> CheckDatabaseAsync(
-        string connectionString, bool requireTls, TokenCredential? credential, CancellationToken cancellationToken)
+        string connectionString, bool requireTls, CancellationToken cancellationToken)
     {
         NpgsqlConnectionStringBuilder builder;
         try
@@ -76,17 +76,15 @@ public static partial class ConnectionCheck
             return new("database", $"The connection to the database at {where} does not require TLS, which Azure Database for PostgreSQL does. Add SSL Mode=Require to its connection string.");
 
         builder.Timeout = (int)Timeout.TotalSeconds;
-        var entra = DatabaseAccess.UsesEntra(builder.ConnectionString);
         try
         {
-            await using var dataSource = entra ? DatabaseAccess.EntraDataSource(builder.ConnectionString, new QuietCredential(credential ?? AzureCredentials.Default)) : null;
-            await using var connection = dataSource is null ? new NpgsqlConnection(builder.ConnectionString) : dataSource.CreateConnection();
+            await using var connection = new NpgsqlConnection(builder.ConnectionString);
             await connection.OpenAsync(cancellationToken);
             return null;
         }
         catch (Exception error) when (!cancellationToken.IsCancellationRequested)
         {
-            return new("database", $"Could not connect to the database at {where}: {Reason(error, builder.Password)}{(entra ? " " + EntraHint : "")}");
+            return new("database", $"Could not connect to the database at {where}: {Reason(error, builder.Password)}");
         }
     }
 

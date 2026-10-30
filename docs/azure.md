@@ -6,7 +6,7 @@ The app runs against Azure Blob Storage and Azure Database for PostgreSQL by an 
 
 - An Azure Database for PostgreSQL flexible server on **PostgreSQL 17 or 18** (see [supported versions](postgres-versions.md)), with a database **dedicated to this app** that is empty or already migrated by it. `migrate` applies the migrations to it as it does locally, and seeds the member states.
 - A storage account. The app creates its container (`imports`) on first start.
-- A way to sign in: either **keys and a password**, or **Microsoft Entra ID** (see [Signing in with Microsoft Entra ID](#signing-in-with-microsoft-entra-id)). Use Entra ID when your account cannot read the storage keys or create a database password.
+- A way to sign in: either **keys and a password**, or, for Blob and Document Intelligence, **Microsoft Entra ID** (see [Signing in with Microsoft Entra ID](#signing-in-with-microsoft-entra-id)). Use Entra ID when your account cannot read the storage or Document Intelligence keys. The database always uses a password.
 - The server's firewall must allow the machine running compose.
 - `candidate_data/member_states.csv`, as for a local run: only `migrate` reads it.
 
@@ -19,8 +19,7 @@ Copy `.env.example` to `.env` and set the connection settings. `.env` is ignored
 AZURE_POSTGRES_CONNECTION_STRING=Host=<server>.postgres.database.azure.com;Database=meridian;Username=<user>;Password=<password>;SSL Mode=Require
 BLOB_CONNECTION_STRING=DefaultEndpointsProtocol=https;AccountName=<account>;AccountKey=<key>;EndpointSuffix=core.windows.net
 
-# Or with Microsoft Entra ID: no password, no key
-AZURE_POSTGRES_CONNECTION_STRING=Host=<server>.postgres.database.azure.com;Database=meridian;Username=<your Entra user>;SSL Mode=Require
+# Or, for Blob, with Microsoft Entra ID instead of a key
 BLOB_SERVICE_URI=https://<account>.blob.core.windows.net/
 ```
 
@@ -50,11 +49,10 @@ Startup check failed for blob: Could not reach the Blob storage account '<accoun
 
 ## Signing in with Microsoft Entra ID
 
-Three settings switch a service from a password or key to an Entra ID sign-in. Anything else works exactly as before, and Azurite and the local database never touch Entra.
+Two settings switch a service from a key to an Entra ID sign-in. Anything else works exactly as before, and Azurite and the local database never touch Entra.
 
 | Service | Entra ID is used when | What it uses |
 |---|---|---|
-| PostgreSQL | the host ends in `.postgres.database.azure.com` and the connection string has **no `Password`** | an access token for `https://ossrdbms-aad.database.windows.net/.default` as the password, renewed before it expires. `Username` is the Entra principal (for example `you@contoso.com`), and `SSL Mode=Require` still applies |
 | Blob | `Blob__ServiceUri` (`BLOB_SERVICE_URI`) is set; it wins over `Blob__ConnectionString` | `new BlobServiceClient(new Uri(serviceUri), new DefaultAzureCredential())` |
 | Document Intelligence | `DocumentIntelligence__Endpoint` is set and `DocumentIntelligence__Key` is empty | a bearer token for `https://cognitiveservices.azure.com/.default`. The resource needs its custom subdomain endpoint |
 
@@ -63,14 +61,13 @@ The sign-in is `DefaultAzureCredential`: `az login` on your machine, a service p
 The identity also needs the right to use each service. None of this is checked from the repository:
 
 - **Blob:** the *Storage Blob Data Contributor* role on the storage account (or container).
-- **PostgreSQL:** Microsoft Entra authentication switched on for the server, and a database role for your principal (created by the server's Entra administrator with `pgaadauth_create_principal`) that owns, or can create objects in, the dedicated database, since `migrate` creates the schema.
 - **Document Intelligence:** the *Cognitive Services User* role on the resource.
 
 A container has no `az login`. With compose either give the services a service principal (set the three `AZURE_*` variables in `.env`), or, if you can only sign in with `az login`, run the services on your machine with the same settings:
 
 ```bash
 az login
-export ConnectionStrings__Meridian='Host=<server>.postgres.database.azure.com;Database=meridian;Username=<your Entra user>;SSL Mode=Require'
+export ConnectionStrings__Meridian='Host=localhost;Port=5433;Database=meridian;Username=meridian;Password=meridian_local'   # or the Azure server, with its Password
 export Blob__ServiceUri='https://<account>.blob.core.windows.net/'
 export Seed__MemberStatesPath="$PWD/candidate_data/member_states.csv"   # absolute: dotnet ef runs from src/Meridian.Data
 dotnet tool restore
@@ -82,7 +79,7 @@ dotnet run --project src/Meridian.Worker                   # in another
 When a sign-in cannot be had, the startup line names the service and says why it matters, without quoting the credential's own message:
 
 ```
-Startup check failed for database: Could not connect to the database at <server>...: ... It signs in with Microsoft Entra ID; run 'az login' (or give the process a service principal or managed identity) and check the account has access.
+Startup check failed for blob: Could not reach the Blob storage account '<account>': ... It signs in with Microsoft Entra ID; run 'az login' (or give the process a service principal or managed identity) and check the account has access.
 ```
 
 ## Downloads
@@ -112,8 +109,8 @@ Each line starts `PASS`, `FAIL` or `SKIP` (a setting or the sheet was not given)
 
 Running it with a real sheet closes the limit ADR 0008 admits: the Document Intelligence adapter has so far only met a hand-written fixture. If the report says the mapper found no grid rows, or no totals, the layout model returned that sheet in a shape the mapper does not know yet; keep the sheet and the report's counts and take them to the next build.
 
-### What the check does not cover
+### What was not used
 
-The database and Application Insights are **not** checked live. We ran into dev-ops problems: the Azure Database for PostgreSQL server could not be reached from the cloud session the check was run in (its name does not resolve there), and its Entra sign-in could not be set up and proven in the time available. Application Insights accepted a test trace, but nobody confirmed it arrived. So this task runs on the local PostgreSQL and does not rely on Application Insights, even though ideally it would use both.
+The database and Application Insights are **not** checked live, and the Azure database is not used for this task. We ran into dev-ops problems: the Azure Database for PostgreSQL server could not be reached from the cloud session the check was run in (its name does not resolve there), and an Entra ID sign-in for it could not be set up and proven in the time available, so that sign-in was built and then removed again. Application Insights accepted a test trace, but nobody confirmed it arrived. So this task runs on the local PostgreSQL, even though ideally it would use the managed server and Application Insights.
 
-The code for both is in place and tested against stand-ins: a password-less connection string to an Azure server signs in with Entra ID, and Application Insights switches on with `APPLICATIONINSIGHTS_CONNECTION_STRING`. A first run against the real server is still to be done; if it fails, the startup message names the connection.
+What stays: `compose.azure.yaml` can point the services at an Azure database with a password and TLS, and Application Insights switches on with `APPLICATIONINSIGHTS_CONNECTION_STRING` (spec story 111). Neither has been run against a real Azure resource; if the database connection fails, the startup message names it.

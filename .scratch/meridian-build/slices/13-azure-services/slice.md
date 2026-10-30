@@ -38,5 +38,4 @@ In `issues/` beside this file, one per ticket, written by `/to-tickets` from thi
 
 ## Scope change after merge
 
-The guided check covers Blob and Document Intelligence only. The database and Application Insights were dropped from it (dev-ops problems reaching the managed server from the cloud session; see ADR 0009's update and DECISIONS.md). Entra ID sign-in for all three services was added.
-
+The guided check covers Blob and Document Intelligence only. The database and Application Insights were dropped from it, and an Entra sign-in built for PostgreSQL was removed again (dev-ops problems reaching the managed server from the cloud session; see ADR 0009's update and DECISIONS.md). Entra ID sign-in stays for Blob and Document Intelligence.
