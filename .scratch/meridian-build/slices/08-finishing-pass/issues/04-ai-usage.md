@@ -4,8 +4,8 @@
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The workflow section matches the skills that ship and the files in `.scratch/`
-- [ ] The checked, rejected or corrected section covers the design and the build, each item specific and true to the history
-- [ ] It contains no client data
+- [x] The workflow section matches the skills that ship and the files in `.scratch/`
+- [x] The checked, rejected or corrected section covers the design and the build, each item specific and true to the history
+- [x] It contains no client data
