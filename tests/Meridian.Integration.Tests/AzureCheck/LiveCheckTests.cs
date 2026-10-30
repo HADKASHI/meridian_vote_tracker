@@ -18,7 +18,7 @@ public sealed class LiveCheckTests(PostgresFixture postgres, AzuriteFixture azur
     {
         var container = $"check-{Guid.NewGuid():N}";
 
-        var result = await LiveChecks.BlobAsync(azurite.ConnectionString, container, Ct);
+        var result = await LiveChecks.BlobAsync(azurite.ConnectionString, null, container, Ct);
 
         Assert.Equal(CheckStatus.Passed, result.Status);
         var blobs = new BlobContainerClient(azurite.ConnectionString, container);
@@ -28,10 +28,50 @@ public sealed class LiveCheckTests(PostgresFixture postgres, AzuriteFixture azur
     [Fact]
     public async Task A_check_without_its_configuration_says_it_is_not_configured()
     {
-        Assert.Equal(CheckStatus.NotConfigured, (await LiveChecks.BlobAsync(null, "x", Ct)).Status);
+        Assert.Equal(CheckStatus.NotConfigured, (await LiveChecks.BlobAsync(null, " ", "x", Ct)).Status);
         Assert.Equal(CheckStatus.NotConfigured, (await LiveChecks.DatabaseAsync(null, Ct)).Status);
         Assert.Equal(CheckStatus.NotConfigured, (await LiveChecks.DocumentIntelligenceAsync(null, "sheet.pdf", Ct)).Status);
         Assert.Equal(CheckStatus.NotConfigured, (await LiveChecks.ApplicationInsightsAsync(" ", Ct)).Status);
+    }
+
+    private sealed class FailingCredential : global::Azure.Core.TokenCredential
+    {
+        public override global::Azure.Core.AccessToken GetToken(global::Azure.Core.TokenRequestContext context, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("Please run 'az login' (tenant 00000000-secret-tenant).");
+
+        public override ValueTask<global::Azure.Core.AccessToken> GetTokenAsync(global::Azure.Core.TokenRequestContext context, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("Please run 'az login' (tenant 00000000-secret-tenant).");
+    }
+
+    [Fact]
+    public async Task Blob_by_service_address_fails_naming_the_account_and_the_Entra_sign_in_when_it_cannot_sign_in()
+    {
+        var result = await LiveChecks.BlobAsync(null, "https://nosuchaccount.blob.core.windows.net/", "imports", Ct, new FailingCredential());
+
+        Assert.Equal(CheckStatus.Failed, result.Status);
+        Assert.Contains("nosuchaccount", result.Detail);
+        Assert.Contains("Entra", result.Detail);
+        Assert.DoesNotContain("secret-tenant", result.Detail);
+    }
+
+    [Fact]
+    public async Task A_password_less_Azure_database_fails_with_the_Entra_hint_and_without_the_credentials_own_words()
+    {
+        var result = await LiveChecks.DatabaseAsync(
+            "Host=nosuch-psql.postgres.database.azure.com;Database=m;Username=me@contoso.com;SSL Mode=Require;Timeout=2", Ct,
+            credential: new FailingCredential());
+
+        Assert.Equal(CheckStatus.Failed, result.Status);
+        Assert.Contains("nosuch-psql.postgres.database.azure.com", result.Detail);
+        Assert.Contains("Entra", result.Detail);
+        Assert.DoesNotContain("secret-tenant", result.Detail);
+    }
+
+    [Fact]
+    public void An_endpoint_without_a_key_still_gets_a_reader_that_signs_in_with_Entra()
+    {
+        Assert.NotNull(LiveChecks.CreateReader("https://name.cognitiveservices.azure.com/", null));
+        Assert.Null(LiveChecks.CreateReader(null, "key"));
     }
 
     [Fact]

@@ -19,6 +19,28 @@ public static partial class ConnectionCheck
 {
     public static readonly TimeSpan Timeout = TimeSpan.FromSeconds(15);
 
+    /// <summary>
+    /// Wraps the sign-in so a failure says only that no token could be had, and which kind of error it was: the
+    /// credential's own message can quote tenant and account details that do not belong in a report.
+    /// </summary>
+    private sealed class QuietCredential(TokenCredential inner) : TokenCredential
+    {
+        public override AccessToken GetToken(TokenRequestContext requestContext, CancellationToken cancellationToken)
+        {
+            try { return inner.GetToken(requestContext, cancellationToken); }
+            catch (Exception error) when (error is not OperationCanceledException) { throw Quiet(error); }
+        }
+
+        public override async ValueTask<AccessToken> GetTokenAsync(TokenRequestContext requestContext, CancellationToken cancellationToken)
+        {
+            try { return await inner.GetTokenAsync(requestContext, cancellationToken); }
+            catch (Exception error) when (error is not OperationCanceledException) { throw Quiet(error); }
+        }
+
+        private static InvalidOperationException Quiet(Exception error) =>
+            new($"no Microsoft Entra ID token could be obtained ({error.GetType().Name}).");
+    }
+
     private const string EntraHint = "It signs in with Microsoft Entra ID; run 'az login' (or give the process a service principal or managed identity) and check the account has access.";
 
     /// <param name="blobServiceUri">The Blob service address; with it, Blob is reached with the Entra sign-in instead of a key.</param>
@@ -57,7 +79,7 @@ public static partial class ConnectionCheck
         var entra = DatabaseAccess.UsesEntra(builder.ConnectionString);
         try
         {
-            await using var dataSource = entra ? DatabaseAccess.EntraDataSource(builder.ConnectionString, credential ?? AzureCredentials.Default) : null;
+            await using var dataSource = entra ? DatabaseAccess.EntraDataSource(builder.ConnectionString, new QuietCredential(credential ?? AzureCredentials.Default)) : null;
             await using var connection = dataSource is null ? new NpgsqlConnection(builder.ConnectionString) : dataSource.CreateConnection();
             await connection.OpenAsync(cancellationToken);
             return null;
@@ -78,7 +100,7 @@ public static partial class ConnectionCheck
         BlobServiceClient client;
         try
         {
-            client = BlobAccess.Service(connectionString, serviceUri, credential, new BlobClientOptions
+            client = BlobAccess.Service(connectionString, serviceUri, new QuietCredential(credential ?? AzureCredentials.Default), new BlobClientOptions
             {
                 Retry = { MaxRetries = 0, Mode = RetryMode.Fixed, NetworkTimeout = Timeout },
             });

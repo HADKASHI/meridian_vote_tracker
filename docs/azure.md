@@ -6,23 +6,29 @@ The app runs against Azure Blob Storage and Azure Database for PostgreSQL by an 
 
 - An Azure Database for PostgreSQL flexible server on **PostgreSQL 17 or 18** (see [supported versions](postgres-versions.md)), with a database **dedicated to this app** that is empty or already migrated by it. `migrate` applies the migrations to it as it does locally, and seeds the member states.
 - A storage account. The app creates its container (`imports`) on first start.
+- A way to sign in: either **keys and a password**, or **Microsoft Entra ID** (see [Signing in with Microsoft Entra ID](#signing-in-with-microsoft-entra-id)). Use Entra ID when your account cannot read the storage keys or create a database password.
 - The server's firewall must allow the machine running compose.
 - `candidate_data/member_states.csv`, as for a local run: only `migrate` reads it.
 
 ## Run it
 
-Copy `.env.example` to `.env` and set the two connection strings. `.env` is ignored by git; never put either value in a committed file.
+Copy `.env.example` to `.env` and set the connection settings. `.env` is ignored by git; never put a key or password in a committed file.
 
 ```bash
+# With a password and a key
 AZURE_POSTGRES_CONNECTION_STRING=Host=<server>.postgres.database.azure.com;Database=meridian;Username=<user>;Password=<password>;SSL Mode=Require
 BLOB_CONNECTION_STRING=DefaultEndpointsProtocol=https;AccountName=<account>;AccountKey=<key>;EndpointSuffix=core.windows.net
+
+# Or with Microsoft Entra ID: no password, no key
+AZURE_POSTGRES_CONNECTION_STRING=Host=<server>.postgres.database.azure.com;Database=meridian;Username=<your Entra user>;SSL Mode=Require
+BLOB_SERVICE_URI=https://<account>.blob.core.windows.net/
 ```
 
 ```bash
 docker compose -f compose.yaml -f compose.azure.yaml up --build
 ```
 
-The override starts `migrate`, `api`, `worker` and `web`, and neither `db` nor `azurite`. If either variable is missing, compose stops and says which.
+The override starts `migrate`, `api`, `worker` and `web`, and neither `db` nor `azurite`. If `AZURE_POSTGRES_CONNECTION_STRING` is missing, compose stops and says so; if neither `BLOB_SERVICE_URI` nor `BLOB_CONNECTION_STRING` is set, each service says at start that no Blob storage is configured.
 
 ## TLS and a failing connection
 
@@ -39,8 +45,45 @@ Startup check failed for blob: Could not reach the Blob storage account '<accoun
 
 ## Document Intelligence and Application Insights
 
-- **Document Intelligence** reads the voting sheets: set `DOCINTEL_ENDPOINT` and `DOCINTEL_KEY` in `.env`. Without them a sheet fails once, saying no reader is configured.
+- **Document Intelligence** reads the voting sheets: set `DOCINTEL_ENDPOINT` and `DOCINTEL_KEY` in `.env`. With the endpoint and **no key** the reader signs in with Microsoft Entra ID instead (below). Without an endpoint a sheet fails once, saying no reader is configured.
 - **Application Insights is configuration only.** Set `APPLICATIONINSIGHTS_CONNECTION_STRING` in `.env` and traces and logs go to it; leave it empty and nothing is sent. Nothing else needs to change.
+
+## Signing in with Microsoft Entra ID
+
+Three settings switch a service from a password or key to an Entra ID sign-in. Anything else works exactly as before, and Azurite and the local database never touch Entra.
+
+| Service | Entra ID is used when | What it uses |
+|---|---|---|
+| PostgreSQL | the host ends in `.postgres.database.azure.com` and the connection string has **no `Password`** | an access token for `https://ossrdbms-aad.database.windows.net/.default` as the password, renewed before it expires. `Username` is the Entra principal (for example `you@contoso.com`), and `SSL Mode=Require` still applies |
+| Blob | `Blob__ServiceUri` (`BLOB_SERVICE_URI`) is set; it wins over `Blob__ConnectionString` | `new BlobServiceClient(new Uri(serviceUri), new DefaultAzureCredential())` |
+| Document Intelligence | `DocumentIntelligence__Endpoint` is set and `DocumentIntelligence__Key` is empty | a bearer token for `https://cognitiveservices.azure.com/.default`. The resource needs its custom subdomain endpoint |
+
+The sign-in is `DefaultAzureCredential`: `az login` on your machine, a service principal from `AZURE_TENANT_ID`, `AZURE_CLIENT_ID` and `AZURE_CLIENT_SECRET`, or a managed identity when the app runs in Azure.
+
+The identity also needs the right to use each service. None of this is checked from the repository:
+
+- **Blob:** the *Storage Blob Data Contributor* role on the storage account (or container).
+- **PostgreSQL:** Microsoft Entra authentication switched on for the server, and a database role for your principal (created by the server's Entra administrator with `pgaadauth_create_principal`) that owns, or can create objects in, the dedicated database, since `migrate` creates the schema.
+- **Document Intelligence:** the *Cognitive Services User* role on the resource.
+
+A container has no `az login`. With compose either give the services a service principal (set the three `AZURE_*` variables in `.env`), or, if you can only sign in with `az login`, run the services on your machine with the same settings:
+
+```bash
+az login
+export ConnectionStrings__Meridian='Host=<server>.postgres.database.azure.com;Database=meridian;Username=<your Entra user>;SSL Mode=Require'
+export Blob__ServiceUri='https://<account>.blob.core.windows.net/'
+export Seed__MemberStatesPath="$PWD/candidate_data/member_states.csv"   # absolute: dotnet ef runs from src/Meridian.Data
+dotnet tool restore
+dotnet ef database update --project src/Meridian.Data     # migrations and member states
+dotnet run --project src/Meridian.Api                      # in one terminal
+dotnet run --project src/Meridian.Worker                   # in another
+```
+
+When a sign-in cannot be had, the startup line names the service and says why it matters, without quoting the credential's own message:
+
+```
+Startup check failed for database: Could not connect to the database at <server>...: ... It signs in with Microsoft Entra ID; run 'az login' (or give the process a service principal or managed identity) and check the account has access.
+```
 
 ## Downloads
 
@@ -52,7 +95,7 @@ Everything above is proven against Azurite and a local PostgreSQL. The live Azur
 
 ## Guided live check
 
-Run this on your own machine, with the `.env` you filled in above and a **real voting sheet PDF** from your own files. It needs the .NET SDK (`global.json` names the version).
+Run this on your own machine, with the `.env` you filled in above and a **real voting sheet PDF** from your own files. It needs the .NET SDK (`global.json` names the version). If you use Entra ID, run `az login` first: the check signs in the same way the app does.
 
 ```bash
 scripts/check-azure.sh /path/to/a/real/sheet.pdf
@@ -62,9 +105,9 @@ Without the path it asks for one, and Enter skips that check. The sheet is read 
 
 | Check | What passing means |
 |---|---|
-| Blob | a 64-byte test blob was uploaded to the app's container and downloaded with the same bytes, then deleted |
-| Database | the connection used TLS, and the server reported its real version, which must be 17 or 18 |
-| Document Intelligence | the app's own adapter read the sheet through the `prebuilt-layout` model; the report gives the pages, how many grid rows the mapper found, and whether the vote id and printed totals were found. Counts only |
+| Blob | a 64-byte test blob was uploaded to the app's container and downloaded with the same bytes, then deleted. With `BLOB_SERVICE_URI` it also proves the Entra sign-in and the *Storage Blob Data Contributor* role |
+| Database | the connection used TLS, and the server reported its real version, which must be 17 or 18; the line says whether it signed in with a password or with Entra ID |
+| Document Intelligence | the app's own adapter (with the key, or with Entra ID if `DOCINTEL_KEY` is empty) read the sheet through the `prebuilt-layout` model; the report gives the pages, how many grid rows the mapper found, and whether the vote id and printed totals were found. Counts only |
 | Application Insights | one trace named `meridian-live-check` was sent; look for it under *Transaction search* in the portal within a few minutes, since the service gives the exporter no receipt |
 
 Each line starts `PASS`, `FAIL` or `SKIP` (a setting or the sheet was not given), with the reason for anything that did not pass. The exit code is 0 only when all four passed.

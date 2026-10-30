@@ -4,7 +4,8 @@
 # It reads the .env beside this repository, checks Blob upload and download, the database and its version,
 # one Document Intelligence call on a real sheet and Application Insights, and prints what passed and what did not.
 # It writes nothing, and sends nothing but what the checks themselves send to your own Azure resources.
-# Needs the .NET SDK (see global.json). The sheet stays where it is: it is never copied into the repository.
+# Needs the .NET SDK (see global.json). With a connection string without a Password, a BLOB_SERVICE_URI, or a
+# DOCINTEL_ENDPOINT without a key, the check signs in with Microsoft Entra ID: run `az login` first. The sheet stays where it is: it is never copied into the repository.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

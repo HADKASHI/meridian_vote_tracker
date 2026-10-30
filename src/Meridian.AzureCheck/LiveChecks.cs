@@ -1,9 +1,13 @@
 using System.Diagnostics;
+using Azure;
+using Azure.Core;
 using Azure.Monitor.OpenTelemetry.Exporter;
 using Azure.Storage.Blobs;
+using Meridian.Data;
 using Meridian.Domain.Sheets;
 using Meridian.Extractions;
 using Meridian.Platform.Hosting;
+using Meridian.Platform.Storage;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Npgsql;
@@ -26,19 +30,24 @@ public static class LiveChecks
 {
     public static readonly string[] SupportedMajors = ["17", "18"];
 
-    public static async Task<CheckResult> BlobAsync(string? connectionString, string container, CancellationToken cancellationToken)
+    /// <param name="serviceUri">A Blob service address: the account is then reached with the Entra ID sign-in (<c>az login</c>) and this wins over the connection string.</param>
+    public static async Task<CheckResult> BlobAsync(
+        string? connectionString, string? serviceUri, string container, CancellationToken cancellationToken, TokenCredential? credential = null)
     {
         const string Name = "Blob";
-        if (string.IsNullOrWhiteSpace(connectionString)) return new(Name, CheckStatus.NotConfigured, "BLOB_CONNECTION_STRING is not set.");
+        if (string.IsNullOrWhiteSpace(connectionString) && string.IsNullOrWhiteSpace(serviceUri))
+            return new(Name, CheckStatus.NotConfigured, "Neither BLOB_SERVICE_URI (Entra ID sign-in) nor BLOB_CONNECTION_STRING is set.");
 
-        var reached = await ConnectionCheck.RunAsync(null, connectionString, requireTls: false, cancellationToken);
+        var entra = !string.IsNullOrWhiteSpace(serviceUri);
+        var reached = await ConnectionCheck.RunAsync(null, connectionString, requireTls: false, cancellationToken,
+            blobServiceUri: serviceUri, credential: credential);
         if (reached.Count > 0) return new(Name, CheckStatus.Failed, reached[0].Message);
 
         var bytes = new byte[64];
         Random.Shared.NextBytes(bytes);
         try
         {
-            var blobs = new BlobContainerClient(connectionString, container);
+            var blobs = BlobAccess.Service(connectionString, serviceUri, credential).GetBlobContainerClient(container);
             await blobs.CreateIfNotExistsAsync(cancellationToken: cancellationToken);
             var blob = blobs.GetBlobClient($"live-check/{Guid.NewGuid():N}.bin");
             try
@@ -46,7 +55,8 @@ public static class LiveChecks
                 await blob.UploadAsync(new BinaryData(bytes), cancellationToken);
                 var back = (await blob.DownloadContentAsync(cancellationToken)).Value.Content.ToArray();
                 return back.AsSpan().SequenceEqual(bytes)
-                    ? new(Name, CheckStatus.Passed, $"Uploaded and downloaded {bytes.Length} bytes in '{container}' and got the same bytes back; the test blob is deleted.")
+                    ? new(Name, CheckStatus.Passed,
+                        $"Uploaded and downloaded {bytes.Length} bytes in '{container}' ({(entra ? "Entra ID sign-in" : "connection string")}) and got the same bytes back; the test blob is deleted.")
                     : new(Name, CheckStatus.Failed, "The bytes downloaded differ from the bytes uploaded.");
             }
             finally
@@ -54,24 +64,32 @@ public static class LiveChecks
                 await blob.DeleteIfExistsAsync(cancellationToken: cancellationToken);
             }
         }
+        catch (RequestFailedException error)
+        {
+            return new(Name, CheckStatus.Failed, $"Blob upload or download was refused ({error.Status} {error.ErrorCode}). " +
+                (entra ? "The signed-in identity needs the Storage Blob Data Contributor role on the account." : "Check the account key and that the account allows this machine."));
+        }
         catch (Exception error) when (error is not OperationCanceledException)
         {
-            return new(Name, CheckStatus.Failed, $"Blob upload or download failed: {error.GetType().Name}. Check the account key and that the account allows this machine.");
+            return new(Name, CheckStatus.Failed, $"Blob upload or download failed: {error.GetType().Name}.");
         }
     }
 
-    public static async Task<CheckResult> DatabaseAsync(string? connectionString, CancellationToken cancellationToken, bool requireTls = true)
+    public static async Task<CheckResult> DatabaseAsync(
+        string? connectionString, CancellationToken cancellationToken, bool requireTls = true, TokenCredential? credential = null)
     {
         const string Name = "Database";
         if (string.IsNullOrWhiteSpace(connectionString))
             return new(Name, CheckStatus.NotConfigured, "AZURE_POSTGRES_CONNECTION_STRING is not set.");
 
-        var reached = await ConnectionCheck.RunAsync(connectionString, null, requireTls, cancellationToken);
+        var reached = await ConnectionCheck.RunAsync(connectionString, null, requireTls, cancellationToken, credential: credential);
         if (reached.Count > 0) return new(Name, CheckStatus.Failed, reached[0].Message);
 
+        var entra = DatabaseAccess.UsesEntra(connectionString);
         try
         {
-            await using var connection = new NpgsqlConnection(connectionString);
+            await using var dataSource = entra ? DatabaseAccess.EntraDataSource(connectionString, credential ?? AzureCredentials.Default) : null;
+            await using var connection = dataSource is null ? new NpgsqlConnection(connectionString) : dataSource.CreateConnection();
             await connection.OpenAsync(cancellationToken);
             await using var command = new NpgsqlCommand(
                 "SELECT current_setting('server_version'), (SELECT ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid())", connection);
@@ -80,7 +98,7 @@ public static class LiveChecks
             var version = reader.GetString(0);
             var tls = !reader.IsDBNull(1) && reader.GetBoolean(1);
             var major = version.Split('.')[0];
-            var detail = $"PostgreSQL {version}, TLS {(tls ? "on" : "off")}.";
+            var detail = $"PostgreSQL {version}, TLS {(tls ? "on" : "off")}, {(entra ? "Entra ID sign-in" : "password")}.";
             if (!SupportedMajors.Contains(major))
                 return new(Name, CheckStatus.Failed, $"{detail} Supported versions are {string.Join(" and ", SupportedMajors)}.");
             if (requireTls && !tls) return new(Name, CheckStatus.Failed, $"{detail} TLS is required.");
@@ -97,7 +115,7 @@ public static class LiveChecks
     {
         const string Name = "Document Intelligence";
         if (reader is null)
-            return new(Name, CheckStatus.NotConfigured, "DOCINTEL_ENDPOINT and DOCINTEL_KEY are not both set.");
+            return new(Name, CheckStatus.NotConfigured, "DOCINTEL_ENDPOINT is not set.");
         if (string.IsNullOrWhiteSpace(pdfPath))
             return new(Name, CheckStatus.NotConfigured, "No voting sheet was given (--sheet <path to a real sheet PDF>).");
         if (!File.Exists(pdfPath)) return new(Name, CheckStatus.Failed, "The sheet file does not exist.");
@@ -123,6 +141,7 @@ public static class LiveChecks
         }
     }
 
+    /// <summary>A reader for the endpoint, signing in with the key if there is one and with Entra ID (<c>az login</c>) if not.</summary>
     public static IVoteSheetReader? CreateReader(string? endpoint, string? key)
     {
         var options = new DocumentIntelligenceOptions { Endpoint = endpoint, Key = key };

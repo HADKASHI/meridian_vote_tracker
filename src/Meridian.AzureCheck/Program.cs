@@ -20,7 +20,7 @@ public static class CheckApp
         Console.WriteLine(File.Exists(envPath) ? $"Using {envPath}." : $"No {envPath} found; using the environment.");
         var results = new List<CheckResult>
         {
-            await LiveChecks.BlobAsync(Setting("BLOB_CONNECTION_STRING"), Setting("BLOB_CONTAINER") ?? "imports", token),
+            await LiveChecks.BlobAsync(Setting("BLOB_CONNECTION_STRING"), Setting("BLOB_SERVICE_URI"), Setting("BLOB_CONTAINER") ?? "imports", token),
             await LiveChecks.DatabaseAsync(Setting("AZURE_POSTGRES_CONNECTION_STRING"), token),
             await LiveChecks.DocumentIntelligenceAsync(
                 LiveChecks.CreateReader(Setting("DOCINTEL_ENDPOINT"), Setting("DOCINTEL_KEY")), Option("--sheet"), token),
