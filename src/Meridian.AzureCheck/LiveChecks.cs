@@ -4,6 +4,8 @@ using Azure.Storage.Blobs;
 using Meridian.Domain.Sheets;
 using Meridian.Extractions;
 using Meridian.Platform.Hosting;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Npgsql;
 using OpenTelemetry;
 using OpenTelemetry.Trace;
@@ -125,12 +127,11 @@ public static class LiveChecks
     {
         var options = new DocumentIntelligenceOptions { Endpoint = endpoint, Key = key };
         return options.IsConfigured
-            ? new DocumentIntelligenceSheetReader(new HttpClient(), Microsoft.Extensions.Options.Options.Create(options),
-                Microsoft.Extensions.Logging.Abstractions.NullLogger<DocumentIntelligenceSheetReader>.Instance)
+            ? new DocumentIntelligenceSheetReader(new HttpClient(), Options.Create(options), NullLogger<DocumentIntelligenceSheetReader>.Instance)
             : null;
     }
 
-    private static bool HasValidShape(string connectionString)
+    private static bool IsInsightsConnectionString(string connectionString)
     {
         var parts = connectionString.Split(';', StringSplitOptions.RemoveEmptyEntries)
             .Select(p => p.Split('=', 2)).Where(p => p.Length == 2).ToDictionary(p => p[0].Trim(), p => p[1].Trim(), StringComparer.OrdinalIgnoreCase);
@@ -146,7 +147,7 @@ public static class LiveChecks
         if (string.IsNullOrWhiteSpace(connectionString))
             return Task.FromResult(new CheckResult(Name, CheckStatus.NotConfigured, "APPLICATIONINSIGHTS_CONNECTION_STRING is not set."));
 
-        if (!HasValidShape(connectionString))
+        if (!IsInsightsConnectionString(connectionString))
             return Task.FromResult(new CheckResult(Name, CheckStatus.Failed,
                 "The connection string is not InstrumentationKey=<guid>;IngestionEndpoint=https://...; copy it from the Application Insights overview page."));
 
