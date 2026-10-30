@@ -32,7 +32,7 @@ To stop it, run `docker compose down`. Add `-v` to delete the database and the s
 
 ## Try it
 
-Upload `assembly_export_2024_q1.csv` on **Imports**, then `assembly_export_2024_q1_rev2.csv`, and follow:
+Upload `assembly_export_2024_q1.csv` on **Imports**, then `assembly_export_2024_q1_rev2.csv`, and follow the screens below. With the synthetic member states, upload the synthetic pair in `e2e/fixtures/` instead: `demo_export_2024_q2.csv`, then `demo_export_2024_q2_rev2.csv`.
 
 - **Imports**: each upload runs as a job with live progress. Its report gives the file's evidence, the count per outcome (new, unchanged, duplicate, invalid, contradiction, conflict), and every row with its reason.
 - **Review**: the conflicts the revision opened. Accept the incoming value or keep the current one, with a comment. Open the same conflict as two users in two tabs to see one decision win and the other told who decided first.
