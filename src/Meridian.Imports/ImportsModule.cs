@@ -20,7 +20,7 @@ using Azure.Storage.Blobs;
 
 namespace Meridian.Imports;
 
-/// <summary>ING: upload, the import job, and the import report. Owned by slice 1.</summary>
+/// <summary>Upload, the import job, and the import report.</summary>
 public static class ImportsModule
 {
     public static IServiceCollection AddImportsModule(this IServiceCollection services)

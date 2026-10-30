@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace Meridian.Platform.Http;
 
-/// <summary>Marks an endpoint that still answers 501 until its slice fills it in.</summary>
+/// <summary>Marks an endpoint that still answers 501 until its module fills it in.</summary>
 public sealed class StubMetadata;
 
 public static class EndpointConventions

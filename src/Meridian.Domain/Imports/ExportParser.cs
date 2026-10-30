@@ -24,7 +24,7 @@ public sealed record ParsedExport(
 }
 
 /// <summary>
-/// Map ticket 08 rule 1: columns are matched by header name (trimmed, any case, any order);
+/// Columns are matched by header name (trimmed, any case, any order);
 /// extra columns are ignored and listed; a BOM is stripped and LF and CRLF both end a
 /// line. A missing required column, invalid UTF-8 or no data rows rejects the whole file.
 /// </summary>

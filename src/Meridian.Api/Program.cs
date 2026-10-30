@@ -12,7 +12,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddMeridianApiPlatform();
 builder.Services.AddOpenApi(o => o.OpenApiVersion = OpenApiSpecVersion.OpenApi3_1);
 
-// One feature module per area. A slice fills in its own module and never edits this file.
+// One feature module per area. Each module fills in its own and never edits this file.
 builder.Services
     .AddImportsModule()
     .AddConflictsModule()

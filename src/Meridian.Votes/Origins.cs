@@ -23,17 +23,9 @@ public sealed class Origins
         var rowIds = list.Where(o => o.ImportRowId is not null).Select(o => o.ImportRowId!.Value).Distinct().ToList();
         var decisionIds = list.Where(o => o.DecisionId is not null).Select(o => o.DecisionId!.Value).Distinct().ToList();
 
-        var rows = rowIds.Count == 0 ? [] : await (
-                from r in db.ImportRows
-                join i in db.Imports on r.ImportId equals i.Id
-                where rowIds.Contains(r.Id)
-                select new OriginDto(OriginKind.ImportRow, i.Id, i.FileName, r.LineNo, r.Id, i.UploadedBy, i.RecordedAt,
-                    null, null, null, null))
+        var rows = rowIds.Count == 0 ? [] : await db.ImportRowOrigins(rowIds)
             .AsNoTracking().ToDictionaryAsync(o => o.ImportRowId!.Value, ct);
-        var decisions = decisionIds.Count == 0 ? [] : await db.ConflictDecisions
-            .Where(d => decisionIds.Contains(d.Id))
-            .Select(d => new OriginDto(OriginKind.Decision, null, null, null, null, null, null,
-                d.Id, d.ConflictId, d.DecidedBy, d.RecordedAt))
+        var decisions = decisionIds.Count == 0 ? [] : await db.DecisionOrigins(decisionIds)
             .AsNoTracking().ToDictionaryAsync(o => o.DecisionId!.Value, ct);
         return new Origins(rows, decisions);
     }

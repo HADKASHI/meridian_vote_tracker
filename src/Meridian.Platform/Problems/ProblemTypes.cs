@@ -13,6 +13,7 @@ public static class ProblemTypes
     public const string UnknownUser = "unknown-user";
     public const string Forbidden = "forbidden";
     public const string NotFound = "not-found";
+    public const string Conflict = "conflict";
     public const string MethodNotAllowed = "method-not-allowed";
     public const string AlreadyDecided = "already-decided";
     public const string NotRetryable = "not-retryable";
@@ -32,6 +33,7 @@ public static class ProblemTypes
         403 => Forbidden,
         404 => NotFound,
         405 => MethodNotAllowed,
+        409 => Conflict,
         413 => PayloadTooLarge,
         501 => NotImplemented,
         _ => Unexpected,

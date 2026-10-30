@@ -15,7 +15,7 @@ namespace Meridian.Conflicts;
 
 public enum ConflictFilter { Pending, Decided, All }
 
-/// <summary>CON: the Review inbox and conflict decisions. Owned by slice 3.</summary>
+/// <summary>The Review inbox and conflict decisions.</summary>
 public static class ConflictsModule
 {
     public static IServiceCollection AddConflictsModule(this IServiceCollection services) => services;

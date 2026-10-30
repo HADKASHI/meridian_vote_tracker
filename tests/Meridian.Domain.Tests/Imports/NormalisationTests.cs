@@ -104,6 +104,8 @@ public sealed class NormalisationTests
     [InlineData("21-02/2024")]
     [InlineData("Feb 21 2024")]
     [InlineData("tomorrow")]
+    [InlineData("0000-01-01")]
+    [InlineData("01/01/0000")]
     public void Rule2_ambiguous_or_impossible_dates_are_never_guessed(string date)
     {
         var row = Normalise(date: date);

@@ -25,9 +25,8 @@ public sealed class SnapshotNameTests(PostgresFixture postgres, AzuriteFixture a
 
         foreach (var taken in new[] { "Q1 2024 index", "  q1 2024 INDEX " })
         {
-            var problem = await (await PostAsync(api, taken, vote.Id)).AssertProblemAsync(400, "validation");
-            var message = Assert.Single(problem.GetProperty("errors").GetProperty("name").EnumerateArray()).GetString();
-            Assert.Contains("Q1 2024 index", message);
+            var problem = await (await PostAsync(api, taken, vote.Id)).AssertProblemAsync(409, "conflict");
+            Assert.Contains("Q1 2024 index", problem.GetProperty("detail").GetString());
         }
 
         Assert.Equal(202, (int)(await PostAsync(api, "Q1 2024 index (2)", vote.Id)).StatusCode);
@@ -44,7 +43,7 @@ public sealed class SnapshotNameTests(PostgresFixture postgres, AzuriteFixture a
         await fx.VoteAsync("MA/2024/002", new DateOnly(2024, 2, 1)); // no position: the job fails
         await RunJobsAsync(api.ConnectionString);
 
-        await (await PostAsync(api, "Doomed", vote.Id)).AssertProblemAsync(400, "validation");
+        await (await PostAsync(api, "Doomed", vote.Id)).AssertProblemAsync(409, "conflict");
     }
 
     [Fact]
@@ -61,8 +60,8 @@ public sealed class SnapshotNameTests(PostgresFixture postgres, AzuriteFixture a
             var responses = await RaceBarrier.RunTogetherAsync(2, _ => PostAsync(api, name, vote.Id));
 
             var statuses = responses.Select(r => (int)r.StatusCode).Order().ToArray();
-            Assert.True(statuses is [202, 400], $"Round {round}: {string.Join(", ", statuses)}");
-            await responses.Single(r => (int)r.StatusCode == 400).AssertProblemAsync(400, "validation");
+            Assert.True(statuses is [202, 409], $"Round {round}: {string.Join(", ", statuses)}");
+            await responses.Single(r => (int)r.StatusCode == 409).AssertProblemAsync(409, "conflict");
         }
         var list = await api.ClientAs("dana").GetFromJsonAsync<JsonElement>("/api/snapshots?pageSize=50", Ct);
         Assert.Equal(10, list.GetProperty("total").GetInt32());

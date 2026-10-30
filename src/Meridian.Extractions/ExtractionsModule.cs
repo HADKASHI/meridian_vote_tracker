@@ -21,7 +21,7 @@ using Microsoft.Extensions.Options;
 
 namespace Meridian.Extractions;
 
-/// <summary>PDF: scanned voting sheets read in the background and reviewed by a person (ADR 0008). Owned by slice 9.</summary>
+/// <summary>Scanned voting sheets read in the background and reviewed by a person (ADR 0008).</summary>
 public static class ExtractionsModule
 {
     /// <summary>

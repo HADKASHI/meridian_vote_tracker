@@ -173,14 +173,14 @@ public sealed class VoteTimelineTests(PostgresFixture postgres, AzuriteFixture a
     }
 
     [Fact]
-    public async Task A_page_size_is_clamped_and_the_last_page_has_no_next()
+    public async Task A_page_size_pages_the_timeline_and_the_last_page_has_no_next()
     {
         await using var api = await ApiFactory.CreateAsync(postgres, azurite);
         await using var fx = Meridian.Fixtures.Fixtures.For(api.ConnectionString);
         var vote = await fx.VoteAsync("MA/2024/003", new DateOnly(2024, 2, 10));
         await fx.CountryVotesAsync(vote, ("FRA", Y));
 
-        var page = await api.ClientAs("dana").GetFromJsonAsync<JsonElement>($"/api/votes/{vote.Id}/timeline?pageSize=0", Ct);
+        var page = await api.ClientAs("dana").GetFromJsonAsync<JsonElement>($"/api/votes/{vote.Id}/timeline?pageSize=1", Ct);
         Assert.Single(page.GetProperty("items").EnumerateArray());
         var all = await api.ClientAs("dana").GetFromJsonAsync<JsonElement>($"/api/votes/{vote.Id}/timeline", Ct);
         Assert.Equal(3, all.GetProperty("items").GetArrayLength());

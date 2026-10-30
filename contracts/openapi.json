@@ -1318,14 +1318,14 @@
         "operationId": "searchVotes",
         "parameters": [
           {
-            "name": "q",
+            "name": "Q",
             "in": "query",
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "session",
+            "name": "Session",
             "in": "query",
             "schema": {
               "type": "integer",
@@ -1333,7 +1333,7 @@
             }
           },
           {
-            "name": "from",
+            "name": "From",
             "in": "query",
             "schema": {
               "type": "string",
@@ -1341,7 +1341,7 @@
             }
           },
           {
-            "name": "to",
+            "name": "To",
             "in": "query",
             "schema": {
               "type": "string",
@@ -1349,29 +1349,30 @@
             }
           },
           {
-            "name": "noPosition",
+            "name": "NoPosition",
             "in": "query",
             "schema": {
-              "type": "boolean",
-              "default": false
+              "type": "boolean"
             }
           },
           {
-            "name": "page",
+            "name": "Page",
             "in": "query",
             "schema": {
+              "maximum": 1000000,
+              "minimum": 1,
               "type": "integer",
-              "format": "int32",
-              "default": 1
+              "format": "int32"
             }
           },
           {
-            "name": "pageSize",
+            "name": "PageSize",
             "in": "query",
             "schema": {
+              "maximum": 200,
+              "minimum": 1,
               "type": "integer",
-              "format": "int32",
-              "default": 50
+              "format": "int32"
             }
           }
         ],
@@ -1382,6 +1383,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PageDtoOfVoteSummaryDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
                 }
               }
             }
@@ -1468,20 +1479,23 @@
             }
           },
           {
-            "name": "before",
+            "name": "Before",
             "in": "query",
             "schema": {
+              "maximum": 9223372036854775807,
+              "minimum": 1,
               "type": "integer",
               "format": "int64"
             }
           },
           {
-            "name": "pageSize",
+            "name": "PageSize",
             "in": "query",
             "schema": {
+              "maximum": 200,
+              "minimum": 1,
               "type": "integer",
-              "format": "int32",
-              "default": 50
+              "format": "int32"
             }
           }
         ],
@@ -1492,6 +1506,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TimelinePageDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
                 }
               }
             }
@@ -1528,29 +1552,30 @@
         "operationId": "listPositions",
         "parameters": [
           {
-            "name": "noPosition",
+            "name": "NoPosition",
             "in": "query",
             "schema": {
-              "type": "boolean",
-              "default": false
+              "type": "boolean"
             }
           },
           {
-            "name": "page",
+            "name": "Page",
             "in": "query",
             "schema": {
+              "maximum": 1000000,
+              "minimum": 1,
               "type": "integer",
-              "format": "int32",
-              "default": 1
+              "format": "int32"
             }
           },
           {
-            "name": "pageSize",
+            "name": "PageSize",
             "in": "query",
             "schema": {
+              "maximum": 200,
+              "minimum": 1,
               "type": "integer",
-              "format": "int32",
-              "default": 50
+              "format": "int32"
             }
           }
         ],
@@ -1561,6 +1586,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PageDtoOfPositionWorklistItemDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
                 }
               }
             }
@@ -1822,6 +1857,26 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/NoPositionProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             }
@@ -4878,6 +4933,8 @@
             "format": "int16"
           },
           "seenRevisionId": {
+            "maximum": 9223372036854775807,
+            "minimum": 1,
             "type": [
               "null",
               "integer"

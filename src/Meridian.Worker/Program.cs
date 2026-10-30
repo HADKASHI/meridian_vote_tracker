@@ -8,7 +8,7 @@ using Meridian.Snapshots;
 var builder = Host.CreateApplicationBuilder(args);
 builder.AddMeridianWorkerPlatform();
 
-// Slices plug in their job handler inside their own module.
+// Each module plugs in its own job handler.
 builder.Services
     .AddImportsJobs()
     .AddExtractionsJobs()
