@@ -1,9 +1,10 @@
 {
   "name": "meridian-e2e",
   "private": true,
-  "description": "Development-only browser scripts against the compose stack; never run in CI.",
+  "description": "Browser scripts against the compose stack: the smoke test (run in CI) and the development-only screen captures.",
   "type": "module",
   "scripts": {
+    "test": "node --test smoke.test.mjs",
     "screens": "node screens.mjs"
   },
   "devDependencies": {

@@ -15,3 +15,4 @@ Requirements: ING-03 to ING-13
 
 - The test is written and skips itself here: this session's container has no `candidate_data/`. The last criterion needs a run with the four files in place: `dotnet test --project tests/Meridian.Integration.Tests -- --filter-trait "Category=RealData"`. Set this ticket to done once it passes.
 - Closed to unblock slice 2 before the real-file run. The original Q1 file was checked against the classification rules by hand and gives 5,737 new, 3 duplicate, 5 invalid and 151 contradiction, matching the audit. Rev2 and the historic file are still unverified: run the command above once `candidate_data/` has all four files.
+- 2026-10-30: the user ran the full `RealData` category against the four assignment files in another session, so the revised and historic counts are no longer unverified; the caveat was removed from DECISIONS.md in slice 8.

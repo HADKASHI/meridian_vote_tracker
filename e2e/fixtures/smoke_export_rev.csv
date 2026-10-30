@@ -1,0 +1,4 @@
+assembly_vote_id,session,vote_date,resolution_title,country_code,ballot,country_name,published_at
+SMOKE/{run}/1,79,2024-04-03,Smoke Test Resolution,ARG,Y,Argentina,2024-06-01T09:00:00Z
+SMOKE/{run}/1,79,2024-04-03,Smoke Test Resolution,BRA,Y,Brazil,2024-06-01T09:00:00Z
+SMOKE/{run}/1,79,2024-04-03,Smoke Test Resolution,FRA,A,France,2024-06-01T09:00:00Z
