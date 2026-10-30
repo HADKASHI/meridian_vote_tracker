@@ -1318,14 +1318,14 @@
         "operationId": "searchVotes",
         "parameters": [
           {
-            "name": "Q",
+            "name": "q",
             "in": "query",
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "Session",
+            "name": "session",
             "in": "query",
             "schema": {
               "type": "integer",
@@ -1333,7 +1333,7 @@
             }
           },
           {
-            "name": "From",
+            "name": "from",
             "in": "query",
             "schema": {
               "type": "string",
@@ -1341,7 +1341,7 @@
             }
           },
           {
-            "name": "To",
+            "name": "to",
             "in": "query",
             "schema": {
               "type": "string",
@@ -1349,14 +1349,14 @@
             }
           },
           {
-            "name": "NoPosition",
+            "name": "noPosition",
             "in": "query",
             "schema": {
               "type": "boolean"
             }
           },
           {
-            "name": "Page",
+            "name": "page",
             "in": "query",
             "schema": {
               "maximum": 1000000,
@@ -1366,7 +1366,7 @@
             }
           },
           {
-            "name": "PageSize",
+            "name": "pageSize",
             "in": "query",
             "schema": {
               "maximum": 200,
@@ -1479,7 +1479,7 @@
             }
           },
           {
-            "name": "Before",
+            "name": "before",
             "in": "query",
             "schema": {
               "maximum": 9223372036854775807,
@@ -1489,7 +1489,7 @@
             }
           },
           {
-            "name": "PageSize",
+            "name": "pageSize",
             "in": "query",
             "schema": {
               "maximum": 200,
@@ -1552,14 +1552,14 @@
         "operationId": "listPositions",
         "parameters": [
           {
-            "name": "NoPosition",
+            "name": "noPosition",
             "in": "query",
             "schema": {
               "type": "boolean"
             }
           },
           {
-            "name": "Page",
+            "name": "page",
             "in": "query",
             "schema": {
               "maximum": 1000000,
@@ -1569,7 +1569,7 @@
             }
           },
           {
-            "name": "PageSize",
+            "name": "pageSize",
             "in": "query",
             "schema": {
               "maximum": 200,

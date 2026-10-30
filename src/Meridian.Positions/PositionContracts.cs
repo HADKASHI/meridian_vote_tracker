@@ -9,6 +9,7 @@ public sealed record PositionWorklistItemDto(VoteRefDto Vote, int Session, DateO
 
 public sealed class PositionsQuery : PagingQuery
 {
+    [Microsoft.AspNetCore.Mvc.FromQuery(Name = "noPosition")]
     public bool? NoPosition { get; set; }
 }
 
