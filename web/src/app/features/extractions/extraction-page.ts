@@ -40,6 +40,8 @@ function without<T extends object>(edits: T, key: keyof T): T {
 interface RowEdits {
   code?: string;
   choice?: Ballot;
+  /** Take the row off the sheet, as if it had never been read. */
+  remove?: boolean;
 }
 
 /**
@@ -174,18 +176,18 @@ interface RowEdits {
             <div class="table-scroll">
               <table class="rows" data-testid="rows">
                 <thead>
-                  <tr><th scope="col">Code</th><th scope="col">Member state</th><th scope="col">Ballot</th><th scope="col">Confidence</th><th scope="col">Issue</th></tr>
+                  <tr><th scope="col">Code</th><th scope="col">Member state</th><th scope="col">Ballot</th><th scope="col">Confidence</th><th scope="col">Issue</th><th scope="col"><span class="visually-hidden">Remove</span></th></tr>
                 </thead>
                 <tbody>
                   @for (row of visibleRows(e); track row.position) {
-                    <tr data-testid="row" [attr.data-code]="row.code" [class.edited]="edited(row)">
+                    <tr data-testid="row" [attr.data-code]="row.code" [class.edited]="edited(row)" [class.removed]="removing(row)">
                       <td>
                         <input type="text" class="code" [attr.aria-label]="'Code of row ' + row.position" [value]="shownCode(row)"
-                          [disabled]="!reviewable(e)" (input)="setCode(row, $any($event.target).value)" />
+                          [disabled]="!reviewable(e) || removing(row)" (input)="setCode(row, $any($event.target).value)" />
                       </td>
                       <td>{{ row.name }}</td>
                       <td>
-                        <select [attr.aria-label]="'Ballot of ' + row.code" [value]="shownChoice(row) ?? ''" [disabled]="!reviewable(e)"
+                        <select [attr.aria-label]="'Ballot of ' + row.code" [value]="shownChoice(row) ?? ''" [disabled]="!reviewable(e) || removing(row)"
                           (change)="setChoice(row, $any($event.target).value)">
                           @if (shownChoice(row) === null) {
                             <option value="" selected>Two marks: choose</option>
@@ -201,6 +203,13 @@ interface RowEdits {
                           <span class="issue">{{ issue.message }}</span>
                         }
                       </td>
+                      <td>
+                        @if (removing(row)) {
+                          <button mat-button type="button" [attr.aria-label]="'Keep ' + row.code" (click)="setRemoved(row, false)">Keep</button>
+                        } @else if (reviewable(e) && issuesOf(e, row).length > 0) {
+                          <button mat-button type="button" [attr.aria-label]="'Remove ' + row.code" (click)="setRemoved(row, true)">Remove</button>
+                        }
+                      </td>
                     </tr>
                   }
                 </tbody>
@@ -214,7 +223,11 @@ interface RowEdits {
             <h3>Edits so far</h3>
             <ul class="edits" data-testid="edits">
               @for (edit of e.edits; track $index) {
-                <li>{{ edit.by }} changed {{ edit.field }}{{ edit.code ? ' of ' + edit.code : '' }}: {{ edit.from ?? '—' }} → {{ edit.to ?? '—' }}</li>
+                @if (edit.field === 'removed') {
+                  <li>{{ edit.by }} removed row {{ edit.position }} ({{ edit.code }}, was {{ edit.from ?? 'no mark' }})</li>
+                } @else {
+                  <li>{{ edit.by }} changed {{ edit.field }}{{ edit.code ? ' of ' + edit.code : '' }}: {{ edit.from ?? '—' }} → {{ edit.to ?? '—' }}</li>
+                }
               }
             </ul>
           </section>
@@ -336,6 +349,10 @@ interface RowEdits {
     }
     tr.edited {
       background: var(--mat-sys-secondary-container);
+    }
+    tr.removed td:not(:last-child) {
+      text-decoration: line-through;
+      color: var(--mat-sys-on-surface-variant);
     }
     .issue {
       display: block;
@@ -485,6 +502,20 @@ export class ExtractionPage {
     return this.rowEdits()[row.position] !== undefined;
   }
 
+  protected removing(row: SheetRow): boolean {
+    return this.rowEdits()[row.position]?.remove === true;
+  }
+
+  /** Marks the row to be taken off the sheet on save; a removed row keeps no other edit. */
+  protected setRemoved(row: SheetRow, remove: boolean): void {
+    this.rowEdits.update((edits) => {
+      const next = { ...edits };
+      if (remove) next[row.position] = { remove: true };
+      else delete next[row.position];
+      return next;
+    });
+  }
+
   protected issuesOf(e: ExtractionDto, row: SheetRow) {
     return e.issues.filter((i) => i.code === row.code);
   }
@@ -513,7 +544,7 @@ export class ExtractionPage {
     this.rowEdits.update((edits) => {
       const next = { ...edits, [row.position]: { ...edits[row.position], ...patch } };
       const merged = next[row.position];
-      if (merged.code === undefined && merged.choice === undefined) delete next[row.position];
+      if (merged.code === undefined && merged.choice === undefined && !merged.remove) delete next[row.position];
       return next;
     });
   }
@@ -535,7 +566,7 @@ export class ExtractionPage {
   /** What to send: only what the analyst changed. Null when a printed total is not a whole number. */
   private request(e: ExtractionDto): SaveEditsRequest | null {
     const rows = Object.entries(this.rowEdits()).map(([position, edit]) => ({
-      position: Number(position), code: edit.code ?? null, choice: edit.choice ?? null,
+      position: Number(position), code: edit.code ?? null, choice: edit.choice ?? null, remove: edit.remove ?? null,
     }));
     const h = this.headerEdits();
     const header = Object.keys(h).length > 0 ? { voteId: h.voteId ?? null, session: h.session ?? null, date: h.date ?? null, title: h.title ?? null } : null;

@@ -73,4 +73,50 @@ public sealed class SheetEditorTests
 
         Assert.Equal(("AAA", Ballot.Y), (sheet.Rows[0].Code, sheet.Rows[0].Choice!.Value));
     }
+
+    private static readonly IReadOnlySet<string> Flagged = new HashSet<string> { "AAB" };
+
+    [Fact]
+    public void A_flagged_row_is_removed_and_the_edit_records_the_ballot_it_had_while_the_others_keep_their_positions()
+    {
+        var result = SheetEditor.Apply(Sheet(), [new RowEdit(2, null, null, true)], null, null, Flagged);
+
+        Assert.Empty(result.Errors);
+        Assert.Equal([1, 3], result.Sheet.Rows.Select(r => r.Position));
+        Assert.Equal(new SheetEdit("removed", 2, "AAB", "two marks", null), Assert.Single(result.Edits));
+    }
+
+    [Fact]
+    public void A_row_without_an_issue_cannot_be_removed()
+    {
+        var result = SheetEditor.Apply(Sheet(), [new RowEdit(1, null, null, true)], null, null, Flagged);
+
+        Assert.Equal(["rows[0].remove"], result.Errors.Keys);
+        Assert.Equal(3, result.Sheet.Rows.Count);
+    }
+
+    [Fact]
+    public void Nothing_can_be_removed_when_the_caller_names_no_flagged_rows()
+    {
+        var result = SheetEditor.Apply(Sheet(), [new RowEdit(2, null, null, true)], null, null);
+
+        Assert.Equal(["rows[0].remove"], result.Errors.Keys);
+    }
+
+    [Fact]
+    public void A_row_to_remove_cannot_also_be_changed()
+    {
+        var result = SheetEditor.Apply(Sheet(), [new RowEdit(2, "ZZZ", null, true)], null, null, Flagged);
+
+        Assert.Equal(["rows[0].remove"], result.Errors.Keys);
+    }
+
+    [Fact]
+    public void A_row_edited_after_a_removal_is_still_found_by_its_position_and_counts_as_certain()
+    {
+        var result = SheetEditor.Apply(Sheet(), [new RowEdit(2, null, null, true), new RowEdit(3, null, Ballot.N)], null, null, Flagged);
+
+        Assert.Empty(result.Errors);
+        Assert.Equal((3, Ballot.N, 1.0), (result.Sheet.Rows[1].Position, result.Sheet.Rows[1].Choice!.Value, result.Sheet.Rows[1].Confidence));
+    }
 }

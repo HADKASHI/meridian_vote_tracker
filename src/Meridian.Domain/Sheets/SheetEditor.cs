@@ -2,8 +2,11 @@ using System.Globalization;
 
 namespace Meridian.Domain.Sheets;
 
-/// <summary>A change to one grid row, found by its position on the sheet (1 for the first). Null leaves a field as it is.</summary>
-public sealed record RowEdit(int Position, string? Code, Ballot? Choice);
+/// <summary>
+/// A change to one grid row, found by its position on the sheet (1 for the first). Null leaves a field as it is.
+/// <c>Remove</c> takes the row off the sheet, as if it had never been read; it stands alone, not beside a code or ballot.
+/// </summary>
+public sealed record RowEdit(int Position, string? Code, Ballot? Choice, bool? Remove = null);
 
 /// <summary>A change to the header fields as printed. Null leaves a field as it is.</summary>
 public sealed record HeaderEdit(string? VoteId, string? Session, string? Date, string? Title);
@@ -18,11 +21,14 @@ public sealed record SheetEditResult(MappedSheet Sheet, IReadOnlyList<SheetEdit>
 /// An analyst's corrections to a sheet (PDF-04). Choosing a ballot settles a row that had two marks; a code is
 /// upper-cased; the printed totals can be entered when the footer could not be read. Only real changes are
 /// recorded, with the value they replaced, and nothing is checked here: SheetValidator checks the result. A row an
-/// analyst changed counts as certain (confidence 1), because a person set it.
+/// analyst changed counts as certain (confidence 1), because a person set it. A row can be removed, but only one the
+/// check flagged (its code is in <c>flagged</c>): a clean row is never dropped to make the totals fit. The removal
+/// is recorded with the ballot the row had, and the remaining rows keep their positions.
 /// </summary>
 public static class SheetEditor
 {
-    public static SheetEditResult Apply(MappedSheet sheet, IReadOnlyList<RowEdit>? rows, HeaderEdit? header, SheetTotals? printed)
+    public static SheetEditResult Apply(
+        MappedSheet sheet, IReadOnlyList<RowEdit>? rows, HeaderEdit? header, SheetTotals? printed, IReadOnlySet<string>? flagged = null)
     {
         var errors = new Dictionary<string, string>();
         var edits = new List<SheetEdit>();
@@ -38,6 +44,20 @@ public static class SheetEditor
                 continue;
             }
             var row = current[at];
+            var original = row;
+            if (edit.Remove == true)
+            {
+                if (edit.Code is not null || edit.Choice is not null)
+                    errors[$"rows[{i}].remove"] = "A row to remove can't also be changed.";
+                else if (flagged is null || !flagged.Contains(row.Code))
+                    errors[$"rows[{i}].remove"] = $"Row {edit.Position.ToString(CultureInfo.InvariantCulture)} has no issue, so it can't be removed.";
+                else
+                {
+                    edits.Add(new SheetEdit("removed", row.Position, row.Code, row.Ambiguous ? "two marks" : row.Choice?.ToString(), null));
+                    current.RemoveAt(at);
+                }
+                continue;
+            }
             if (edit.Code is { } code)
             {
                 var clean = code.Trim().ToUpperInvariant();
@@ -54,7 +74,7 @@ public static class SheetEditor
                 row = row with { Choice = choice, Ambiguous = false };
             }
             // A person has now set this row, so the reader's doubt no longer applies; what it read stays in the edit.
-            current[at] = row == sheet.Rows[at] ? row : row with { Confidence = 1 };
+            current[at] = row == original ? row : row with { Confidence = 1 };
         }
 
         var head = sheet.Header;

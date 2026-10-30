@@ -4657,6 +4657,12 @@
                 "$ref": "#/components/schemas/Ballot"
               }
             ]
+          },
+          "remove": {
+            "type": [
+              "null",
+              "boolean"
+            ]
           }
         }
       },

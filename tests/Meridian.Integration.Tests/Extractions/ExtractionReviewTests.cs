@@ -65,6 +65,50 @@ public sealed class ExtractionReviewTests(PostgresFixture postgres, AzuriteFixtu
         Assert.Empty(after.Issues);
     }
 
+    /// <summary>A row for a code that is no state (ARG's slot, misread as ZZZ) which the sheet's own totals leave out.</summary>
+    private static SheetRead SpuriousRowOnTop() =>
+        SheetFixtures.Sheet(new SheetTotals(4, 3, 2, 1), (i, cells) => { if (i == 0) cells[0] = new SheetCell("ZZZ", .9); });
+
+    [Fact]
+    public async Task Removing_a_row_with_an_issue_treats_it_as_never_read_so_it_no_longer_blocks_and_the_approval_leaves_it_out()
+    {
+        await using var api = await ApiFactory.CreateAsync(postgres, azurite);
+        var id = await ExtractionApi.ReadyForReviewAsync(api, SpuriousRowOnTop());
+        var client = api.ClientAs("omar");
+        var before = await ExtractionApi.GetAsync(client, id);
+        Assert.Contains(before.Issues, i => i.Kind == SheetIssueKind.UnknownCode && i.Code == "ZZZ");
+        Assert.False(before.CanApprove);
+
+        var after = await ExtractionApi.SaveEditsOkAsync(client, id, new SaveEditsRequest([new RowEdit(1, null, null, true)], null, null));
+
+        Assert.True(after.CanApprove);
+        Assert.Equal(SheetFixtures.Members.Skip(1), after.Rows.Select(r => r.Code));
+        Assert.Equal(SheetKinds(after), [SheetIssueKind.MissingMember]);
+        var edit = Assert.Single(after.Edits);
+        Assert.Equal(("omar", 1, "ZZZ", "removed", "Y", (string?)null), (edit.By, edit.Position, edit.Code, edit.Field, edit.From, edit.To));
+
+        var approved = await ExtractionApi.ApproveOkAsync(client, id);
+        var rows = await ImportApi.GetAsync<PageDto<ImportRowDto>>(client, $"/api/imports/{approved.ImportId}/rows");
+        Assert.Equal(SheetFixtures.Members.Skip(1), rows.Items.Select(r => r.StateCode));
+    }
+
+    private static IEnumerable<SheetIssueKind> SheetKinds(ExtractionDto e) => e.Issues.Select(i => i.Kind);
+
+    [Fact]
+    public async Task A_row_without_an_issue_cannot_be_removed_and_the_sheet_is_left_as_it_was()
+    {
+        await using var api = await ApiFactory.CreateAsync(postgres, azurite);
+        var id = await ExtractionApi.ReadyForReviewAsync(api);
+        var client = api.ClientAs("omar");
+
+        var response = await ExtractionApi.SaveEditsAsync(client, id, new SaveEditsRequest([new RowEdit(1, null, null, true)], null, null));
+
+        var problem = await response.AssertProblemAsync(400, "validation");
+        Assert.True(problem.GetProperty("errors").TryGetProperty("rows[0].remove", out _));
+        var sheet = await ExtractionApi.GetAsync(client, id);
+        Assert.Equal((11, 0), (sheet.Rows.Count, sheet.Edits.Count));
+    }
+
     [Fact]
     public async Task Correcting_an_unreadable_date_in_the_header_lets_the_sheet_be_read_as_a_vote()
     {

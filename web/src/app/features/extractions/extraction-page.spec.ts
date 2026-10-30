@@ -131,7 +131,7 @@ describe('Extraction pane', () => {
     expect(button('approve').disabled).toBe(true);
     button('save').click();
     const save = http.expectOne((r) => r.method === 'POST' && r.url === '/api/extractions/3/edits');
-    expect(save.request.body).toEqual({ rows: [{ position: 1, code: null, choice: 'y' }], header: null, printed: null });
+    expect(save.request.body).toEqual({ rows: [{ position: 1, code: null, choice: 'y', remove: null }], header: null, printed: null });
     save.flush(extraction());
     await reloaded(extraction());
 
@@ -149,12 +149,44 @@ describe('Extraction pane', () => {
 
     const save = http.expectOne((r) => r.method === 'POST' && r.url === '/api/extractions/3/edits');
     expect(save.request.body).toEqual({
-      rows: [{ position: 1, code: 'ARX', choice: null }],
+      rows: [{ position: 1, code: 'ARX', choice: null, remove: null }],
       header: { voteId: null, session: null, date: '5 October 2011', title: null },
       printed: { yes: 2, no: 1, abstentions: 0, notVoting: 0 },
     });
     save.flush(blocked());
     await reloaded(blocked());
+  });
+
+  it('offers Remove only on a row with an issue, and sends the removal alone when saved', async () => {
+    await open(blocked());
+    byId('toggle-rows')!.click();
+    TestBed.tick();
+    const removeButtons = () => [...pane().querySelectorAll<HTMLButtonElement>('[data-testid="row"] button')].map((b) => b.getAttribute('aria-label'));
+    expect(removeButtons()).toEqual(['Remove ARG']);
+
+    pane().querySelector<HTMLButtonElement>('[aria-label="Remove ARG"]')!.click();
+    TestBed.tick();
+    expect(pane().querySelector('[data-testid="row"][data-code="ARG"]')!.classList).toContain('removed');
+    expect(pane().querySelector<HTMLSelectElement>('select')!.disabled).toBe(true);
+    expect(button('save').disabled).toBe(false);
+    button('save').click();
+
+    const save = http.expectOne((r) => r.method === 'POST' && r.url === '/api/extractions/3/edits');
+    expect(save.request.body).toEqual({ rows: [{ position: 1, code: null, choice: null, remove: true }], header: null, printed: null });
+    save.flush(extraction());
+    await reloaded(extraction());
+  });
+
+  it('puts a row back with Keep before it is saved, so nothing is sent', async () => {
+    await open(blocked());
+
+    pane().querySelector<HTMLButtonElement>('[aria-label="Remove ARG"]')!.click();
+    TestBed.tick();
+    pane().querySelector<HTMLButtonElement>('[aria-label="Keep ARG"]')!.click();
+    TestBed.tick();
+
+    expect(pane().querySelector('[data-testid="row"][data-code="ARG"]')!.classList).not.toContain('removed');
+    expect(button('save').disabled).toBe(true);
   });
 
   it('does not send a printed total that is not a whole number', async () => {

@@ -23,13 +23,16 @@ internal static class ExtractionReview
         var (extraction, refusal) = await ExtractionDecisions.LoadForReviewAsync(db, extractionId, forUpdate: true, ct);
         if (extraction is null) return refusal!;
 
-        var edited = SheetEditor.Apply(ExtractionJson.Read<MappedSheet>(extraction.Sheet)!, request.Rows, request.Header, request.Printed);
+        var sheet = ExtractionJson.Read<MappedSheet>(extraction.Sheet)!;
+        var members = await db.LoadMemberStatesAsync(ct);
+        var flagged = SheetValidator.Check(sheet, extraction.FileName, members).Issues.Select(i => i.Code).OfType<string>().ToHashSet();
+        var edited = SheetEditor.Apply(sheet, request.Rows, request.Header, request.Printed, flagged);
         if (edited.Errors.Count > 0)
             return TypedResults.ValidationProblem(edited.Errors.ToDictionary(e => e.Key, e => new[] { e.Value }));
 
         var at = DateTimeOffset.UtcNow;
         var by = user.UserId();
-        var check = SheetValidator.Check(edited.Sheet, extraction.FileName, await db.LoadMemberStatesAsync(ct));
+        var check = SheetValidator.Check(edited.Sheet, extraction.FileName, members);
         var history = ExtractionJson.Read<List<ExtractionEditDto>>(extraction.Edits) ?? [];
         history.AddRange(edited.Edits.Select(e => new ExtractionEditDto(by, at, e.Field, e.Position, e.Code, e.From, e.To)));
 
