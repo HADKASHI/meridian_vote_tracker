@@ -38,10 +38,13 @@ Upload `assembly_export_2024_q1.csv` on **Imports**, then `assembly_export_2024_
 - **Review**: the conflicts the revision opened. Accept the incoming value or keep the current one, with a comment. Open the same conflict as two users in two tabs to see one decision win and the other told who decided first.
 - **Votes**: every vote with its country votes, and a timeline of each value's history and where it came from.
 - **Positions** (admin sets them): the Institute's stance and weight per vote.
-- **Snapshots**: preview, then create the Alignment Index for a date range; open a score to see its breakdown, and compare two snapshots. **Publications**: the admin publishes a snapshot for a quarter, or replaces it.
+- **Snapshots**: preview a selection (votes without a position block it; pending conflicts, incomplete votes and running imports warn), then create the Alignment Index. The admin may choose a named rule set for how abstentions and absences count. Each score shows its breakdown and its evidence: completeness, abstention rate, missing data, and a High, Medium or Low confidence band that flags thin evidence without changing the rank.
+- **Snapshot drift**: a snapshot's page lists what would differ if it were created now (decided conflicts, new imports, changed positions), without recalculating the stored answer.
+- **Snapshot comparison**: two snapshots side by side, with each state's rank and score movement and the votes that explain it.
+- **Publications**: the admin publishes a snapshot for a quarter, or replaces it.
 - **Jobs**: everything queued, running, done or failed. The header shows the same at a glance.
 
-With the PDF bonus configured (see `.env.example`), scanned voting sheets are uploaded on Imports and checked before they are applied.
+**PDF bonus**: with Azure AI Document Intelligence configured (see `.env.example`), scanned voting sheets are uploaded on Imports. Each sheet is read into rows and checked against its printed totals, then waits on the **Extractions** tab of Review until an analyst fixes or approves it. Approval turns it into an ordinary import.
 
 ## Users and roles (demo only)
 
