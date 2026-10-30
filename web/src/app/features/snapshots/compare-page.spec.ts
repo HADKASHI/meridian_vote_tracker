@@ -6,7 +6,7 @@ import { JobDto, MovementReasonDto, SnapshotComparisonDto, SnapshotSummaryDto } 
 import { ComparePage, reasonText } from './compare-page';
 
 const job = (state: JobDto['state']): JobDto => ({
-  id: 1, kind: 'snapshot', state, importId: null, snapshotId: 1, placeInQueue: null, rowsRead: 0, votesDone: 0,
+  id: 1, kind: 'snapshot', state, importId: null, snapshotId: 1, extractionId: null, placeInQueue: null, rowsRead: 0, votesDone: 0,
   votesTotal: 0, attempts: 1, lastError: null, traceId: null, startedBy: 'dana', createdAt: '2024-04-02T09:00:00Z',
   startedAt: null, finishedAt: null,
 });

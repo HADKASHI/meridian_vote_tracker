@@ -6,7 +6,7 @@ namespace Meridian.Integration.Tests.Database;
 public sealed class GuardTests(PostgresFixture postgres)
 {
     private static readonly string[] Allowlist =
-        ["job", "vote_current", "country_vote_current", "__EFMigrationsHistory"];
+        ["extraction", "job", "vote_current", "country_vote_current", "__EFMigrationsHistory"];
 
     [Fact]
     public async Task Every_table_outside_the_allowlist_has_the_guard()

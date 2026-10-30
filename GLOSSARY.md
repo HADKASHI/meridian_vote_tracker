@@ -29,8 +29,16 @@ One upload of one file, together with its report and the outcome of every row.
 _Avoid_: Upload (for the whole record), ingest
 
 **Job**:
-Work the system does in the background on a user's behalf: processing an import or calculating a snapshot. A job is queued, running, done or failed. Done means the work finished, not that every row was new.
+Work the system does in the background on a user's behalf: processing an import, reading a voting sheet or calculating a snapshot. A job is queued, running, done or failed. Done means the work finished, not that every row was new.
 _Avoid_: Status, task, process
+
+**Voting sheet**:
+A scanned record of one vote with a mark per country and the totals the Assembly printed. Client data, never committed.
+_Avoid_: PDF (for what it records)
+
+**Extraction**:
+The country votes read from one voting sheet, waiting in the Review inbox for a person to approve, edit or reject them. Nothing in it is approved data until a person approves it, and approving it makes an import.
+_Avoid_: OCR result, parse
 
 **Outcome**:
 The single classification an import gives one row of a file: new, unchanged, duplicate, invalid, contradiction or conflict. It is fixed at the moment of import.

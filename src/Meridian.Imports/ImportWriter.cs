@@ -11,15 +11,16 @@ namespace Meridian.Imports;
 /// The bulk path's one seam (ADR 0005): writes an import one vote per transaction. It
 /// takes the vote's row lock first, reads what is approved for the vote under that lock,
 /// classifies the rows with the pure <see cref="Classifier"/>, and inserts the verdicts and
-/// what they change. Built with EF; only its insides change if the budget is missed.
+/// what they change. Built with EF; only its insides change if the budget is missed. Inside a transaction its caller
+/// already holds (the approval of a voting sheet) it joins that one, so the vote and what the caller does stay together.
 /// </summary>
-internal sealed class ImportWriter(MeridianDbContext db)
+public sealed class ImportWriter(MeridianDbContext db)
 {
     /// <param name="assemblyVoteId">Null for the rows that can't name a vote; they are all invalid.</param>
     public async Task WriteVoteAsync(long importId, string? assemblyVoteId, IReadOnlyList<ExportRow> rows,
         MemberStates members, CancellationToken ct)
     {
-        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        await using var own = db.Database.CurrentTransaction is null ? await db.Database.BeginTransactionAsync(ct) : null;
         long? voteId = assemblyVoteId is null ? null : await LockVoteAsync(importId, assemblyVoteId, ct);
         var approved = voteId is { } id ? await ApprovedAsync(id, ct) : ApprovedVote.Nothing;
         var verdict = Classifier.Classify(rows, approved, members);
@@ -30,8 +31,21 @@ internal sealed class ImportWriter(MeridianDbContext db)
                     MissingStateCodes: missing)
                 .ToWarning(importId, ImportWarningKind.IncompleteVote, voteId));
         await WriteAsync(importId, voteId, verdict, approved, ct);
-        await transaction.CommitAsync(ct);
+        if (own is not null) await own.CommitAsync(ct);
         db.ChangeTracker.Clear();
+    }
+
+    /// <summary>
+    /// What <paramref name="rows"/> would be judged as against what is approved now, with the same classifier and the
+    /// same read as <see cref="WriteVoteAsync"/>, but writing nothing and locking nothing: a preview.
+    /// </summary>
+    public async Task<(VoteVerdict Verdict, bool VoteExists)> ClassifyAsync(
+        string assemblyVoteId, IReadOnlyList<ExportRow> rows, MemberStates members, CancellationToken ct)
+    {
+        var voteId = await db.Votes.AsNoTracking().Where(v => v.AssemblyVoteId == assemblyVoteId)
+            .Select(v => (long?)v.Id).SingleOrDefaultAsync(ct);
+        var approved = voteId is { } id ? await ApprovedAsync(id, ct) : ApprovedVote.Nothing;
+        return (Classifier.Classify(rows, approved, members), voteId is not null);
     }
 
     /// <summary>Creates the vote the first time its id is seen, then locks it: the per-vote lock.</summary>

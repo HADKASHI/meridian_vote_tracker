@@ -38,6 +38,7 @@ public sealed class MeridianDbContext(DbContextOptions<MeridianDbContext> option
     public DbSet<SnapshotWarning> SnapshotWarnings => Set<SnapshotWarning>();
     public DbSet<Publication> Publications => Set<Publication>();
     public DbSet<Job> Jobs => Set<Job>();
+    public DbSet<Extraction> Extractions => Set<Extraction>();
 
     public DbSet<CurrentCountryVote> CurrentCountryVotes => Set<CurrentCountryVote>();
     public DbSet<CurrentVote> CurrentVotes => Set<CurrentVote>();
@@ -54,6 +55,7 @@ public sealed class MeridianDbContext(DbContextOptions<MeridianDbContext> option
         configuration.Properties<Role>().HaveConversion<SnakeCaseEnumConverter<Role>>();
         configuration.Properties<JobKind>().HaveConversion<SnakeCaseEnumConverter<JobKind>>();
         configuration.Properties<JobState>().HaveConversion<SnakeCaseEnumConverter<JobState>>();
+        configuration.Properties<ExtractionStatus>().HaveConversion<SnakeCaseEnumConverter<ExtractionStatus>>();
         configuration.Properties<Ballot>().HaveConversion<string>().HaveColumnType("char(1)");
     }
 
@@ -67,6 +69,7 @@ public sealed class MeridianDbContext(DbContextOptions<MeridianDbContext> option
         ConfigureConflicts(model);
         ConfigureSnapshots(model);
         ConfigureJob(model);
+        ConfigureExtraction(model);
         ConfigureViews(model);
     }
 
@@ -395,19 +398,47 @@ public sealed class MeridianDbContext(DbContextOptions<MeridianDbContext> option
             {
                 t.HasCheckConstraint("ck_job_kind", $"kind IN ({SnakeCaseEnumConverter<JobKind>.SqlList()})");
                 t.HasCheckConstraint("ck_job_state", $"state IN ({SnakeCaseEnumConverter<JobState>.SqlList()})");
-                t.HasCheckConstraint("ck_job_link", "(kind = 'import') = (import_id IS NOT NULL) AND (kind = 'snapshot') = (snapshot_id IS NOT NULL)");
+                t.HasCheckConstraint("ck_job_link",
+                    "(kind = 'import') = (import_id IS NOT NULL) AND (kind = 'snapshot') = (snapshot_id IS NOT NULL)"
+                    + " AND (kind = 'pdf_extraction') = (extraction_id IS NOT NULL)");
             });
             e.Property(x => x.Id).UseIdentityAlwaysColumn();
             e.HasOne<Import>().WithOne().HasForeignKey<Job>(x => x.ImportId);
             e.HasOne<Snapshot>().WithOne().HasForeignKey<Job>(x => x.SnapshotId);
+            e.HasOne<Extraction>().WithOne().HasForeignKey<Job>(x => x.ExtractionId);
             e.HasIndex(x => x.ImportId).IsUnique();
             e.HasIndex(x => x.SnapshotId).IsUnique();
+            e.HasIndex(x => x.ExtractionId).IsUnique();
             e.HasIndex(x => new { x.Kind, x.Id }).HasFilter("state = 'queued'").HasDatabaseName("ix_job_queued");
             e.HasIndex(x => x.HeartbeatAt).HasFilter("state = 'running'").HasDatabaseName("ix_job_running_heartbeat");
             e.Property(x => x.CreatedAt).HasDefaultValueSql("now()");
             // Defaults for inserts written in SQL; EF always sends its own values.
             foreach (var counter in new[] { nameof(Job.RowsRead), nameof(Job.VotesDone), nameof(Job.Attempts) })
                 e.Property<int>(counter).HasDefaultValue(0).ValueGeneratedNever();
+        });
+    }
+
+    /// <summary>A mutable workflow table like <c>job</c>, so outside the history guard (ADR 0008).</summary>
+    private static void ConfigureExtraction(ModelBuilder model)
+    {
+        model.Entity<Extraction>(e =>
+        {
+            e.ToTable("extraction", t =>
+            {
+                t.HasCheckConstraint("ck_extraction_status", $"status IN ({SnakeCaseEnumConverter<ExtractionStatus>.SqlList()})");
+                t.HasCheckConstraint("ck_extraction_decision", "(status IN ('approved', 'rejected')) = (decided_by IS NOT NULL)");
+                t.HasCheckConstraint("ck_extraction_import", "(status = 'approved') = (import_id IS NOT NULL)");
+            });
+            e.Property(x => x.Id).HasDefaultValueSql($"nextval('{HistorySequence}')").ValueGeneratedOnAdd();
+            e.Property(x => x.Extracted).HasColumnType("jsonb");
+            e.Property(x => x.Sheet).HasColumnType("jsonb");
+            e.Property(x => x.CheckResult).HasColumnType("jsonb");
+            e.Property(x => x.Edits).HasColumnType("jsonb").HasDefaultValueSql("'[]'::jsonb");
+            e.HasOne<Import>().WithOne().HasForeignKey<Extraction>(x => x.ImportId);
+            e.HasIndex(x => x.Sha256).IsUnique().HasDatabaseName("ux_extraction_sha256");
+            e.HasIndex(x => x.ImportId).IsUnique().HasFilter("import_id IS NOT NULL").HasDatabaseName("ux_extraction_import");
+            e.HasIndex(x => x.Status).HasDatabaseName("ix_extraction_status");
+            RecordedAt(e.Property(x => x.RecordedAt));
         });
     }
 

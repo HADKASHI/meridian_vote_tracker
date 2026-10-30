@@ -4,6 +4,8 @@ import { Routes } from '@angular/router';
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'review' },
   { path: 'imports', loadChildren: () => import('./features/imports/imports.routes') },
+  // Before 'review', whose children would take 'extractions' for a conflict id.
+  { path: 'review/extractions', loadChildren: () => import('./features/extractions/extractions.routes') },
   { path: 'review', loadChildren: () => import('./features/review/review.routes') },
   { path: 'votes', loadChildren: () => import('./features/votes/votes.routes') },
   { path: 'positions', loadChildren: () => import('./features/positions/positions.routes') },

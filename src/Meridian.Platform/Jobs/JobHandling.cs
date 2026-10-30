@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Meridian.Data.Entities;
 using Meridian.Domain;
+using Microsoft.EntityFrameworkCore;
 
 namespace Meridian.Platform.Jobs;
 
@@ -34,6 +35,7 @@ public sealed class JobContext(ClaimedJob job, Func<int?, int?, int?, Cancellati
     public JobKind Kind => job.Kind;
     public long? ImportId => job.ImportId;
     public long? SnapshotId => job.SnapshotId;
+    public long? ExtractionId => job.ExtractionId;
 
     /// <summary>1 on the first run, higher when retried after a failure or a stall.</summary>
     public int Attempt => job.Attempts;
@@ -45,7 +47,8 @@ public sealed class JobContext(ClaimedJob job, Func<int?, int?, int?, Cancellati
 }
 
 /// <summary>A job this worker has claimed and is running.</summary>
-public sealed record ClaimedJob(long Id, JobKind Kind, long? ImportId, long? SnapshotId, int Attempts, string? TraceParent);
+public sealed record ClaimedJob(
+    long Id, JobKind Kind, long? ImportId, long? SnapshotId, int Attempts, string? TraceParent, long? ExtractionId = null);
 
 /// <summary>Creates queued jobs. The caller inserts one in the same transaction as its import or snapshot.</summary>
 public static class JobQueue
@@ -56,8 +59,27 @@ public static class JobQueue
     public static Job ForSnapshot(long snapshotId) =>
         new() { Kind = JobKind.Snapshot, SnapshotId = snapshotId, State = JobState.Queued, TraceParent = CurrentTraceParent() };
 
+    public static Job ForExtraction(long extractionId) =>
+        new() { Kind = JobKind.PdfExtraction, ExtractionId = extractionId, State = JobState.Queued, TraceParent = CurrentTraceParent() };
+
+    /// <summary>
+    /// Puts jobs back to queued as if new, for work that is tried again on the same job row (a failed sheet's retry):
+    /// no attempts, error, heartbeat, times or progress, and the trace of the request that asks. It sits beside
+    /// <see cref="ForImport"/> and its kin so a new job column is changed in one place.
+    /// </summary>
+    public static Task<int> RequeueAsync(IQueryable<Job> jobs, CancellationToken cancellationToken)
+    {
+        var traceParent = CurrentTraceParent();
+        return jobs.ExecuteUpdateAsync(s => s
+            .SetProperty(j => j.State, JobState.Queued).SetProperty(j => j.Attempts, 0).SetProperty(j => j.LastError, (string?)null)
+            .SetProperty(j => j.HeartbeatAt, (DateTimeOffset?)null).SetProperty(j => j.StartedAt, (DateTimeOffset?)null)
+            .SetProperty(j => j.FinishedAt, (DateTimeOffset?)null).SetProperty(j => j.RowsRead, 0)
+            .SetProperty(j => j.VotesDone, 0).SetProperty(j => j.VotesTotal, (int?)null)
+            .SetProperty(j => j.TraceParent, traceParent), cancellationToken);
+    }
+
     /// <summary>The W3C traceparent of the current request, so the job runs in its trace.</summary>
-    private static string? CurrentTraceParent() =>
+    public static string? CurrentTraceParent() =>
         Activity.Current is { IdFormat: ActivityIdFormat.W3C } activity ? activity.Id : null;
 }
 
@@ -70,9 +92,33 @@ public sealed class JobOptions
     public int MaxAttempts { get; set; } = 3;
     public TimeSpan ImportTimeout { get; set; } = TimeSpan.FromMinutes(30);
     public TimeSpan SnapshotTimeout { get; set; } = TimeSpan.FromMinutes(10);
+    public TimeSpan ExtractionTimeout { get; set; } = TimeSpan.FromMinutes(10);
 
     /// <summary><c>Imports:MaxConcurrent</c>: how many imports may run at once (1, so the earlier upload is approved first).</summary>
     public int MaxConcurrentImports { get; set; } = 1;
 
-    public TimeSpan TimeoutFor(JobKind kind) => kind == JobKind.Import ? ImportTimeout : SnapshotTimeout;
+    /// <summary><c>Extractions:MaxConcurrent</c>: how many voting sheets may be read at once.</summary>
+    public int MaxConcurrentExtractions { get; set; } = 2;
+}
+
+/// <summary>
+/// What the runner needs to know about one job kind: how many may run at once, how long one
+/// may take, and which id its log lines carry. A new kind is one entry in <see cref="JobPolicies.For"/>.
+/// </summary>
+public sealed record JobKindPolicy(
+    JobKind Kind, int MaxRunning, TimeSpan Timeout, string LogScopeKey, Func<ClaimedJob, long?> LinkId);
+
+public static class JobPolicies
+{
+    /// <summary>A <see cref="JobKind"/> missing here is caught by the policy test, which asks every kind for its policy.</summary>
+    public static JobKindPolicy For(JobKind kind, JobOptions options) => kind switch
+    {
+        JobKind.Import => new(kind, options.MaxConcurrentImports, options.ImportTimeout, "ImportId", job => job.ImportId),
+        JobKind.Snapshot => new(kind, 1, options.SnapshotTimeout, "SnapshotId", job => job.SnapshotId),
+        JobKind.PdfExtraction => new(kind, options.MaxConcurrentExtractions, options.ExtractionTimeout, "ExtractionId", job => job.ExtractionId),
+        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "No job policy for this kind."),
+    };
+
+    public static IEnumerable<JobKindPolicy> All(JobOptions options) =>
+        Enum.GetValues<JobKind>().Select(kind => For(kind, options));
 }

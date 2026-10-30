@@ -118,7 +118,13 @@ The snapshot job writes votes, lines, results and warnings in its single final t
 
 | Table | Columns | Keys, constraints, indexes |
 |---|---|---|
-| `job` | `id` (own identity), `kind text`, `import_id NULL`, `snapshot_id NULL`, `state text`, `rows_read int`, `votes_done int`, `votes_total int NULL`, `heartbeat_at NULL`, `attempts int`, `last_error text NULL`, `trace_parent text NULL` (from the request that queued it), `created_at`, `started_at NULL`, `finished_at NULL` | CHECK `kind IN ('import','snapshot')` (later `pdf_extraction`); CHECK `state IN ('queued','running','done','failed')`; CHECK the link matches the kind; UNIQUE `import_id`, UNIQUE `snapshot_id`; partial index `(kind, id) WHERE state = 'queued'` (claim the oldest); partial index `(heartbeat_at) WHERE state = 'running'` (sweeper) |
+| `job` | `id` (own identity), `kind text`, `import_id NULL`, `snapshot_id NULL`, `extraction_id NULL`, `state text`, `rows_read int`, `votes_done int`, `votes_total int NULL`, `heartbeat_at NULL`, `attempts int`, `last_error text NULL`, `trace_parent text NULL` (from the request that queued it), `created_at`, `started_at NULL`, `finished_at NULL` | CHECK `kind IN ('import','snapshot','pdf_extraction')`; CHECK `state IN ('queued','running','done','failed')`; CHECK the link matches the kind; UNIQUE `import_id`, UNIQUE `snapshot_id`, UNIQUE `extraction_id`; partial index `(kind, id) WHERE state = 'queued'` (claim the oldest); partial index `(heartbeat_at) WHERE state = 'running'` (sweeper) |
+
+### 7. Extractions ✏️ (outside the guard, ADR 0008)
+
+| Table | Columns | Keys, constraints, indexes |
+|---|---|---|
+| `extraction` | `id` (history sequence), `file_name`, `blob_name` (`sheets/{id}/{file}`), `sha256`, `size_bytes`, `uploaded_by`, `recorded_at`, `status text`, `extracted jsonb NULL` (the sheet as the reader gave it, never changed), `sheet jsonb NULL` (with the analyst's edits), `check_result jsonb NULL` (issues, counted and printed totals), `edits jsonb` (default `[]`), `error text NULL`, `decided_by NULL`, `decided_at NULL`, `decision_comment NULL`, `import_id NULL` | CHECK `status IN ('extracting','needs_review','failed','approved','rejected')`; CHECK decided exactly when approved or rejected; CHECK `import_id` is set exactly when approved; UNIQUE `sha256` (the same bytes are one extraction); UNIQUE `import_id` where not null; index `(status)`. Mutable like `job`: it moves through its statuses, and nothing in it is approved data until approval makes an import |
 
 ## Views (raw SQL in migrations, mapped as keyless entities)
 

@@ -12,6 +12,7 @@ public sealed record JobDto(
     JobState State,
     long? ImportId,
     long? SnapshotId,
+    long? ExtractionId,
     int? PlaceInQueue,
     int RowsRead,
     int VotesDone,

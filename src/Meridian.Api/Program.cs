@@ -1,4 +1,5 @@
 using Meridian.Conflicts;
+using Meridian.Extractions;
 using Meridian.Imports;
 using Meridian.Platform.Hosting;
 using Meridian.Platform.Http;
@@ -26,6 +27,7 @@ app.MapMeridianApiPlatform();
 
 var api = app.MapGroup("/api").AddEndpointFilterFactory(RequestValidation.Factory);
 api.MapImportsModule()
+    .MapExtractionsModule()
     .MapConflictsModule()
     .MapVotesModule()
     .MapPositionsModule()

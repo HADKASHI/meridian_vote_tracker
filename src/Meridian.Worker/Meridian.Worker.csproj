@@ -2,6 +2,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Meridian.Platform\Meridian.Platform.csproj" />
     <ProjectReference Include="..\Meridian.Imports\Meridian.Imports.csproj" />
+    <ProjectReference Include="..\Meridian.Extractions\Meridian.Extractions.csproj" />
     <ProjectReference Include="..\Meridian.Snapshots\Meridian.Snapshots.csproj" />
     <ProjectReference Include="..\Meridian.Fixtures\Meridian.Fixtures.csproj" />
   </ItemGroup>

@@ -5,6 +5,7 @@ import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { ConflictDecisionDto, ConflictDto } from '../../api/model';
+import { flushReviewTabs } from '../../shared/ui/review-counts.testing';
 import { conflict, importRowOrigin, listItem, page } from './review.testing';
 import reviewRoutes from './review.routes';
 
@@ -27,6 +28,7 @@ describe('Decision pane', () => {
   async function open(body: ConflictDto, list = [listItem({ id: body.id })], query = ''): Promise<HTMLElement> {
     harness = await RouterTestingHarness.create(`/review/${body.id}${query}`);
     TestBed.tick();
+    flushReviewTabs(http);
     http.expectOne((r) => r.url === '/api/conflicts').flush(page(list));
     http.expectOne(`/api/conflicts/${body.id}`).flush(body);
     await harness.fixture.whenStable();

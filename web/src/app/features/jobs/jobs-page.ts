@@ -5,6 +5,7 @@ import { MatTableModule } from '@angular/material/table';
 import { RouterLink } from '@angular/router';
 import { listJobsResource } from '../../api/jobs/jobs.resource';
 import { JobDto, JobState } from '../../api/model';
+import { jobTarget } from '../../core/status/job-target';
 import { pollWhile } from '../../shared/http/poll';
 import { jobProgress } from '../../shared/ui/job-progress';
 import { JobStateBadge } from '../../shared/ui/job-state-badge';
@@ -17,7 +18,7 @@ import { PageHeader } from '../../shared/ui/page-header';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-page-header heading="Jobs">
-      <p pageLead>Imports and snapshot calculations run here in the background, oldest first.</p>
+      <p pageLead>Imports, voting sheet readings and snapshot calculations run here in the background, oldest first.</p>
     </app-page-header>
     @if (jobs.hasValue() && jobs.value(); as page) {
       <div class="table-scroll">
@@ -25,11 +26,7 @@ import { PageHeader } from '../../shared/ui/page-header';
         <ng-container matColumnDef="job">
           <th mat-header-cell *matHeaderCellDef>Job</th>
           <td mat-cell *matCellDef="let job">
-            @if (job.kind === 'import') {
-              <a [routerLink]="['/imports', job.importId]">Import #{{ job.importId }}</a>
-            } @else {
-              <a [routerLink]="['/snapshots', job.snapshotId]">Snapshot #{{ job.snapshotId }}</a>
-            }
+            <a [routerLink]="target(job).link">{{ target(job).label }}</a>
           </td>
         </ng-container>
         <ng-container matColumnDef="state">
@@ -83,6 +80,7 @@ import { PageHeader } from '../../shared/ui/page-header';
   `,
 })
 export class JobsPage {
+  protected readonly target = jobTarget;
   protected readonly columns = ['job', 'state', 'progress', 'startedBy', 'createdAt'];
   protected readonly params = signal({ page: 1, pageSize: 100 });
   protected readonly jobs = listJobsResource(this.params);

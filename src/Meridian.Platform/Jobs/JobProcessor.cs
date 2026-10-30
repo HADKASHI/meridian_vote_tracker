@@ -42,8 +42,8 @@ public sealed class JobProcessor(
     }
 
     /// <summary>
-    /// Claims the oldest queued job that may start now: an import while fewer than
-    /// <c>Imports:MaxConcurrent</c> run, a snapshot while no other snapshot runs.
+    /// Claims the oldest queued job that may start now: one whose kind has fewer running than its
+    /// <see cref="JobKindPolicy.MaxRunning"/> (imports by <c>Imports:MaxConcurrent</c>, snapshots one at a time).
     /// </summary>
     public async Task<ClaimedJob?> ClaimNextAsync(CancellationToken cancellationToken)
     {
@@ -55,23 +55,18 @@ public sealed class JobProcessor(
             await lockCommand.ExecuteNonQueryAsync(cancellationToken);
         }
 
-        await using var claim = new NpgsqlCommand("""
+        await using var claim = new NpgsqlCommand($"""
             UPDATE job
             SET state = 'running', attempts = attempts + 1, heartbeat_at = now(),
                 started_at = coalesce(started_at, now())
             WHERE id = (
               SELECT id FROM job
-              WHERE state = 'queued' AND (
-                (kind = 'import'
-                  AND (SELECT count(*) FROM job WHERE state = 'running' AND kind = 'import') < @maxImports)
-                OR (kind = 'snapshot'
-                  AND NOT EXISTS (SELECT 1 FROM job WHERE state = 'running' AND kind = 'snapshot')))
+              WHERE state = 'queued' AND ({MayStartPredicate()})
               ORDER BY id
               LIMIT 1
               FOR UPDATE SKIP LOCKED)
-            RETURNING id, kind, import_id, snapshot_id, attempts, trace_parent
+            RETURNING id, kind, import_id, snapshot_id, attempts, trace_parent, extraction_id
             """, connection, transaction);
-        claim.Parameters.AddWithValue("maxImports", (long)Options.MaxConcurrentImports);
 
         ClaimedJob? job = null;
         await using (var reader = await claim.ExecuteReaderAsync(cancellationToken))
@@ -83,11 +78,19 @@ public sealed class JobProcessor(
                     reader.IsDBNull(2) ? null : reader.GetInt64(2),
                     reader.IsDBNull(3) ? null : reader.GetInt64(3),
                     reader.GetInt32(4),
-                    reader.IsDBNull(5) ? null : reader.GetString(5));
+                    reader.IsDBNull(5) ? null : reader.GetString(5),
+                    reader.IsDBNull(6) ? null : reader.GetInt64(6));
         }
         await transaction.CommitAsync(cancellationToken);
         return job;
     }
+
+    /// <summary>One clause per kind: it may start while fewer than its policy's limit of its kind are running.</summary>
+    private string MayStartPredicate() => string.Join(" OR ", JobPolicies.All(Options).Select(policy =>
+    {
+        var kind = SnakeCaseEnumConverter<JobKind>.ToName(policy.Kind);
+        return $"(kind = '{kind}' AND (SELECT count(*) FROM job WHERE state = 'running' AND kind = '{kind}') < {policy.MaxRunning})";
+    }));
 
     /// <summary>
     /// Requeues running jobs with no heartbeat for <c>Jobs:StaleAfter</c>, or fails them once
@@ -123,11 +126,12 @@ public sealed class JobProcessor(
     /// <summary>Runs a claimed job to done, a retry, or failed. Never throws.</summary>
     public async Task RunClaimedAsync(ClaimedJob job, CancellationToken stoppingToken)
     {
+        var policy = JobPolicies.For(job.Kind, Options);
         using var activity = StartActivity(job);
         using var scope = logger.BeginScope(new Dictionary<string, object?>
         {
             ["JobId"] = job.Id,
-            [job.Kind == JobKind.Import ? "ImportId" : "SnapshotId"] = job.ImportId ?? job.SnapshotId,
+            [policy.LogScopeKey] = policy.LinkId(job),
         });
         await using var services = scopes.CreateAsyncScope();
         var handler = services.ServiceProvider.GetServices<IJobHandler>().FirstOrDefault(h => h.Kind == job.Kind);
@@ -139,7 +143,7 @@ public sealed class JobProcessor(
             return;
         }
 
-        var limit = Options.TimeoutFor(job.Kind);
+        var limit = policy.Timeout;
         using var timeout = new CancellationTokenSource(limit);
         using var running = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken, timeout.Token);
         using var heartbeatStop = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);

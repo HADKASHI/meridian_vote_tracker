@@ -22,6 +22,7 @@ public static class ImportsModule
 {
     public static IServiceCollection AddImportsModule(this IServiceCollection services)
     {
+        services.AddScoped<ImportWriter>(); // also used by the approval of a voting sheet
         services.AddSingleton(provider => new UploadLimit(
             provider.GetRequiredService<IConfiguration>().GetValue("Imports:MaxUploadBytes", 200L * 1024 * 1024)));
         // The form reader buffers the file before the handler runs; the endpoint's own limit decides.

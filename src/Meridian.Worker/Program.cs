@@ -1,4 +1,5 @@
 using Meridian.Data;
+using Meridian.Extractions;
 using Meridian.Fixtures;
 using Meridian.Imports;
 using Meridian.Platform.Hosting;
@@ -10,6 +11,7 @@ builder.AddMeridianWorkerPlatform();
 // Slices plug in their job handler inside their own module.
 builder.Services
     .AddImportsJobs()
+    .AddExtractionsJobs()
     .AddSnapshotsJobs();
 
 var host = builder.Build();

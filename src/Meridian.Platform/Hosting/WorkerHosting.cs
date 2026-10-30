@@ -21,7 +21,11 @@ public static class WorkerHosting
     {
         services.AddOptions<JobOptions>()
             .Bind(configuration.GetSection("Jobs"))
-            .Configure(o => o.MaxConcurrentImports = configuration.GetValue("Imports:MaxConcurrent", o.MaxConcurrentImports));
+            .Configure(o =>
+            {
+                o.MaxConcurrentImports = configuration.GetValue("Imports:MaxConcurrent", o.MaxConcurrentImports);
+                o.MaxConcurrentExtractions = configuration.GetValue("Extractions:MaxConcurrent", o.MaxConcurrentExtractions);
+            });
         services.AddSingleton(provider => NpgsqlDataSource.Create(
             provider.GetRequiredService<IConfiguration>().GetConnectionString("Meridian")
                 ?? throw new InvalidOperationException("ConnectionStrings:Meridian is not set.")));

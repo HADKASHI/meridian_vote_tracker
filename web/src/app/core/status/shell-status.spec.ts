@@ -7,7 +7,7 @@ import { jobsLabel } from './jobs-indicator';
 import { ShellStatus } from './shell-status';
 
 const runningJob: JobDto = {
-  id: 1, kind: 'import', state: 'running', importId: 7, snapshotId: null, placeInQueue: null,
+  id: 1, kind: 'import', state: 'running', importId: 7, snapshotId: null, extractionId: null, placeInQueue: null,
   rowsRead: 100, votesDone: 3, votesTotal: 40, attempts: 1, lastError: null, traceId: null,
   startedBy: 'dana', createdAt: '2024-01-01T00:00:00Z', startedAt: null, finishedAt: null,
 };

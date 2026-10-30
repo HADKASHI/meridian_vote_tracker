@@ -6,7 +6,7 @@ import { JobDto, SnapshotBreakdownDto, SnapshotDto } from '../../api/model';
 import { SnapshotPage } from './snapshot-page';
 
 const job: JobDto = {
-  id: 9, kind: 'snapshot', state: 'done', importId: null, snapshotId: 42, placeInQueue: null,
+  id: 9, kind: 'snapshot', state: 'done', importId: null, snapshotId: 42, extractionId: null, placeInQueue: null,
   rowsRead: 0, votesDone: 2, votesTotal: 2, attempts: 1, lastError: null, traceId: null,
   startedBy: 'dana', createdAt: '2024-04-02T09:00:00Z', startedAt: null, finishedAt: null,
 };
