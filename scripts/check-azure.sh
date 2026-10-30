@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # The guided live check of the Azure services (ADR 0009, docs/azure.md). Run it on your own machine:
 #   scripts/check-azure.sh [path/to/a/real/voting/sheet.pdf] [--device-code]
-# It reads the .env beside this repository, checks Blob upload and download, the database and its version,
-# one Document Intelligence call on a real sheet and Application Insights, and prints what passed and what did not.
+# It reads the .env beside this repository, checks Blob upload and download and one Document Intelligence call on a
+# real sheet, and prints what passed and what did not. (The database and Application Insights are not checked live.)
 # It writes nothing, and sends nothing but what the checks themselves send to your own Azure resources.
 # Needs the .NET SDK (see global.json). With a connection string without a Password, a BLOB_SERVICE_URI, or a
 # DOCINTEL_ENDPOINT without a key, the check signs in with Microsoft Entra ID: run `az login` first. The sheet stays where it is: it is never copied into the repository.

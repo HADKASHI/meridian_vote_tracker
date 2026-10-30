@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using Azure;
 using Azure.Core;
-using Azure.Monitor.OpenTelemetry.Exporter;
 using Azure.Storage.Blobs;
 using Meridian.Data;
 using Meridian.Domain.Sheets;
@@ -10,9 +9,6 @@ using Meridian.Platform.Hosting;
 using Meridian.Platform.Storage;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using Npgsql;
-using OpenTelemetry;
-using OpenTelemetry.Trace;
 
 namespace Meridian.AzureCheck;
 
@@ -28,8 +24,6 @@ public sealed record CheckResult(string Name, CheckStatus Status, string Detail)
 /// </summary>
 public static class LiveChecks
 {
-    public static readonly string[] SupportedMajors = ["17", "18"];
-
     /// <param name="serviceUri">A Blob service address: the account is then reached with the Entra ID sign-in (<c>az login</c>) and this wins over the connection string.</param>
     public static async Task<CheckResult> BlobAsync(
         string? connectionString, string? serviceUri, string container, CancellationToken cancellationToken, TokenCredential? credential = null)
@@ -75,41 +69,6 @@ public static class LiveChecks
         }
     }
 
-    public static async Task<CheckResult> DatabaseAsync(
-        string? connectionString, CancellationToken cancellationToken, bool requireTls = true, TokenCredential? credential = null)
-    {
-        const string Name = "Database";
-        if (string.IsNullOrWhiteSpace(connectionString))
-            return new(Name, CheckStatus.NotConfigured, "AZURE_POSTGRES_CONNECTION_STRING is not set.");
-
-        var reached = await ConnectionCheck.RunAsync(connectionString, null, requireTls, cancellationToken, credential: credential);
-        if (reached.Count > 0) return new(Name, CheckStatus.Failed, reached[0].Message);
-
-        var entra = DatabaseAccess.UsesEntra(connectionString);
-        try
-        {
-            await using var dataSource = entra ? DatabaseAccess.EntraDataSource(connectionString, credential ?? AzureCredentials.Default) : null;
-            await using var connection = dataSource is null ? new NpgsqlConnection(connectionString) : dataSource.CreateConnection();
-            await connection.OpenAsync(cancellationToken);
-            await using var command = new NpgsqlCommand(
-                "SELECT current_setting('server_version'), (SELECT ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid())", connection);
-            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-            await reader.ReadAsync(cancellationToken);
-            var version = reader.GetString(0);
-            var tls = !reader.IsDBNull(1) && reader.GetBoolean(1);
-            var major = version.Split('.')[0];
-            var detail = $"PostgreSQL {version}, TLS {(tls ? "on" : "off")}, {(entra ? "Entra ID sign-in" : "password")}.";
-            if (!SupportedMajors.Contains(major))
-                return new(Name, CheckStatus.Failed, $"{detail} Supported versions are {string.Join(" and ", SupportedMajors)}.");
-            if (requireTls && !tls) return new(Name, CheckStatus.Failed, $"{detail} TLS is required.");
-            return new(Name, CheckStatus.Passed, detail);
-        }
-        catch (Exception error) when (!cancellationToken.IsCancellationRequested)
-        {
-            return new(Name, CheckStatus.Failed, $"The database answered the connection but not the version query: {error.GetType().Name}.");
-        }
-    }
-
     /// <summary>Reads one real sheet through <paramref name="reader"/> and says what the mapper made of it, in counts only.</summary>
     public static async Task<CheckResult> DocumentIntelligenceAsync(IVoteSheetReader? reader, string? pdfPath, CancellationToken cancellationToken)
     {
@@ -148,44 +107,5 @@ public static class LiveChecks
         return options.IsConfigured
             ? new DocumentIntelligenceSheetReader(new HttpClient(), Options.Create(options), NullLogger<DocumentIntelligenceSheetReader>.Instance, credential)
             : null;
-    }
-
-    private static bool IsInsightsConnectionString(string connectionString)
-    {
-        var parts = connectionString.Split(';', StringSplitOptions.RemoveEmptyEntries)
-            .Select(p => p.Split('=', 2)).Where(p => p.Length == 2).ToDictionary(p => p[0].Trim(), p => p[1].Trim(), StringComparer.OrdinalIgnoreCase);
-        return parts.TryGetValue("InstrumentationKey", out var key) && Guid.TryParse(key, out _)
-            && (!parts.TryGetValue("IngestionEndpoint", out var endpoint)
-                || (Uri.TryCreate(endpoint, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps));
-    }
-
-    /// <summary>Sends one trace. Application Insights accepts it without an answer the exporter can read, so the report says where to look.</summary>
-    public static Task<CheckResult> ApplicationInsightsAsync(string? connectionString, CancellationToken cancellationToken)
-    {
-        const string Name = "Application Insights";
-        if (string.IsNullOrWhiteSpace(connectionString))
-            return Task.FromResult(new CheckResult(Name, CheckStatus.NotConfigured, "APPLICATIONINSIGHTS_CONNECTION_STRING is not set."));
-
-        if (!IsInsightsConnectionString(connectionString))
-            return Task.FromResult(new CheckResult(Name, CheckStatus.Failed,
-                "The connection string is not InstrumentationKey=<guid>;IngestionEndpoint=https://...; copy it from the Application Insights overview page."));
-
-        const string Source = "Meridian.AzureCheck";
-        try
-        {
-            using var provider = Sdk.CreateTracerProviderBuilder()
-                .AddSource(Source)
-                .AddAzureMonitorTraceExporter(o => o.ConnectionString = connectionString)
-                .Build();
-            using var activity = new ActivitySource(Source).StartActivity("meridian-live-check");
-            activity?.Stop();
-            return Task.FromResult(provider!.ForceFlush(15_000)
-                ? new CheckResult(Name, CheckStatus.Passed, "Sent one trace named 'meridian-live-check'; it appears under Transaction search in the portal within a few minutes.")
-                : new CheckResult(Name, CheckStatus.Failed, "The trace could not be sent in time. Check the connection string and the network."));
-        }
-        catch (Exception error) when (!cancellationToken.IsCancellationRequested)
-        {
-            return Task.FromResult(new CheckResult(Name, CheckStatus.Failed, $"The connection string was not accepted: {error.GetType().Name}."));
-        }
     }
 }

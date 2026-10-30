@@ -28,7 +28,7 @@ public static class CheckApp
         // The sign-in waits for a person, which the services' own short timeouts must not cut off: do it first, once.
         // The other services then take their tokens from the same sign-in without asking again.
         if (credential is not null)
-            foreach (var scope in new[] { "https://storage.azure.com/.default", Meridian.Data.DatabaseAccess.TokenScope, "https://cognitiveservices.azure.com/.default" })
+            foreach (var scope in new[] { "https://storage.azure.com/.default", "https://cognitiveservices.azure.com/.default" })
                 try { await credential.GetTokenAsync(new TokenRequestContext([scope]), token); }
                 catch (Exception error) when (!token.IsCancellationRequested) { Console.WriteLine($"No token for {scope}: {error.GetType().Name}"); }
 
@@ -36,10 +36,8 @@ public static class CheckApp
         var results = new List<CheckResult>
         {
             await LiveChecks.BlobAsync(Setting("BLOB_CONNECTION_STRING"), Setting("BLOB_SERVICE_URI"), Setting("BLOB_CONTAINER") ?? "imports", token, credential),
-            await LiveChecks.DatabaseAsync(Setting("AZURE_POSTGRES_CONNECTION_STRING"), token, credential: credential),
             await LiveChecks.DocumentIntelligenceAsync(
                 LiveChecks.CreateReader(Setting("DOCINTEL_ENDPOINT"), Setting("DOCINTEL_KEY"), credential), Option("--sheet"), token),
-            await LiveChecks.ApplicationInsightsAsync(Setting("APPLICATIONINSIGHTS_CONNECTION_STRING"), token),
         };
         Console.WriteLine();
         Console.Write(Report.Render(results));

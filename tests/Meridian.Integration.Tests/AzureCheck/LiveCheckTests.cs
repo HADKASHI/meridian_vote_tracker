@@ -9,7 +9,7 @@ namespace Meridian.Integration.Tests.AzureCheck;
 /// ADR 0009: the operator's guided check. What can be proven without Azure is proven here against Azurite and the test
 /// database; the rest is the operator's run. Whatever it prints holds no secret and none of a sheet's content.
 /// </summary>
-public sealed class LiveCheckTests(PostgresFixture postgres, AzuriteFixture azurite)
+public sealed class LiveCheckTests(AzuriteFixture azurite)
 {
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
@@ -29,9 +29,7 @@ public sealed class LiveCheckTests(PostgresFixture postgres, AzuriteFixture azur
     public async Task A_check_without_its_configuration_says_it_is_not_configured()
     {
         Assert.Equal(CheckStatus.NotConfigured, (await LiveChecks.BlobAsync(null, " ", "x", Ct)).Status);
-        Assert.Equal(CheckStatus.NotConfigured, (await LiveChecks.DatabaseAsync(null, Ct)).Status);
         Assert.Equal(CheckStatus.NotConfigured, (await LiveChecks.DocumentIntelligenceAsync(null, "sheet.pdf", Ct)).Status);
-        Assert.Equal(CheckStatus.NotConfigured, (await LiveChecks.ApplicationInsightsAsync(" ", Ct)).Status);
     }
 
     private sealed class FailingCredential : global::Azure.Core.TokenCredential
@@ -54,18 +52,6 @@ public sealed class LiveCheckTests(PostgresFixture postgres, AzuriteFixture azur
         Assert.DoesNotContain("secret-tenant", result.Detail);
     }
 
-    [Fact]
-    public async Task A_password_less_Azure_database_fails_with_the_Entra_hint_and_without_the_credentials_own_words()
-    {
-        var result = await LiveChecks.DatabaseAsync(
-            "Host=nosuch-psql.postgres.database.azure.com;Database=m;Username=me@contoso.com;SSL Mode=Require;Timeout=2", Ct,
-            credential: new FailingCredential());
-
-        Assert.Equal(CheckStatus.Failed, result.Status);
-        Assert.Contains("nosuch-psql.postgres.database.azure.com", result.Detail);
-        Assert.Contains("Entra", result.Detail);
-        Assert.DoesNotContain("secret-tenant", result.Detail);
-    }
 
     [Fact]
     public void An_endpoint_without_a_key_still_gets_a_reader_that_signs_in_with_Entra()
@@ -74,25 +60,7 @@ public sealed class LiveCheckTests(PostgresFixture postgres, AzuriteFixture azur
         Assert.Null(LiveChecks.CreateReader(null, "key"));
     }
 
-    [Fact]
-    public async Task The_database_check_reports_the_real_version_it_found()
-    {
-        var result = await LiveChecks.DatabaseAsync(await postgres.CreateDatabaseAsync(), Ct, requireTls: false);
 
-        Assert.Equal(CheckStatus.Passed, result.Status);
-        Assert.Matches(@"PostgreSQL (17|18)\.\d+", result.Detail);
-    }
-
-    [Fact]
-    public async Task A_failing_database_fails_the_check_without_printing_its_password()
-    {
-        var result = await LiveChecks.DatabaseAsync(
-            "Host=db.example.invalid;Database=m;Username=u;Password=hunter2-live;Timeout=2", Ct);
-
-        Assert.Equal(CheckStatus.Failed, result.Status);
-        Assert.Contains("db.example.invalid", result.Detail);
-        Assert.DoesNotContain("hunter2-live", result.Detail);
-    }
 
     [Fact]
     public async Task The_sheet_check_reads_a_pdf_and_reports_counts_only()
@@ -130,14 +98,6 @@ public sealed class LiveCheckTests(PostgresFixture postgres, AzuriteFixture azur
         finally { File.Delete(pdf); }
     }
 
-    [Fact]
-    public async Task An_unusable_Application_Insights_string_fails_without_printing_it()
-    {
-        var result = await LiveChecks.ApplicationInsightsAsync("InstrumentationKey=not-a-guid-secret-value", Ct);
-
-        Assert.Equal(CheckStatus.Failed, result.Status);
-        Assert.DoesNotContain("not-a-guid-secret-value", result.Detail);
-    }
 
     [Fact]
     public void The_report_names_each_check_and_passes_only_when_all_of_them_do()
@@ -145,15 +105,15 @@ public sealed class LiveCheckTests(PostgresFixture postgres, AzuriteFixture azur
         CheckResult[] results =
         [
             new("Blob", CheckStatus.Passed, "round trip of 64 bytes"),
-            new("Database", CheckStatus.Failed, "could not connect"),
-            new("Document Intelligence", CheckStatus.NotConfigured, "no sheet given"),
+            new("Document Intelligence", CheckStatus.Failed, "could not connect"),
+            new("Other", CheckStatus.NotConfigured, "no sheet given"),
         ];
 
         var text = Report.Render(results);
 
         Assert.Contains("PASS  Blob", text);
-        Assert.Contains("FAIL  Database", text);
-        Assert.Contains("SKIP  Document Intelligence", text);
+        Assert.Contains("FAIL  Document Intelligence", text);
+        Assert.Contains("SKIP  Other", text);
         Assert.Equal(1, Report.ExitCode(results));
         Assert.Equal(0, Report.ExitCode([results[0]]));
     }

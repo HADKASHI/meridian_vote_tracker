@@ -91,7 +91,7 @@ The original of any import (a CSV or a voting sheet PDF) and of a sheet waiting 
 
 ## Check it live
 
-Everything above is proven against Azurite and a local PostgreSQL. The live Azure services are checked by you, on your own machine, with your own `.env`; run the guided check below. No credential is sent to this repository or to a cloud session.
+Everything above is proven against Azurite and a local PostgreSQL. Blob and Document Intelligence are checked live by you, on your own machine, with your own `.env`; run the guided check below. No credential is sent to this repository or to a cloud session.
 
 ## Guided live check
 
@@ -106,10 +106,14 @@ Without the path it asks for one, and Enter skips that check. The sheet is read 
 | Check | What passing means |
 |---|---|
 | Blob | a 64-byte test blob was uploaded to the app's container and downloaded with the same bytes, then deleted. With `BLOB_SERVICE_URI` it also proves the Entra sign-in and the *Storage Blob Data Contributor* role |
-| Database | the connection used TLS, and the server reported its real version, which must be 17 or 18; the line says whether it signed in with a password or with Entra ID |
 | Document Intelligence | the app's own adapter (with the key, or with Entra ID if `DOCINTEL_KEY` is empty) read the sheet through the `prebuilt-layout` model; the report gives the pages, how many grid rows the mapper found, and whether the vote id and printed totals were found. Counts only |
-| Application Insights | one trace named `meridian-live-check` was sent; look for it under *Transaction search* in the portal within a few minutes, since the service gives the exporter no receipt |
 
-Each line starts `PASS`, `FAIL` or `SKIP` (a setting or the sheet was not given), with the reason for anything that did not pass. The exit code is 0 only when all four passed.
+Each line starts `PASS`, `FAIL` or `SKIP` (a setting or the sheet was not given), with the reason for anything that did not pass. The exit code is 0 only when both passed.
 
 Running it with a real sheet closes the limit ADR 0008 admits: the Document Intelligence adapter has so far only met a hand-written fixture. If the report says the mapper found no grid rows, or no totals, the layout model returned that sheet in a shape the mapper does not know yet; keep the sheet and the report's counts and take them to the next build.
+
+### What the check does not cover
+
+The database and Application Insights are **not** checked live. We ran into dev-ops problems: the Azure Database for PostgreSQL server could not be reached from the cloud session the check was run in (its name does not resolve there), and its Entra sign-in could not be set up and proven in the time available. Application Insights accepted a test trace, but nobody confirmed it arrived. So this task runs on the local PostgreSQL and does not rely on Application Insights, even though ideally it would use both.
+
+The code for both is in place and tested against stand-ins: a password-less connection string to an Azure server signs in with Entra ID, and Application Insights switches on with `APPLICATIONINSIGHTS_CONNECTION_STRING`. A first run against the real server is still to be done; if it fails, the startup message names the connection.

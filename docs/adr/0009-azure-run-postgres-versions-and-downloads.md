@@ -27,3 +27,11 @@ The brief names Azure Blob Storage, PostgreSQL and optionally Application Insigh
 - CI gains a job and runs longer.
 - The finishing pass links `docs/azure.md` from the README.
 - Closes the fixture-only limit in ADR 0008 once the operator runs the guided check.
+
+## Update: what was checked live, and what was not
+
+- **Entra ID sign-in was added.** The candidate Azure account could not read storage keys or set a database password, so Blob (`Blob:ServiceUri`), PostgreSQL (a password-less connection string to `*.postgres.database.azure.com`) and Document Intelligence (an endpoint with no key) can sign in with `DefaultAzureCredential`. Keys, passwords and Azurite work as before.
+- **Credentials entered the cloud session, once, by the operator's choice.** The decision above kept them out; the operator then supplied a `.env` and approved a device-code sign-in so the check could run from the session. The copy of `.env` in the repository folder was deleted afterwards, and nothing was committed.
+- **Live results.** Blob passed (a round trip with the Entra sign-in). Document Intelligence is reported working by the operator; the session itself had no sheet to read.
+- **Not used for this task, though ideally we would:** the Azure Database for PostgreSQL server could not be reached from the cloud session and its Entra access could not be proven, so the guided check no longer includes the database or Application Insights, and the task runs on the local PostgreSQL. Both stay built and tested against stand-ins, and a first live run is left to the operator.
+
