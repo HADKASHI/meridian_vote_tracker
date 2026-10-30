@@ -69,7 +69,7 @@ public static class LiveChecks
             return new(Name, CheckStatus.Failed, $"Blob upload or download was refused ({error.Status} {error.ErrorCode}). " +
                 (entra ? "The signed-in identity needs the Storage Blob Data Contributor role on the account." : "Check the account key and that the account allows this machine."));
         }
-        catch (Exception error) when (error is not OperationCanceledException)
+        catch (Exception error) when (!cancellationToken.IsCancellationRequested)
         {
             return new(Name, CheckStatus.Failed, $"Blob upload or download failed: {error.GetType().Name}.");
         }
@@ -104,7 +104,7 @@ public static class LiveChecks
             if (requireTls && !tls) return new(Name, CheckStatus.Failed, $"{detail} TLS is required.");
             return new(Name, CheckStatus.Passed, detail);
         }
-        catch (Exception error) when (error is not OperationCanceledException)
+        catch (Exception error) when (!cancellationToken.IsCancellationRequested)
         {
             return new(Name, CheckStatus.Failed, $"The database answered the connection but not the version query: {error.GetType().Name}.");
         }
@@ -135,7 +135,7 @@ public static class LiveChecks
         {
             return new(Name, CheckStatus.Failed, $"The service {(error.Permanent ? "refused" : "could not answer")}: {error.Message}");
         }
-        catch (Exception error) when (error is not OperationCanceledException)
+        catch (Exception error) when (!cancellationToken.IsCancellationRequested)
         {
             return new(Name, CheckStatus.Failed, $"The sheet could not be read: {error.GetType().Name}.");
         }
@@ -183,7 +183,7 @@ public static class LiveChecks
                 ? new CheckResult(Name, CheckStatus.Passed, "Sent one trace named 'meridian-live-check'; it appears under Transaction search in the portal within a few minutes.")
                 : new CheckResult(Name, CheckStatus.Failed, "The trace could not be sent in time. Check the connection string and the network."));
         }
-        catch (Exception error) when (error is not OperationCanceledException)
+        catch (Exception error) when (!cancellationToken.IsCancellationRequested)
         {
             return Task.FromResult(new CheckResult(Name, CheckStatus.Failed, $"The connection string was not accepted: {error.GetType().Name}."));
         }

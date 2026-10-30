@@ -28,13 +28,13 @@ public static partial class ConnectionCheck
         public override AccessToken GetToken(TokenRequestContext requestContext, CancellationToken cancellationToken)
         {
             try { return inner.GetToken(requestContext, cancellationToken); }
-            catch (Exception error) when (error is not OperationCanceledException) { throw Quiet(error); }
+            catch (Exception error) when (!cancellationToken.IsCancellationRequested) { throw Quiet(error); }
         }
 
         public override async ValueTask<AccessToken> GetTokenAsync(TokenRequestContext requestContext, CancellationToken cancellationToken)
         {
             try { return await inner.GetTokenAsync(requestContext, cancellationToken); }
-            catch (Exception error) when (error is not OperationCanceledException) { throw Quiet(error); }
+            catch (Exception error) when (!cancellationToken.IsCancellationRequested) { throw Quiet(error); }
         }
 
         private static InvalidOperationException Quiet(Exception error) =>
@@ -84,7 +84,7 @@ public static partial class ConnectionCheck
             await connection.OpenAsync(cancellationToken);
             return null;
         }
-        catch (Exception error) when (error is not OperationCanceledException)
+        catch (Exception error) when (!cancellationToken.IsCancellationRequested)
         {
             return new("database", $"Could not connect to the database at {where}: {Reason(error, builder.Password)}{(entra ? " " + EntraHint : "")}");
         }
@@ -119,7 +119,7 @@ public static partial class ConnectionCheck
                 .GetAsyncEnumerator(cancellationToken).MoveNextAsync();
             return null;
         }
-        catch (Exception error) when (error is not OperationCanceledException)
+        catch (Exception error) when (!cancellationToken.IsCancellationRequested)
         {
             return new("blob", $"Could not reach the Blob storage account '{client.AccountName}': " +
                 $"{Reason(error, null, connectionString)}{(entra ? " " + EntraHint : "")}");

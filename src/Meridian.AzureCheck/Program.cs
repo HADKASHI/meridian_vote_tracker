@@ -22,8 +22,15 @@ public static class CheckApp
             ? new DeviceCodeCredential(new DeviceCodeCredentialOptions { TenantId = Setting("AZURE_TENANT_ID") })
             : null;
 
-        using var cancel = new CancellationTokenSource(TimeSpan.FromMinutes(3));
+        using var cancel = new CancellationTokenSource(TimeSpan.FromMinutes(credential is null ? 3 : 6));
         var token = cancel.Token;
+
+        // The sign-in waits for a person, which the services' own short timeouts must not cut off: do it first, once.
+        // The other services then take their tokens from the same sign-in without asking again.
+        if (credential is not null)
+            foreach (var scope in new[] { "https://storage.azure.com/.default", Meridian.Data.DatabaseAccess.TokenScope, "https://cognitiveservices.azure.com/.default" })
+                try { await credential.GetTokenAsync(new TokenRequestContext([scope]), token); }
+                catch (Exception error) when (!token.IsCancellationRequested) { Console.WriteLine($"No token for {scope}: {error.GetType().Name}"); }
 
         Console.WriteLine(File.Exists(envPath) ? $"Using {envPath}." : $"No {envPath} found; using the environment.");
         var results = new List<CheckResult>

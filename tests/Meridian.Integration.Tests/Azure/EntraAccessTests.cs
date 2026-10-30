@@ -160,6 +160,17 @@ public sealed class EntraAccessTests(PostgresFixture postgres, AzuriteFixture az
     }
 
     [Fact]
+    public async Task A_sign_in_that_times_out_is_a_failure_and_not_a_crash()
+    {
+        var credential = new FakeCredential(failure: new TaskCanceledException("A task was canceled."));
+
+        var failure = Assert.Single(await ConnectionCheck.RunAsync(
+            null, null, requireTls: false, Ct, blobServiceUri: "https://nosuchaccount.blob.core.windows.net/", credential: credential));
+
+        Assert.Equal("blob", failure.Service);
+    }
+
+    [Fact]
     public async Task The_startup_check_says_so_when_no_blob_setting_exists_at_all()
     {
         var failure = Assert.Single(await ConnectionCheck.RunAsync(null, null, requireTls: false, Ct, checkBlob: true));
