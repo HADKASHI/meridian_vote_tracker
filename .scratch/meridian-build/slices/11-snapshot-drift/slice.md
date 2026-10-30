@@ -5,7 +5,7 @@ Blocked by: Slices 6 and 7
 Runs in parallel with: slice 8 (it touches only the snapshots feature)
 PR title: `Slice 11: Snapshot drift`
 Requirements: none (an extra)
-User stories in the spec: 103
+User stories in the spec: 119
 
 Read [the spec](../../spec.md) first, especially "Build order and slices", "Delivery" and "Testing Decisions".
 

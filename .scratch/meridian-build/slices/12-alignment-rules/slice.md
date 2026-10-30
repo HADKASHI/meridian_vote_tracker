@@ -5,7 +5,7 @@ Blocked by: Slices 6, 7 and 11
 Runs in parallel with: slice 8 (not with slice 11: both change the snapshot page and the snapshots module)
 PR title: `Slice 12: Alignment rules and evidence`
 Requirements: none (an extra)
-User stories in the spec: 104–107
+User stories in the spec: 120–123
 
 Read [the spec](../../spec.md) first, especially "Build order and slices", "Delivery" and "Testing Decisions", then [ADR 0006](../../../../docs/adr/0006-scoring-rules.md) and [ADR 0007](../../../../docs/adr/0007-rule-sets-and-evidence-metrics.md).
 

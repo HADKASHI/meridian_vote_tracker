@@ -1,7 +1,7 @@
 # Slice 8: Finishing pass
 
 Status: ready-for-agent
-Blocked by: Slices 0–7 and 10
+Blocked by: Slices 0–7, 10 and 13
 Runs in parallel with: nothing
 PR title: `Slice 8: Finishing pass`
 Requirements: the brief's submission requirements (README, DECISIONS.md, AI_USAGE.md)
