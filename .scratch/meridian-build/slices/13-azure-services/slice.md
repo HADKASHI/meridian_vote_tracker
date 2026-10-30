@@ -1,6 +1,6 @@
 # Slice 13: Azure services and file download
 
-Status: ready-for-agent
+Status: done
 Blocked by: Slice 9
 Runs in parallel with: nothing (slice 8 waits for it)
 PR title: `Slice 13: Azure services and file download`
