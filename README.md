@@ -36,7 +36,7 @@ Upload `assembly_export_2024_q1.csv` on **Imports**, then `assembly_export_2024_
 
 - **Imports**: each upload runs as a job with live progress. Its report gives the file's evidence, the count per outcome (new, unchanged, duplicate, invalid, contradiction, conflict), and every row with its reason.
 - **Review**: the conflicts the revision opened. Accept the incoming value or keep the current one, with a comment. Open the same conflict as two users in two tabs to see one decision win and the other told who decided first.
-- **Votes**: every vote with its country ballots, and a timeline of each value's history and where it came from.
+- **Votes**: every vote with its country votes, and a timeline of each value's history and where it came from.
 - **Positions** (admin sets them): the Institute's stance and weight per vote.
 - **Snapshots**: preview, then create the Alignment Index for a date range; open a score to see its breakdown, and compare two snapshots. **Publications**: the admin publishes a snapshot for a quarter, or replaces it.
 - **Jobs**: everything queued, running, done or failed. The header shows the same at a glance.

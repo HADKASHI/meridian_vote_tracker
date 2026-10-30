@@ -7,7 +7,7 @@ Meridian Vote Tracker imports the Assembly's exports, keeps every value's histor
 ## Key decisions
 
 **Data model and history** ([ADR 0001](docs/adr/0001-typed-append-only-revisions.md))
-- Country votes, details and positions are append-only revisions under a current pointer, and every import keeps its file and a verdict per row. A database guard refuses UPDATE, DELETE and TRUNCATE. Rejected: a JSON audit log, event sourcing, temporal tables.
+- Country votes, details and positions are append-only revisions under a current pointer, and every import keeps its file and an outcome per row. A database guard refuses UPDATE, DELETE and TRUNCATE. Rejected: a JSON audit log, event sourcing, temporal tables.
 
 **Import rules** ([ADR 0002](docs/adr/0002-import-classification-and-conflicts.md))
 - Report, don't repair: only documented normalisations, each recorded on its row; "Yes" is invalid, not mapped. Changed vote details make one conflict per vote, not per row.
@@ -19,7 +19,7 @@ Meridian Vote Tracker imports the Assembly's exports, keeps every value's histor
 - By default abstentions, absences and non-member votes are not counted, nothing countable is n/a rather than 0, and integer weights make every score checkable by hand. Named rule sets vary only abstentions and absences.
 
 **Snapshots and publication** ([ADR 0004](docs/adr/0004-snapshots-store-their-answer.md))
-- A snapshot stores its answer, every ballot's revision and treatment, so opening it recalculates nothing. Rejected: storing only inputs. A vote without a position blocks it. Publication is per quarter and insert-only.
+- A snapshot stores its answer, every country vote's revision and treatment, so opening it recalculates nothing. Rejected: storing only inputs. A vote without a position blocks it. Publication is per quarter and insert-only.
 
 **Background jobs and files** ([ADR 0003](docs/adr/0003-job-table-queue-and-blob-files.md), [ADR 0009](docs/adr/0009-azure-run-postgres-versions-and-downloads.md))
 - The job table is the queue (SKIP LOCKED, heartbeat, retries, resume). Rejected: Hangfire, a broker, LISTEN/NOTIFY. Files live in Blob (Azurite locally) and are downloaded only through the API's role checks.
