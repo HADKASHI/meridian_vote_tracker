@@ -17,7 +17,8 @@ x-backend: &backend
 
 services:
   db:
-    image: postgres:18
+    # 17 and 18 are both supported (docs/postgres-versions.md); 18 is the default.
+    image: ${POSTGRES_IMAGE:-postgres:18}
     environment:
       POSTGRES_DB: meridian
       POSTGRES_USER: meridian

@@ -19,7 +19,7 @@ public sealed class PostgresFixture : IAsyncLifetime
     public static string MemberStatesPath { get; } =
         Path.Combine(AppContext.BaseDirectory, "data", "member_states.csv");
 
-    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:18")
+    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder(Environment.GetEnvironmentVariable("POSTGRES_IMAGE") is { Length: > 0 } image ? image : "postgres:18")
         .WithDatabase("postgres")
         .WithUsername("meridian")
         .WithPassword("meridian_test")
