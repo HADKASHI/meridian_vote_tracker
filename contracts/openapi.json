@@ -692,6 +692,51 @@
         }
       }
     },
+    "/api/extractions/{extractionId}/file": {
+      "get": {
+        "tags": [
+          "Extractions"
+        ],
+        "summary": "The scanned voting sheet PDF of an extraction as an attachment.",
+        "operationId": "downloadExtractionFile",
+        "parameters": [
+          {
+            "name": "extractionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/extractions/{extractionId}/edits": {
       "post": {
         "tags": [

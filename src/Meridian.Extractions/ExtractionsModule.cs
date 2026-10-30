@@ -12,7 +12,10 @@ using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Azure.Storage.Blobs;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 
@@ -82,6 +85,26 @@ public static class ExtractionsModule
                 await ExtractionQueries.GetAsync(db, extractionId, ct) is { } extraction ? TypedResults.Ok(extraction) : TypedResults.NotFound())
             .WithName("getExtraction")
             .WithSummary("One extraction: the sheet as read, its counts against the printed totals and its issues.")
+            .ProducesProblems(StatusCodes.Status404NotFound)
+            .ForAnalysts();
+
+        extractions.MapGet("/{extractionId:long}/file", async Task<Results<FileStreamHttpResult, NotFound, ProblemHttpResult>> (
+                    long extractionId, MeridianDbContext db, BlobContainerClient blobs, ILoggerFactory loggers, CancellationToken ct) =>
+            {
+                var extraction = await db.Extractions.AsNoTracking().Where(e => e.Id == extractionId)
+                    .Select(e => new { e.FileName, e.BlobName }).SingleOrDefaultAsync(ct);
+                if (extraction is null) return TypedResults.NotFound();
+                var download = await FileDownloads.StreamAsync(blobs, loggers.CreateLogger("Meridian.Extractions.Download"),
+                    "extraction", extractionId, extraction.FileName, extraction.BlobName, ct);
+                return download.Result switch
+                {
+                    FileStreamHttpResult file => file,
+                    _ => (ProblemHttpResult)download.Result,
+                };
+            })
+            .WithName("downloadExtractionFile")
+            .WithSummary("The scanned voting sheet PDF of an extraction as an attachment.")
+            .Produces(StatusCodes.Status200OK, contentType: "application/octet-stream")
             .ProducesProblems(StatusCodes.Status404NotFound)
             .ForAnalysts();
 

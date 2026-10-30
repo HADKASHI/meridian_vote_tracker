@@ -4,12 +4,12 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `GET /api/extractions/{extractionId}/file` streams the stored PDF as an attachment with its original name and `application/pdf`, for an extraction in any status
-- [ ] An unknown extraction answers 404 with the usual problem body
-- [ ] Nobody (401) and the wrong role (403) are proven by the generated role matrix
-- [ ] The download is logged with the extraction id and size and no content
-- [ ] It uses the shared helper from ticket 01
-- [ ] An integration test through the HTTP API uploads a sheet with the fake reader, leaves it in review and downloads identical bytes
-- [ ] The OpenAPI file is regenerated for this endpoint only; no migration is added
+- [x] `GET /api/extractions/{extractionId}/file` streams the stored PDF as an attachment with its original name and `application/pdf`, for an extraction in any status
+- [x] An unknown extraction answers 404 with the usual problem body
+- [x] Nobody (401) and the wrong role (403) are proven by the generated role matrix
+- [x] The download is logged with the extraction id and size and no content
+- [x] It uses the shared helper from ticket 01
+- [x] An integration test through the HTTP API uploads a sheet with the fake reader, leaves it in review and downloads identical bytes
+- [x] The OpenAPI file is regenerated for this endpoint only; no migration is added
