@@ -43,7 +43,7 @@ export async function actAs(page, user) {
 /** Uploads a fixture through the Imports page and waits until its job is done or failed; returns the import id. */
 export async function uploadThroughImportsPage(page, fileName) {
   await page.goto(`${BASE_URL}/imports`);
-  await page.locator('input[type=file]').setInputFiles(path.join(FIXTURES, fileName));
+  await page.locator('input[type=file][accept*=csv]').setInputFiles(path.join(FIXTURES, fileName));
   await page.waitForURL(/\/imports\/\d+/);
   const importId = Number(page.url().match(/\/imports\/(\d+)/)[1]);
   for (let i = 0; i < 120; i++) {
