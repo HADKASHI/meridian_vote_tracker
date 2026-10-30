@@ -29,6 +29,7 @@ public static class ApiHosting
 
         services.AddMeridianDb();
         services.AddMeridianBlobStorage();
+        services.AddMeridianStartupConnectionCheck();
         services.AddMeridianProblemDetails();
         services.AddMeridianHealthChecks();
         services.ConfigureHttpJsonOptions(o => ConfigureJson(o.SerializerOptions));

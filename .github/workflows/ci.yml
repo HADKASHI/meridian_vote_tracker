@@ -68,6 +68,13 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - run: docker compose config -q
+      - name: The Azure override merges, and starts neither the local database nor Azurite
+        env:
+          AZURE_POSTGRES_CONNECTION_STRING: Host=server.postgres.database.azure.com;Database=meridian;Username=u;Password=p;SSL Mode=Require
+          BLOB_CONNECTION_STRING: DefaultEndpointsProtocol=https;AccountName=a;AccountKey=Zm9v;EndpointSuffix=core.windows.net
+        run: |
+          docker compose -f compose.yaml -f compose.azure.yaml config --services | sort > azure-services.txt
+          test "$(cat azure-services.txt | tr '\n' ' ')" = "api migrate web worker "
       - name: Start the stack with the synthetic member states
         run: docker compose up -d --build --wait --wait-timeout 300
       - name: migrate exited 0

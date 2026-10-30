@@ -13,6 +13,7 @@ public static class WorkerHosting
     {
         builder.AddMeridianObservability();
         builder.Services.AddMeridianDb();
+        builder.Services.AddMeridianStartupConnectionCheck();
         builder.Services.AddMeridianJobRunner(builder.Configuration);
         builder.Services.AddHostedService<JobWorker>();
     }
