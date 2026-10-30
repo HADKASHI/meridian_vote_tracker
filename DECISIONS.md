@@ -10,13 +10,13 @@ Meridian Vote Tracker imports the Assembly's exports, keeps every value's histor
 - Country votes, details and positions are append-only revisions under a current pointer, and every import keeps its file and an outcome per row. A database guard refuses UPDATE, DELETE and TRUNCATE. Rejected: a JSON audit log, event sourcing, temporal tables.
 
 **Import rules** ([ADR 0002](docs/adr/0002-import-classification-and-conflicts.md))
-- Report, don't repair: only documented normalisations, each recorded on its row; "Yes" is invalid, not mapped. Changed vote details make one conflict per vote, not per row.
+- Report, don't repair: only documented normalisations, each recorded on its row; "Yes" is invalid, not mapped. Changed vote details make one conflict per vote. Rejected: mapping ballot words to letters, a conflict per row (304 decisions instead of 8).
 
 **Concurrency and roles** ([ADR 0001](docs/adr/0001-typed-append-only-revisions.md), [ADR 0002](docs/adr/0002-import-classification-and-conflicts.md))
-- A decision is an insert, one per conflict: the loser gets a 409 naming the winner and is kept as "not applied". Imports commit per vote under the same lock. Identity is a demo header; the role policies are real.
+- A decision is an insert, one per conflict: the loser gets a 409 naming the winner and is kept as "not applied", rather than last write wins. Imports commit per vote under the same lock. Identity is a demo header; the role policies are real.
 
 **Scoring rules** ([ADR 0006](docs/adr/0006-scoring-rules.md), [ADR 0007](docs/adr/0007-rule-sets-and-evidence-metrics.md))
-- By default abstentions, absences and non-member votes are not counted, nothing countable is n/a rather than 0, and integer weights make every score checkable by hand. Named rule sets vary only abstentions and absences.
+- By default abstentions, absences and non-member votes are not counted, nothing countable is n/a rather than 0, and integer weights make every score checkable by hand. Rejected: half credit, a minimum-vote threshold, floating-point scores.
 
 **Snapshots and publication** ([ADR 0004](docs/adr/0004-snapshots-store-their-answer.md))
 - A snapshot stores its answer, every country vote's revision and treatment, so opening it recalculates nothing. Rejected: storing only inputs. A vote without a position blocks it. Publication is per quarter and insert-only.
