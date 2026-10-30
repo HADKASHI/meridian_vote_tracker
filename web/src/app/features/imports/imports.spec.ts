@@ -30,7 +30,7 @@ describe('imports feature', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [
-        provideRouter([{ path: 'imports', children: routes }], withComponentInputBinding()),
+        provideRouter([{ path: 'imports', children: routes }, { path: 'review/extractions/:id', children: [] }], withComponentInputBinding()),
         provideHttpClient(),
         provideHttpClientTesting(),
       ],
@@ -74,6 +74,23 @@ describe('imports feature', () => {
     upload.flush({ importId: 7, jobId: 3 });
 
     await vi.waitFor(() => expect(TestBed.inject(Router).url).toBe('/imports/7'));
+  });
+
+  it('uploads a voting sheet from here too and opens it in the Review inbox', async () => {
+    const harness = await RouterTestingHarness.create('/imports');
+    http.expectOne((r) => r.url === '/api/imports' && r.method === 'GET').flush({ items: [], total: 0, page: 1, pageSize: 50 });
+    await harness.fixture.whenStable();
+
+    const input = harness.routeNativeElement!.querySelector<HTMLInputElement>('input[accept*=pdf]')!;
+    const file = new File(['%PDF-1.4'], 'MA_2011_042.pdf', { type: 'application/pdf' });
+    Object.defineProperty(input, 'files', { value: [file] });
+    input.dispatchEvent(new Event('change'));
+
+    const upload = http.expectOne((r) => r.url === '/api/extractions' && r.method === 'POST');
+    expect((upload.request.body as FormData).get('file')).toBe(file);
+    upload.flush({ extractionId: 9, jobId: 11, existing: false }, { status: 202, statusText: 'Accepted' });
+
+    await vi.waitFor(() => expect(TestBed.inject(Router).url).toBe('/review/extractions/9?state=open'));
   });
 
   it('shows an upload refused by the API on the page', async () => {

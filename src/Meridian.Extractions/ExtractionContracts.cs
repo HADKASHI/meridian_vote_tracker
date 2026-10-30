@@ -30,11 +30,12 @@ public sealed record ExtractionDto(
 /// <param name="Rows">Corrections to grid rows by position, or the removal of a row that has an issue.</param>
 /// <param name="Header">Corrections to the printed header fields.</param>
 /// <param name="Printed">The totals the sheet prints, when they were misread or missing.</param>
-public sealed record SaveEditsRequest(IReadOnlyList<RowEdit>? Rows, HeaderEdit? Header, SheetTotals? Printed);
+/// <param name="AcceptTotals">True to accept that the rows count to something other than the printed totals, as the sheet stands after these edits.</param>
+public sealed record SaveEditsRequest(IReadOnlyList<RowEdit>? Rows, HeaderEdit? Header, SheetTotals? Printed, bool? AcceptTotals = null);
 
 public sealed record RejectExtractionRequest(string? Comment);
 
-/// <summary>One change by an analyst: the field (<c>code</c>, <c>choice</c>, <c>removed</c>, <c>voteId</c>, <c>session</c>, <c>date</c>, <c>title</c>, <c>printed</c>), the row, and the value before and after.</summary>
+/// <summary>One change by an analyst: the field (<c>code</c>, <c>choice</c>, <c>removed</c>, <c>totalsAccepted</c>, <c>voteId</c>, <c>session</c>, <c>date</c>, <c>title</c>, <c>printed</c>), the row, and the value before and after.</summary>
 public sealed record ExtractionEditDto(string By, DateTimeOffset At, string Field, int? Position, string? Code, string? From, string? To);
 
 public sealed record ExtractionDecisionDto(ExtractionStatus Status, string DecidedBy, DateTimeOffset DecidedAt, string? Comment);

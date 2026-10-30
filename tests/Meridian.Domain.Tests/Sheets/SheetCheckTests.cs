@@ -179,4 +179,31 @@ public sealed class SheetCheckTests
 
         Assert.Empty(check.Issues);
     }
+
+    private static MappedSheet Mismatched() =>
+        SheetMapper.Map(SheetFixture.Build(SheetFixture.Choices(SheetFixture.Printed2011), new SheetTotals(70, 55, 7, 15)));
+
+    [Fact]
+    public void Accepted_counts_turn_the_totals_mismatch_into_a_warning_that_says_so()
+    {
+        var sheet = Mismatched();
+        var accepted = sheet with { AcceptedCounts = SheetFixture.Printed2011 };
+
+        var check = SheetValidator.Check(accepted, FileName, SheetFixture.Members());
+
+        Assert.True(check.CanApprove);
+        var issue = Assert.Single(check.Issues);
+        Assert.Equal((SheetIssueSeverity.Warning, SheetIssueKind.TotalsMismatch), (issue.Severity, issue.Kind));
+        Assert.EndsWith("An analyst accepted this.", issue.Message);
+    }
+
+    [Fact]
+    public void An_acceptance_of_other_counts_does_not_cover_these()
+    {
+        var accepted = Mismatched() with { AcceptedCounts = new SheetTotals(1, 1, 1, 1) };
+
+        var check = SheetValidator.Check(accepted, FileName, SheetFixture.Members());
+
+        Assert.False(check.CanApprove);
+    }
 }

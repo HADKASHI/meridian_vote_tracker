@@ -20,7 +20,7 @@ public sealed record SheetEditResult(MappedSheet Sheet, IReadOnlyList<SheetEdit>
 /// <summary>
 /// An analyst's corrections to a sheet (PDF-04). Choosing a ballot settles a row that had two marks; a code is
 /// upper-cased; the printed totals can be entered when the footer could not be read. Only real changes are
-/// recorded, with the value they replaced, and nothing is checked here: SheetValidator checks the result. A row an
+/// recorded, with the value they replaced (accepting a difference from the printed totals is one, recording both sets), and nothing is checked here: SheetValidator checks the result. A row an
 /// analyst changed counts as certain (confidence 1), because a person set it. A row can be removed, but only one the
 /// check flagged (its code is in <c>flagged</c>): a clean row is never dropped to make the totals fit. The removal
 /// is recorded with the ballot the row had, and the remaining rows keep their positions.
@@ -28,7 +28,7 @@ public sealed record SheetEditResult(MappedSheet Sheet, IReadOnlyList<SheetEdit>
 public static class SheetEditor
 {
     public static SheetEditResult Apply(
-        MappedSheet sheet, IReadOnlyList<RowEdit>? rows, HeaderEdit? header, SheetTotals? printed, IReadOnlySet<string>? flagged = null)
+        MappedSheet sheet, IReadOnlyList<RowEdit>? rows, HeaderEdit? header, SheetTotals? printed, IReadOnlySet<string>? flagged = null, bool acceptTotals = false)
     {
         var errors = new Dictionary<string, string>();
         var edits = new List<SheetEdit>();
@@ -93,8 +93,22 @@ public static class SheetEditor
             printedNow = printed;
         }
 
+        // Entering other printed totals voids an earlier acceptance, which was a decision about the old ones.
+        var accepted = printedNow == sheet.Printed ? sheet.AcceptedCounts : null;
+        if (acceptTotals)
+        {
+            var counted = SheetValidator.Count(current);
+            if (printedNow is null) errors["acceptTotals"] = "The sheet has no printed totals to accept a difference from.";
+            else if (counted == printedNow) errors["acceptTotals"] = "The counts already match the printed totals.";
+            else
+            {
+                edits.Add(new SheetEdit("totalsAccepted", null, null, Describe(printedNow), Describe(counted)));
+                accepted = counted;
+            }
+        }
+
         if (errors.Count == 0 && edits.Count == 0) errors["edits"] = "There is nothing to save: no field differs from the sheet.";
-        return new SheetEditResult(new MappedSheet(head, current, printedNow), edits, errors);
+        return new SheetEditResult(new MappedSheet(head, current, printedNow, accepted), edits, errors);
     }
 
     private static SheetHeader Field(SheetHeader header, string field, string? wanted, string? was, Func<string, SheetHeader> set, List<SheetEdit> edits)

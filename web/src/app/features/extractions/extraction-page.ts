@@ -160,6 +160,11 @@ interface RowEdits {
                   <li>
                     <span class="chip" [attr.data-tone]="blocking(issue) ? 'error' : 'tertiary'">{{ blocking(issue) ? 'Blocks approval' : 'Warning' }}</span>
                     {{ issue.message }}
+                    @if (issue.kind === 'totals_mismatch' && blocking(issue) && reviewable(e)) {
+                      <button mat-button type="button" data-testid="accept-totals" (click)="acceptTotals.set(!acceptTotals())">
+                        {{ acceptTotals() ? 'Undo accepting' : 'Accept these counts' }}
+                      </button>
+                    }
                   </li>
                 }
               </ul>
@@ -325,6 +330,12 @@ interface RowEdits {
     input[type='number'] {
       width: 5em;
     }
+    table.rows select {
+      width: 8.5em;
+    }
+    table.rows td:last-child {
+      white-space: nowrap;
+    }
     input.code {
       width: 5em;
       font-family: var(--app-mono);
@@ -434,6 +445,8 @@ export class ExtractionPage {
   protected readonly rowEdits = linkedSignal<string, Record<number, RowEdits>>({ source: this.extractionId, computation: () => ({}) });
   protected readonly headerEdits = linkedSignal<string, Partial<Record<HeaderField, string>>>({ source: this.extractionId, computation: () => ({}) });
   protected readonly printedEdits = linkedSignal<string, Partial<Record<TotalKey, string>>>({ source: this.extractionId, computation: () => ({}) });
+  /** The analyst's wish, unsaved, to accept that the rows count to something other than the printed totals. */
+  protected readonly acceptTotals = linkedSignal({ source: this.extractionId, computation: () => false });
   protected readonly comment = linkedSignal({ source: this.extractionId, computation: () => '' });
   protected readonly busy = linkedSignal({ source: this.extractionId, computation: () => false });
   protected readonly showAll = linkedSignal({ source: this.extractionId, computation: () => false });
@@ -448,7 +461,9 @@ export class ExtractionPage {
     return fields.length > 0 ? fields : [p.detail ?? p.title];
   });
   protected readonly hasPending = computed(
-    () => Object.keys(this.rowEdits()).length + Object.keys(this.headerEdits()).length + Object.keys(this.printedEdits()).length > 0,
+    () =>
+      Object.keys(this.rowEdits()).length + Object.keys(this.headerEdits()).length + Object.keys(this.printedEdits()).length > 0 ||
+      this.acceptTotals(),
   );
 
   /** What approving would do, asked once the sheet can be approved and has no unsaved edits. */
@@ -585,7 +600,7 @@ export class ExtractionPage {
       }
       printed = totals;
     }
-    return { rows: rows.length > 0 ? rows : null, header, printed };
+    return { rows: rows.length > 0 ? rows : null, header, printed, acceptTotals: this.acceptTotals() || null };
   }
 
   protected save(e: ExtractionDto, then?: () => void): void {
@@ -598,6 +613,7 @@ export class ExtractionPage {
         this.rowEdits.set({});
         this.headerEdits.set({});
         this.printedEdits.set({});
+        this.acceptTotals.set(false);
         this.busy.set(false);
         this.refresh();
         then?.();

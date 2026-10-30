@@ -110,6 +110,38 @@ public sealed class ExtractionReviewTests(PostgresFixture postgres, AzuriteFixtu
     }
 
     [Fact]
+    public async Task Accepting_a_totals_mismatch_lets_the_sheet_be_approved_and_is_recorded_until_a_row_changes()
+    {
+        await using var api = await ApiFactory.CreateAsync(postgres, azurite);
+        var id = await ExtractionApi.ReadyForReviewAsync(api, SheetFixtures.Sheet(new SheetTotals(5, 3, 2, 0)));
+        var client = api.ClientAs("omar");
+        Assert.False((await ExtractionApi.GetAsync(client, id)).CanApprove);
+
+        var accepted = await ExtractionApi.SaveEditsOkAsync(client, id, new SaveEditsRequest(null, null, null, true));
+
+        Assert.True(accepted.CanApprove);
+        var issue = Assert.Single(accepted.Issues);
+        Assert.Equal((SheetIssueSeverity.Warning, SheetIssueKind.TotalsMismatch), (issue.Severity, issue.Kind));
+        var edit = Assert.Single(accepted.Edits);
+        Assert.Equal(("omar", "totalsAccepted"), (edit.By, edit.Field));
+
+        var changed = await ExtractionApi.SaveEditsOkAsync(client, id, new SaveEditsRequest([new RowEdit(1, null, Ballot.N)], null, null));
+        Assert.False(changed.CanApprove);
+    }
+
+    [Fact]
+    public async Task Accepting_totals_that_already_match_is_a_validation_problem()
+    {
+        await using var api = await ApiFactory.CreateAsync(postgres, azurite);
+        var id = await ExtractionApi.ReadyForReviewAsync(api);
+
+        var response = await ExtractionApi.SaveEditsAsync(api.ClientAs("omar"), id, new SaveEditsRequest(null, null, null, true));
+
+        var problem = await response.AssertProblemAsync(400, "validation");
+        Assert.True(problem.GetProperty("errors").TryGetProperty("acceptTotals", out _));
+    }
+
+    [Fact]
     public async Task Correcting_an_unreadable_date_in_the_header_lets_the_sheet_be_read_as_a_vote()
     {
         await using var api = await ApiFactory.CreateAsync(postgres, azurite);

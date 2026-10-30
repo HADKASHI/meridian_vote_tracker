@@ -22,7 +22,7 @@ public sealed record SheetCheck(
 }
 
 /// <summary>
-/// PDF-03 and PDF-04. Blocking: the header can't be read as a vote, no row could be read at all, the counts differ from the printed totals
+/// PDF-03 and PDF-04. Blocking: the header can't be read as a vote, no row could be read at all, the counts differ from the printed totals unless an analyst accepted exactly those counts
 /// (or none are printed), a code is unknown, wasn't a member on the vote date or appears twice, or a row has
 /// two marks. Warnings: a low-confidence row, a header vote id that doesn't match the file name, a member on
 /// the date with no row. Membership is the import's own <see cref="MemberStates"/>, the date reading its own
@@ -39,7 +39,7 @@ public static class SheetValidator
         var counted = Count(sheet.Rows);
 
         if (sheet.Rows.Count == 0) Add(issues, SheetIssueKind.NoRows, "No rows could be read from the sheet.");
-        CheckTotals(counted, sheet.Printed, issues);
+        CheckTotals(counted, sheet.Printed, sheet.AcceptedCounts, issues);
         CheckRows(sheet.Rows, details?.VoteDate, members, issues);
         if (details is { } d) CheckMissingMembers(sheet.Rows, d.VoteDate, members, issues);
         CheckFileName(sheet.Header.VoteId, fileName, issues);
@@ -70,16 +70,18 @@ public static class SheetValidator
             : null;
     }
 
-    private static void CheckTotals(SheetTotals counted, SheetTotals? printed, List<SheetIssue> issues)
+    private static void CheckTotals(SheetTotals counted, SheetTotals? printed, SheetTotals? accepted, List<SheetIssue> issues)
     {
         if (printed is null)
         {
             Add(issues, SheetIssueKind.TotalsMissing, "The totals printed on the sheet could not be read, so the counts can't be checked.");
             return;
         }
-        if (counted != printed)
-            Add(issues, SheetIssueKind.TotalsMismatch,
-                $"Counted {Describe(counted)} but the sheet prints {Describe(printed)}.");
+        if (counted == printed) return;
+        var message = $"Counted {Describe(counted)} but the sheet prints {Describe(printed)}.";
+        // An analyst's acceptance is a decision about these exact counts, so it is shown, not hidden.
+        if (counted == accepted) issues.Add(new SheetIssue(SheetIssueSeverity.Warning, SheetIssueKind.TotalsMismatch, $"{message} An analyst accepted this."));
+        else Add(issues, SheetIssueKind.TotalsMismatch, message);
     }
 
     private static string Describe(SheetTotals t) => $"Yes {t.Yes}, No {t.No}, Abstentions {t.Abstentions}, Not voting {t.NotVoting}";

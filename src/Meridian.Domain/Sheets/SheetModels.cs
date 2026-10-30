@@ -30,4 +30,8 @@ public sealed record SheetTotals(int Yes, int No, int Abstentions, int NotVoting
 public sealed record SheetRow(string Code, string Name, Ballot? Choice, bool Ambiguous, double Confidence, int Page, int Position);
 
 /// <summary>A sheet as the mapper reads it, before any checking: this is also what an analyst edits.</summary>
-public sealed record MappedSheet(SheetHeader Header, IReadOnlyList<SheetRow> Rows, SheetTotals? Printed);
+/// <param name="AcceptedCounts">
+/// The counts an analyst knowingly accepted although they differ from the printed totals. It holds only while the rows
+/// still count to exactly this, so any later change to a row, or to the printed totals, asks for the decision again.
+/// </param>
+public sealed record MappedSheet(SheetHeader Header, IReadOnlyList<SheetRow> Rows, SheetTotals? Printed, SheetTotals? AcceptedCounts = null);

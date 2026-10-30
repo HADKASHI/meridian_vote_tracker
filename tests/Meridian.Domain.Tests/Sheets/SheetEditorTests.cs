@@ -119,4 +119,48 @@ public sealed class SheetEditorTests
         Assert.Empty(result.Errors);
         Assert.Equal((3, Ballot.N, 1.0), (result.Sheet.Rows[1].Position, result.Sheet.Rows[1].Choice!.Value, result.Sheet.Rows[1].Confidence));
     }
+
+    // Sheet() counts 1 yes, 0 no, 1 abstention (its middle row has two marks); the printed totals say otherwise.
+    private static MappedSheet Disagreeing() => Sheet() with { Printed = new SheetTotals(2, 1, 1, 0) };
+
+    [Fact]
+    public void Accepting_the_totals_keeps_the_counts_and_records_both_sets()
+    {
+        var result = SheetEditor.Apply(Disagreeing(), null, null, null, null, acceptTotals: true);
+
+        Assert.Empty(result.Errors);
+        Assert.Equal(new SheetTotals(1, 0, 1, 0), result.Sheet.AcceptedCounts);
+        Assert.Equal(new SheetEdit("totalsAccepted", null, null, "Yes 2, No 1, Abstentions 1, Not voting 0", "Yes 1, No 0, Abstentions 1, Not voting 0"),
+            Assert.Single(result.Edits));
+    }
+
+    [Fact]
+    public void There_is_nothing_to_accept_when_the_counts_match_or_no_totals_are_printed()
+    {
+        var matching = SheetEditor.Apply(Sheet() with { Printed = new SheetTotals(1, 0, 1, 0) }, null, null, null, null, acceptTotals: true);
+        var none = SheetEditor.Apply(Sheet() with { Printed = null }, null, null, null, null, acceptTotals: true);
+
+        Assert.Equal(["acceptTotals"], matching.Errors.Keys);
+        Assert.Equal(["acceptTotals"], none.Errors.Keys);
+    }
+
+    [Fact]
+    public void Entering_other_printed_totals_voids_an_earlier_acceptance()
+    {
+        var accepted = Disagreeing() with { AcceptedCounts = new SheetTotals(1, 0, 1, 0) };
+
+        var result = SheetEditor.Apply(accepted, null, null, new SheetTotals(3, 0, 0, 0));
+
+        Assert.Null(result.Sheet.AcceptedCounts);
+    }
+
+    [Fact]
+    public void Changing_a_row_after_accepting_means_the_counts_no_longer_match_what_was_accepted()
+    {
+        var accepted = Disagreeing() with { AcceptedCounts = new SheetTotals(1, 0, 1, 0) };
+
+        var result = SheetEditor.Apply(accepted, [new RowEdit(1, null, Ballot.N)], null, null);
+
+        Assert.NotEqual(result.Sheet.AcceptedCounts, SheetValidator.Count(result.Sheet.Rows));
+    }
 }

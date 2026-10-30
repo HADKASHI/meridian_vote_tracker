@@ -96,7 +96,7 @@ describe('Extraction pane', () => {
     const issues = [...byId('issues')!.querySelectorAll('li')].map((li) => li.textContent!.replace(/\s+/g, ' ').trim());
     expect(issues).toEqual([
       'Blocks approval ARG has more than one mark.',
-      'Blocks approval Counted Yes 0, No 1 but the sheet prints Yes 1, No 1.',
+      'Blocks approval Counted Yes 0, No 1 but the sheet prints Yes 1, No 1. Accept these counts',
       'Warning The vote number on the sheet does not match the file name.',
     ]);
   });
@@ -131,7 +131,7 @@ describe('Extraction pane', () => {
     expect(button('approve').disabled).toBe(true);
     button('save').click();
     const save = http.expectOne((r) => r.method === 'POST' && r.url === '/api/extractions/3/edits');
-    expect(save.request.body).toEqual({ rows: [{ position: 1, code: null, choice: 'y', remove: null }], header: null, printed: null });
+    expect(save.request.body).toEqual({ rows: [{ position: 1, code: null, choice: 'y', remove: null }], header: null, printed: null, acceptTotals: null });
     save.flush(extraction());
     await reloaded(extraction());
 
@@ -152,6 +152,7 @@ describe('Extraction pane', () => {
       rows: [{ position: 1, code: 'ARX', choice: null, remove: null }],
       header: { voteId: null, session: null, date: '5 October 2011', title: null },
       printed: { yes: 2, no: 1, abstentions: 0, notVoting: 0 },
+      acceptTotals: null,
     });
     save.flush(blocked());
     await reloaded(blocked());
@@ -172,7 +173,7 @@ describe('Extraction pane', () => {
     button('save').click();
 
     const save = http.expectOne((r) => r.method === 'POST' && r.url === '/api/extractions/3/edits');
-    expect(save.request.body).toEqual({ rows: [{ position: 1, code: null, choice: null, remove: true }], header: null, printed: null });
+    expect(save.request.body).toEqual({ rows: [{ position: 1, code: null, choice: null, remove: true }], header: null, printed: null, acceptTotals: null });
     save.flush(extraction());
     await reloaded(extraction());
   });
@@ -187,6 +188,34 @@ describe('Extraction pane', () => {
 
     expect(pane().querySelector('[data-testid="row"][data-code="ARG"]')!.classList).not.toContain('removed');
     expect(button('save').disabled).toBe(true);
+  });
+
+  it('offers to accept the counts beside a totals mismatch, holds Approve until saved, and sends only that', async () => {
+    const mismatch = extraction({
+      counted: { yes: 1, no: 0, abstentions: 0, notVoting: 0 },
+      issues: [{ severity: 'blocking', kind: 'totals_mismatch', message: 'Counted Yes 1 but the sheet prints Yes 1, No 1.' }],
+      canApprove: false,
+    });
+    await open(mismatch);
+    expect(button('accept-totals').textContent).toContain('Accept these counts');
+
+    button('accept-totals').click();
+    TestBed.tick();
+    expect(button('accept-totals').textContent).toContain('Undo accepting');
+    expect(button('save').disabled).toBe(false);
+    button('save').click();
+
+    const save = http.expectOne((r) => r.method === 'POST' && r.url === '/api/extractions/3/edits');
+    expect(save.request.body).toEqual({ rows: null, header: null, printed: null, acceptTotals: true });
+    save.flush(extraction());
+    await reloaded(extraction());
+    expect(byId('accept-totals')).toBeNull();
+  });
+
+  it('offers no acceptance for other blocking issues', async () => {
+    await open(blocked());
+    expect(pane().querySelectorAll('[data-testid="accept-totals"]').length).toBe(1);
+    expect(pane().querySelector('[data-testid="issues"] li:nth-child(1) [data-testid="accept-totals"]')).toBeNull();
   });
 
   it('does not send a printed total that is not a whole number', async () => {

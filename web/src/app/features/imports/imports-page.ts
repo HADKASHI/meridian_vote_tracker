@@ -13,12 +13,13 @@ import { JobStateBadge } from '../../shared/ui/job-state-badge';
 import { LoadState } from '../../shared/ui/load-state';
 import { OutcomeChip } from '../../shared/ui/outcome-chip';
 import { PageHeader } from '../../shared/ui/page-header';
+import { VotingSheetUpload } from '../../shared/ui/voting-sheet-upload';
 import { outcomesWithRows } from './import-counts';
 
 /** Every import, newest first, and the upload that starts a new one. */
 @Component({
   selector: 'app-imports-page',
-  imports: [MatTableModule, MatButtonModule, DatePipe, RouterLink, JobStateBadge, ProblemBanner, PageHeader, LoadState, OutcomeChip],
+  imports: [MatTableModule, MatButtonModule, DatePipe, RouterLink, JobStateBadge, ProblemBanner, PageHeader, LoadState, OutcomeChip, VotingSheetUpload],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-page-header heading="Imports">
@@ -26,8 +27,9 @@ import { outcomesWithRows } from './import-counts';
       <div pageActions>
         <input #picker type="file" accept=".csv,text/csv" hidden (change)="upload(picker)" />
         <button mat-flat-button type="button" [disabled]="uploading()" (click)="picker.click()">
-          {{ uploading() ? 'Uploading…' : 'Upload a file' }}
+          {{ uploading() ? 'Uploading…' : 'Upload a CSV file' }}
         </button>
+        <app-voting-sheet-upload (failed)="problem.set($event)" />
       </div>
     </app-page-header>
     @if (problem(); as p) {

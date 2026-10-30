@@ -1,21 +1,19 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { ExtractionsService } from '../../api/extractions/extractions.service';
+import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { pollWhile } from '../../shared/http/poll';
-import { Problem, toProblem } from '../../shared/problem/problem';
+import { Problem } from '../../shared/problem/problem';
 import { ProblemBanner } from '../../shared/problem/problem-banner';
 import { LoadState } from '../../shared/ui/load-state';
 import { PageHeader } from '../../shared/ui/page-header';
-import { ReviewCounts } from '../../shared/ui/review-counts';
 import { ReviewTabs } from '../../shared/ui/review-tabs';
+import { VotingSheetUpload } from '../../shared/ui/voting-sheet-upload';
 import { READING_POLL_MS, statusLabel, statusTone } from './extraction-labels';
 import { ExtractionsInbox, toFilter } from './extractions-inbox';
 
 /** The Extractions tab of the Review inbox: scanned voting sheets, the upload that starts one, and the open sheet beside the list. */
 @Component({
   selector: 'app-extractions-page',
-  imports: [RouterLink, RouterLinkActive, RouterOutlet, MatButtonModule, PageHeader, LoadState, ProblemBanner, ReviewTabs],
+  imports: [RouterLink, RouterLinkActive, RouterOutlet, PageHeader, LoadState, ProblemBanner, ReviewTabs, VotingSheetUpload],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-page-header heading="Review">
@@ -23,10 +21,7 @@ import { ExtractionsInbox, toFilter } from './extractions-inbox';
         A scanned voting sheet is read in the background and checked against the totals it prints. Nothing counts until you approve it.
       </p>
       <div pageActions>
-        <input #picker type="file" accept=".pdf,application/pdf" hidden (change)="upload(picker)" />
-        <button mat-flat-button type="button" [disabled]="uploading()" (click)="picker.click()">
-          {{ uploading() ? 'Uploading…' : 'Upload a voting sheet' }}
-        </button>
+        <app-voting-sheet-upload (uploaded)="problem.set(null); inbox.list.reload()" (failed)="problem.set($event)" />
       </div>
     </app-page-header>
     <app-review-tabs open="extractions" />
@@ -179,10 +174,6 @@ export class ExtractionsPage {
   /** The `?state=` query param: open (the default), decided or all. */
   readonly state = input<string>();
   protected readonly inbox = inject(ExtractionsInbox);
-  private readonly service = inject(ExtractionsService);
-  private readonly router = inject(Router);
-  private readonly counts = inject(ReviewCounts);
-  protected readonly uploading = signal(false);
   protected readonly problem = signal<Problem | null>(null);
   protected readonly filters = [
     { value: 'open', label: 'Open' },
@@ -196,26 +187,5 @@ export class ExtractionsPage {
     // The route's query param is the filter; the list keeps asking while a sheet is being read.
     this.inbox.bind(computed(() => toFilter(this.state())));
     pollWhile(this.inbox.list, READING_POLL_MS, this.inbox.reading);
-  }
-
-  protected upload(picker: HTMLInputElement): void {
-    const file = picker.files?.[0];
-    if (!file) return;
-    this.uploading.set(true);
-    this.problem.set(null);
-    this.service.uploadExtraction({ file }).subscribe({
-      next: (created) => {
-        this.uploading.set(false);
-        picker.value = '';
-        this.inbox.list.reload();
-        this.counts.reload();
-        void this.router.navigate(['/review/extractions', created.extractionId], { queryParams: { state: 'open' } });
-      },
-      error: (error: unknown) => {
-        this.uploading.set(false);
-        this.problem.set(toProblem(error));
-        picker.value = '';
-      },
-    });
   }
 }

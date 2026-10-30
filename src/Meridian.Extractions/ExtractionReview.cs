@@ -26,7 +26,7 @@ internal static class ExtractionReview
         var sheet = ExtractionJson.Read<MappedSheet>(extraction.Sheet)!;
         var members = await db.LoadMemberStatesAsync(ct);
         var flagged = SheetValidator.Check(sheet, extraction.FileName, members).Issues.Select(i => i.Code).OfType<string>().ToHashSet();
-        var edited = SheetEditor.Apply(sheet, request.Rows, request.Header, request.Printed, flagged);
+        var edited = SheetEditor.Apply(sheet, request.Rows, request.Header, request.Printed, flagged, request.AcceptTotals == true);
         if (edited.Errors.Count > 0)
             return TypedResults.ValidationProblem(edited.Errors.ToDictionary(e => e.Key, e => new[] { e.Value }));
 
