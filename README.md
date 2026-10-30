@@ -4,6 +4,18 @@ A web application for the Northwind Policy Institute's Alignment Index. Analysts
 
 ASP.NET Core API and background worker on .NET 10, PostgreSQL 18, Azure Blob Storage (Azurite locally), and Angular 22 with Angular Material behind nginx. Everything starts with Docker Compose.
 
+## Beyond the brief
+
+Every core requirement in sections 7.1 to 7.7 is built. On top of them:
+
+- **Scanned voting sheets (the section 8 bonus, built in full):** Azure AI Document Intelligence reads each sheet in the background, and a plain C# mapper turns the grid into country votes. Unknown codes, duplicates, unreadable cells and counts that don't match the printed totals are flagged, and they block approval until they are fixed. An analyst can edit or remove rows, then approve or reject the sheet. Approval goes through the same import rules as a CSV. A failed reading shows its reason and can be retried.
+- **Alignment rule sets and evidence metrics:** the admin can score a snapshot under a named, immutable rule set (the default, abstain as miss, half credit, strict). Every score shows completeness, abstention rate, missing data and a High, Medium or Low confidence band, so a thin score is visible without being hidden or reordered.
+- **Snapshot drift:** a snapshot's page lists what would differ if it were created now: changed positions, country votes and vote details, and votes that now match its selection or no longer do. Nothing is recalculated.
+- **Snapshot comparison:** two snapshots side by side, with each state's rank and score movement and the votes that explain it.
+- **Downloads:** the original file of any import (CSV or approved sheet PDF), and any sheet waiting in Review, downloads through the API's role checks. There are no public links.
+- **Azure:** one override file runs the app on Azure Blob Storage and Azure Database for PostgreSQL. Blob and Document Intelligence can sign in with Microsoft Entra ID, and a guided script checks the live services. PostgreSQL 17 and 18 are both tested in CI.
+- **Proof:** race tests (20 rounds, two real connections), a role matrix generated from every write endpoint, a database guard test over every table, a timed one-million-row import test, and a browser smoke test in CI.
+
 ## Run it
 
 You need Docker with Compose v2 and about 6 GB of memory for the engine (the worker is allowed 5 GB so that it can parse the largest accepted file).
@@ -34,7 +46,7 @@ To stop it, run `docker compose down`. Add `-v` to delete the database and the s
 
 Upload `assembly_export_2024_q1.csv` on **Imports**, then `assembly_export_2024_q1_rev2.csv`, and follow the screens below. With the synthetic member states, upload the synthetic pair in `e2e/fixtures/` instead: `demo_export_2024_q2.csv`, then `demo_export_2024_q2_rev2.csv`.
 
-- **Imports**: each upload runs as a job with live progress. Its report gives the file's evidence, the count per outcome (new, unchanged, duplicate, invalid, contradiction, conflict), and every row with its reason.
+- **Imports**: each upload runs as a job with live progress. Its report gives the file's evidence, the count per outcome (new, unchanged, duplicate, invalid, contradiction, conflict), every row with its reason, and a download of the original file.
 - **Review**: the conflicts the revision opened. Accept the incoming value or keep the current one, with a comment. Open the same conflict as two users in two tabs to see one decision win and the other told who decided first.
 - **Votes**: every vote with its country votes, and a timeline of each value's history and where it came from.
 - **Positions** (admin sets them): the Institute's stance and weight per vote.
