@@ -48,4 +48,25 @@ The original of any import (a CSV or a voting sheet PDF) and of a sheet waiting 
 
 ## Check it live
 
-Everything above is proven against Azurite and a local PostgreSQL. The live Azure services are checked by you, on your own machine, with your own `.env`; run `scripts/check-azure.sh` (below). No credential is sent to this repository or to a cloud session.
+Everything above is proven against Azurite and a local PostgreSQL. The live Azure services are checked by you, on your own machine, with your own `.env`; run the guided check below. No credential is sent to this repository or to a cloud session.
+
+## Guided live check
+
+Run this on your own machine, with the `.env` you filled in above and a **real voting sheet PDF** from your own files. It needs the .NET SDK (`global.json` names the version).
+
+```bash
+scripts/check-azure.sh /path/to/a/real/sheet.pdf
+```
+
+Without the path it asks for one, and Enter skips that check. The sheet is read where it lies: it is never copied, and real sheets are never committed. The script reads `.env` itself, keeps every value in memory, writes no file, and prints no secret and none of the sheet's content.
+
+| Check | What passing means |
+|---|---|
+| Blob | a 64-byte test blob was uploaded to the app's container and downloaded with the same bytes, then deleted |
+| Database | the connection used TLS, and the server reported its real version, which must be 17 or 18 |
+| Document Intelligence | the app's own adapter read the sheet through the `prebuilt-layout` model; the report gives the pages, how many grid rows the mapper found, and whether the vote id and printed totals were found. Counts only |
+| Application Insights | one trace named `meridian-live-check` was sent; look for it under *Transaction search* in the portal within a few minutes, since the service gives the exporter no receipt |
+
+Each line starts `PASS`, `FAIL` or `SKIP` (a setting or the sheet was not given), with the reason for anything that did not pass. The exit code is 0 only when all four passed.
+
+Running it with a real sheet closes the limit ADR 0008 admits: the Document Intelligence adapter has so far only met a hand-written fixture. If the report says the mapper found no grid rows, or no totals, the layout model returned that sheet in a shape the mapper does not know yet; keep the sheet and the report's counts and take them to the next build.

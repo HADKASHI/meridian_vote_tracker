@@ -5,6 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Meridian.Api\Meridian.Api.csproj" />
+    <ProjectReference Include="..\..\src\Meridian.AzureCheck\Meridian.AzureCheck.csproj" />
     <ProjectReference Include="..\..\src\Meridian.Fixtures\Meridian.Fixtures.csproj" />
   </ItemGroup>
   <ItemGroup>
