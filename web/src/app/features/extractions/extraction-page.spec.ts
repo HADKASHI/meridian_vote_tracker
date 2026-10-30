@@ -341,4 +341,19 @@ describe('Extraction pane', () => {
     http.expectNone((r) => r.url.endsWith('/preview'));
     expect(byId('preview')).toBeNull();
   });
+
+  it('offers the original PDF of a sheet waiting in review', async () => {
+    const saved: string[] = [];
+    URL.createObjectURL = vi.fn(() => 'blob:sheet');
+    URL.revokeObjectURL = vi.fn();
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      saved.push(this.download);
+    });
+    await open(extraction());
+
+    button('download').click();
+
+    http.expectOne('/api/extractions/3/file').flush(new Blob(['%PDF-1.4']));
+    expect(saved).toEqual(['MA_2011_042.pdf']);
+  });
 });

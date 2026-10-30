@@ -29,6 +29,21 @@ jobs:
       - name: Domain and integration tests (PostgreSQL and Azurite in Testcontainers)
         run: dotnet test --solution Meridian.slnx --no-build -- --filter-not-trait "Category=RealData" --filter-not-trait "Category=Performance"
 
+  integration-postgres-17:
+    # ADR 0009: a managed server on 17 runs the app, so the whole integration suite proves it.
+    runs-on: ubuntu-latest
+    env:
+      POSTGRES_IMAGE: postgres:17
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+      - run: dotnet tool restore
+      - run: dotnet build Meridian.slnx -warnaserror
+      - name: Integration tests on PostgreSQL 17 (Testcontainers)
+        run: dotnet test --project tests/Meridian.Integration.Tests --no-build -- --filter-not-trait "Category=RealData" --filter-not-trait "Category=Performance"
+
   web:
     runs-on: ubuntu-latest
     defaults:
@@ -53,6 +68,13 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - run: docker compose config -q
+      - name: The Azure override merges, and starts neither the local database nor Azurite
+        env:
+          AZURE_POSTGRES_CONNECTION_STRING: Host=server.postgres.database.azure.com;Database=meridian;Username=u;Password=p;SSL Mode=Require
+          BLOB_CONNECTION_STRING: DefaultEndpointsProtocol=https;AccountName=a;AccountKey=Zm9v;EndpointSuffix=core.windows.net
+        run: |
+          docker compose -f compose.yaml -f compose.azure.yaml config --services | sort > azure-services.txt
+          test "$(cat azure-services.txt | tr '\n' ' ')" = "api migrate web worker "
       - name: Start the stack with the synthetic member states
         run: docker compose up -d --build --wait --wait-timeout 300
       - name: migrate exited 0

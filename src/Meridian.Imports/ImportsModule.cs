@@ -13,7 +13,10 @@ using Microsoft.OpenApi;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Azure.Storage.Blobs;
 
 namespace Meridian.Imports;
 
@@ -58,6 +61,20 @@ public static class ImportsModule
                     long importId, MeridianDbContext db, CancellationToken ct) =>
                 await ImportQueries.GetAsync(db, importId, ct) is { } import ? TypedResults.Ok(import) : TypedResults.NotFound())
             .WithName("getImport")
+            .ProducesProblems(StatusCodes.Status404NotFound)
+            .ForAnalysts();
+
+        imports.MapGet("/{importId:long}/file", async Task<Results<FileStreamHttpResult, NotFound, ProblemHttpResult>> (
+                    long importId, MeridianDbContext db, BlobContainerClient blobs, ILoggerFactory loggers, CancellationToken ct) =>
+            {
+                var import = await db.Imports.AsNoTracking().Where(i => i.Id == importId)
+                    .Select(i => new { i.FileName, i.BlobName }).SingleOrDefaultAsync(ct);
+                return await FileDownloads.StreamAsync(blobs, loggers.CreateLogger("Meridian.Imports.Download"), "import", importId,
+                    import is null ? null : (import.FileName, import.BlobName), ct);
+            })
+            .WithName("downloadImportFile")
+            .WithSummary("The original file of an import (a CSV or a voting sheet PDF) as an attachment.")
+            .Produces(StatusCodes.Status200OK, contentType: "application/octet-stream")
             .ProducesProblems(StatusCodes.Status404NotFound)
             .ForAnalysts();
 

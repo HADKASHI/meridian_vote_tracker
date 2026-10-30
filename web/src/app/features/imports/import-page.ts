@@ -9,13 +9,14 @@ import { jobProgress } from '../../shared/ui/job-progress';
 import { ExpandableList } from '../../shared/ui/expandable-list';
 import { JobStateBadge } from '../../shared/ui/job-state-badge';
 import { LoadState } from '../../shared/ui/load-state';
+import { FileDownload } from '../../shared/ui/file-download';
 import { PageHeader } from '../../shared/ui/page-header';
 import { ImportRows } from './import-rows';
 
 /** The import report: the file's evidence and its job, polled while the job is active. */
 @Component({
   selector: 'app-import-page',
-  imports: [DatePipe, DecimalPipe, RouterLink, MatProgressBarModule, JobStateBadge, ImportRows, PageHeader, LoadState, ExpandableList],
+  imports: [DatePipe, DecimalPipe, RouterLink, MatProgressBarModule, JobStateBadge, ImportRows, PageHeader, LoadState, ExpandableList, FileDownload],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @let r = report.hasValue() ? report.value() : undefined;
@@ -26,6 +27,11 @@ import { ImportRows } from './import-rows';
           Uploaded by {{ r.uploadedBy }} at {{ r.uploadedAt | date: 'yyyy-MM-dd HH:mm:ss' }} · Job
           <app-job-state-badge [state]="r.job.state" /> {{ progress() }}
         </p>
+      }
+      @if (r) {
+        <div pageActions>
+          <app-file-download [url]="'/api/imports/' + r.id + '/file'" [fileName]="r.fileName" />
+        </div>
       }
     </app-page-header>
     @if (r) {

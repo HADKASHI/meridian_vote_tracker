@@ -1,0 +1,38 @@
+# Run against Azure Blob Storage and Azure Database for PostgreSQL (ADR 0009, docs/azure.md):
+#   docker compose -f compose.yaml -f compose.azure.yaml up --build
+# Needs AZURE_POSTGRES_CONNECTION_STRING and BLOB_CONNECTION_STRING in .env. Plain `docker compose up` never reads this file.
+# The database should be empty or already migrated, and dedicated to this app: migrate applies the migrations to it.
+
+x-azure-env: &azure-env
+  ConnectionStrings__Meridian: ${AZURE_POSTGRES_CONNECTION_STRING:?Set AZURE_POSTGRES_CONNECTION_STRING in .env (Npgsql format, with SSL Mode=Require)}
+  Blob__ConnectionString: ${BLOB_CONNECTION_STRING:?Set BLOB_CONNECTION_STRING in .env (the storage account's connection string)}
+  # TLS to the database is required, and each service names a connection that fails when it starts.
+  Database__RequireTls: "true"
+  Startup__CheckConnections: "true"
+
+services:
+  # The local database and emulator are not started; Azure replaces them.
+  db:
+    profiles: [local]
+  azurite:
+    profiles: [local]
+
+  migrate:
+    environment: *azure-env
+    # Checks both connections first, so a wrong string is named in a line of its own instead of a stack trace
+    # from the migration bundle; the check exits 1 when one fails, and the bundle does not run.
+    entrypoint: ["/bin/sh", "-c", "Startup__CheckOnly=true dotnet /app/api/Meridian.Api.dll && exec /app/migrate/efbundle"]
+    depends_on: !reset {}
+
+  api:
+    environment: *azure-env
+    depends_on: !override
+      migrate: { condition: service_completed_successfully }
+
+  worker:
+    environment:
+      <<: *azure-env
+      DocumentIntelligence__Endpoint: ${DOCINTEL_ENDPOINT:-}
+      DocumentIntelligence__Key: ${DOCINTEL_KEY:-}
+    depends_on: !override
+      migrate: { condition: service_completed_successfully }
