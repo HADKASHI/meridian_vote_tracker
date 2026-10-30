@@ -13,7 +13,10 @@ using Microsoft.OpenApi;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Azure.Storage.Blobs;
 
 namespace Meridian.Imports;
 
@@ -63,6 +66,25 @@ public static class ImportsModule
 
         // The outcome is bound as text, because minimal APIs parse enums case-sensitively and
         // the client sends the glossary word (`invalid`); the contract still names the enum.
+        imports.MapGet("/{importId:long}/file", async Task<Results<FileStreamHttpResult, NotFound, ProblemHttpResult>> (
+                    long importId, MeridianDbContext db, BlobContainerClient blobs, ILoggerFactory loggers, CancellationToken ct) =>
+            {
+                var import = await db.Imports.AsNoTracking().Where(i => i.Id == importId)
+                    .Select(i => new { i.FileName, i.BlobName }).SingleOrDefaultAsync(ct);
+                if (import is null) return TypedResults.NotFound();
+                var download = await FileDownloads.StreamAsync(blobs, loggers.CreateLogger("Meridian.Imports.Download"), "import", importId, import.FileName, import.BlobName, ct);
+                return download.Result switch
+                {
+                    FileStreamHttpResult file => file,
+                    _ => (ProblemHttpResult)download.Result,
+                };
+            })
+            .WithName("downloadImportFile")
+            .WithSummary("The original file of an import (a CSV or a voting sheet PDF) as an attachment.")
+            .Produces(StatusCodes.Status200OK, contentType: "application/octet-stream")
+            .ProducesProblems(StatusCodes.Status404NotFound)
+            .ForAnalysts();
+
         imports.MapGet("/{importId:long}/rows", async Task<Results<Ok<PageDto<ImportRowDto>>, NotFound, ProblemHttpResult>> (
                     long importId, MeridianDbContext db, CancellationToken ct,
                     [FromQuery] string? outcome, long? voteId, int page = 1, int pageSize = 100) =>

@@ -4,12 +4,12 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `GET /api/imports/{importId}/file` streams the stored original from Blob with its original name and content type (`text/csv` for a CSV, `application/pdf` for a sheet) as an attachment
-- [ ] An unknown import answers 404 with the usual problem body; a missing blob is a clear error, not a crash
-- [ ] Analysts and the admin may download; nobody (401) and the wrong role (403) are proven by the generated role matrix
-- [ ] The download is logged with the import id and size and no file content or file name
-- [ ] The helper is shared, lives beside the upload helper and takes what ticket 02 needs (blob name, file name), so no second copy is written there
-- [ ] Integration tests through the HTTP API on Azurite download a fixture CSV import and an approved voting sheet import and get the same bytes, name and content type back
-- [ ] The OpenAPI file is regenerated for this endpoint only; no migration is added
+- [x] `GET /api/imports/{importId}/file` streams the stored original from Blob with its original name and content type (`text/csv` for a CSV, `application/pdf` for a sheet) as an attachment
+- [x] An unknown import answers 404 with the usual problem body; a missing blob is a clear error, not a crash
+- [x] Analysts and the admin may download; nobody (401) and the wrong role (403) are proven by the generated role matrix
+- [x] The download is logged with the import id and size and no file content or file name
+- [x] The helper is shared, lives beside the upload helper and takes what ticket 02 needs (blob name, file name), so no second copy is written there
+- [x] Integration tests through the HTTP API on Azurite download a fixture CSV import and an approved voting sheet import and get the same bytes, name and content type back
+- [x] The OpenAPI file is regenerated for this endpoint only; no migration is added
