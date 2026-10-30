@@ -13,3 +13,4 @@
 ## Comments
 
 - Printed to A4 with Chromium from the Markdown rendered by marked: 2 pages in a plain print (1cm margins, browser default or 11pt sans-serif) and with GitHub's stylesheet at 10pt with 1.5cm margins; 3 pages with GitHub's stylesheet at 11pt or more. The user chose to keep the text at about 760 words, below the outline's ~1,000, rather than cut further or grow it.
+- Follow-up at the user's request: added the evidence metrics and confidence band, snapshot drift and comparison, the Azure resources used and rejected, and how PDF extraction quality would be measured (brief section 11). Trimmed elsewhere to about 800 words; it still prints to 2 A4 pages under the settings above.

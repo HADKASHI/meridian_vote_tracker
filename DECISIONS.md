@@ -2,7 +2,7 @@
 
 ## What this is and how to read it
 
-Meridian Vote Tracker imports the Assembly's exports, keeps every value's history, lets analysts decide conflicts, and publishes a reproducible Alignment Index. Each decision gives why and what was rejected; full reasoning is in [docs/adr/](docs/adr/), tables in [docs/schema.md](docs/schema.md), terms in [GLOSSARY.md](GLOSSARY.md).
+The app imports the Assembly's exports, keeps every value's history and publishes a reproducible Alignment Index. Reasoning: [docs/adr/](docs/adr/); tables: [docs/schema.md](docs/schema.md); terms: [GLOSSARY.md](GLOSSARY.md).
 
 ## Key decisions
 
@@ -10,46 +10,47 @@ Meridian Vote Tracker imports the Assembly's exports, keeps every value's histor
 - Country votes, details and positions are append-only revisions under a current pointer, and every import keeps its file and an outcome per row. A database guard refuses UPDATE, DELETE and TRUNCATE. Rejected: a JSON audit log, event sourcing, temporal tables.
 
 **Import rules** ([ADR 0002](docs/adr/0002-import-classification-and-conflicts.md))
-- Report, don't repair: only documented normalisations, each recorded on its row; "Yes" is invalid, not mapped. Changed vote details make one conflict per vote. Rejected: mapping ballot words to letters, a conflict per row (304 decisions instead of 8).
+- Report, don't repair: only documented normalisations, each recorded on its row; "Yes" is invalid, not mapped. Changed vote details make one conflict per vote. Rejected: mapping ballot words to letters, a conflict per row.
 
 **Concurrency and roles** ([ADR 0001](docs/adr/0001-typed-append-only-revisions.md), [ADR 0002](docs/adr/0002-import-classification-and-conflicts.md))
-- A decision is an insert, one per conflict: the loser gets a 409 naming the winner and is kept as "not applied", rather than last write wins. Imports commit per vote under the same lock. Identity is a demo header; the role policies are real.
+- A decision is an insert, one per conflict: the loser gets a 409 naming the winner and is kept as "not applied", rather than last write wins. Identity is a demo header; roles are enforced.
 
 **Scoring rules** ([ADR 0006](docs/adr/0006-scoring-rules.md), [ADR 0007](docs/adr/0007-rule-sets-and-evidence-metrics.md))
-- By default abstentions, absences and non-member votes are not counted, nothing countable is n/a rather than 0, and integer weights make every score checkable by hand. Rejected: half credit, a minimum-vote threshold, floating-point scores.
+- Abstentions, absences and non-member votes don't count by default; nothing countable is n/a, not 0; integer weights keep every score checkable by hand. Rejected: half credit, a minimum-vote threshold, floating-point scores.
+- Named rule sets vary only abstentions and absences. Each score carries evidence metrics (completeness, abstention rate, missing data) and a High/Medium/Low confidence band that flags thin evidence without reordering. Rejected: letting confidence reorder the ranking.
 
 **Snapshots and publication** ([ADR 0004](docs/adr/0004-snapshots-store-their-answer.md))
-- A snapshot stores its answer, every country vote's revision and treatment, so opening it recalculates nothing. Rejected: storing only inputs. A vote without a position blocks it. Publication is per quarter and insert-only.
+- A snapshot stores its answer (each country vote's revision and treatment), so opening it recalculates nothing. A vote without a position blocks it. Rejected: storing only inputs. Publication is per quarter and insert-only.
+- Drift and comparison recalculate nothing: a snapshot lists what would differ if created now, and a comparison explains each state's movement by the votes behind it.
 
 **Background jobs and files** ([ADR 0003](docs/adr/0003-job-table-queue-and-blob-files.md), [ADR 0009](docs/adr/0009-azure-run-postgres-versions-and-downloads.md))
-- The job table is the queue (SKIP LOCKED, heartbeat, retries, resume). Rejected: Hangfire, a broker, LISTEN/NOTIFY. Files live in Blob (Azurite locally) and are downloaded only through the API's role checks.
+- The job table is the queue (SKIP LOCKED, heartbeat, retries, resume). Rejected: Hangfire, a broker, LISTEN/NOTIFY.
 
 **Data access** ([ADR 0005](docs/adr/0005-ef-core-rules-in-csharp.md))
-- EF Core only. Race-sensitive writes live in use-case modules that own their transaction and lock; reads are projections. Rejected: a generic repository.
-- Rules in C#, facts from SQL: classification and scoring are pure, tested functions over one consistent read. Binary COPY met the import budget but was not adopted; the simpler EF writer was kept.
+- EF Core only: race-sensitive writes live in use-case modules that own their transaction and lock, and classification and scoring are pure C# functions over one consistent read. Rejected: a generic repository, scoring in SQL, and binary COPY (faster, but the simpler EF writer was kept).
+
+**Azure resources and scanned sheets** ([ADR 0008](docs/adr/0008-pdf-extraction-through-review.md), [ADR 0009](docs/adr/0009-azure-run-postgres-versions-and-downloads.md))
+- Used: Blob Storage for source files, Document Intelligence's layout model for scanned sheets, Azure Database for PostgreSQL by a compose override, and Application Insights when configured; Blob and Document Intelligence were checked live. Rejected: Cosmos DB (the history needs relational constraints and triggers), a language model as the sheet reader (its output can't be repeated, and it can invent a mark), and Key Vault (secrets stay in `.env` for now).
+- A C# mapper reads the grid; printed totals must match before an analyst approves. Quality would be measured on hand-verified sheets: cell-level country-vote accuracy, header exact matches, the share of sheets matching their printed totals, and how often analysts edit rows.
 
 ## Build order and why
 
-A walking skeleton first: compose, the whole schema, authorization, the full API contract returning 501, and CI. Then the data's own order: import and its scale, conflicts, the timeline, positions, snapshots and publication. Nothing can be reviewed before it is imported, or scored without positions, so every stop leaves a working product, riskiest parts first. Design polish, extras and the PDF bonus followed, each cut-able.
+A walking skeleton first (whole schema, authorization, the API contract returning 501, CI), then the data's own order: import and scale, conflicts, timeline, positions, snapshots and publication. Each step needs the one before, so every stop leaves a working product; extras and the PDF bonus came last.
 
 ## Quality
 
-Tests use real PostgreSQL and Azurite, since the guarantees live in triggers, locks and constraints. Generated guard and role tests cover every table and write endpoint, races run on two real connections, and a browser smoke test runs in CI. One trace id follows an upload through API and worker; logs hold no client data.
+Tests use real PostgreSQL and Azurite. Generated guard and role tests cover every table and write endpoint, races use two real connections, and a browser smoke test runs in CI. One trace id follows an upload through API and worker; logs hold no client data.
 
 ## Not done and known limitations
 
-- The historic-sized import takes about 7 minutes, over the 5-minute target, by decision; a 200 MB file needs about 3 GiB of worker memory.
-- On Azure, Blob and Document Intelligence were checked live; the managed database and Application Insights were not. The real-data counts for the revised and historic files are not yet run.
-- Not built: real sign-in, cancelling a queued import, push progress, direct upload to Blob, unpublishing without a replacement, a database overlap constraint on membership, a non-owner database role.
+- The historic-sized import takes about 7 minutes, over the 5-minute target, by decision.
+- The Azure database and Application Insights were never run against Azure. The real-data tests for the revision and historic files exist but haven't been run; the original Q1 counts were checked by hand.
+- Not built: real sign-in, cancelling a queued import, push progress, direct upload to Blob, unpublishing without a replacement, a non-owner database role.
 
 ## Four developers
 
-Four people build this system in parallel. First, a shared skeleton deployable on day one: compose, the whole schema as one migration, authorization, the full OpenAPI contract returning 501, the generated client and the Angular shell. Then four owners replace 501s end to end, each slice shipping alone: A import and scale; B conflicts and the Review inbox; C vote page, timeline and positions; D snapshots and publication. Nobody waits: with schema and contract fixed, fixture builders seed each slice's data, so B builds review before A's importer exists.
+A shared skeleton ships on day one: the whole schema, authorization, the OpenAPI contract returning 501, the generated client and the Angular shell. Four owners then replace 501s end to end, each slice shipping alone: A import and scale; B conflicts and Review; C votes, timeline and positions; D snapshots and publication. Fixture builders seed each slice's data, so B builds review before A's importer exists.
 
 ## Standards to set first
 
-1. **Contract first:** the API changes through the committed OpenAPI file; the generated client is never hand-edited.
-2. **Migrations:** one in flight at a time; guarded tables only gain columns, and new tables are guarded unless allowlisted.
-3. **Definition of done:** API, screen and tests together, with guard, role and race tests green.
-4. **Error contract:** a catalogue of ProblemDetails types the UI maps one to one.
-5. **Data handling:** no client data in git, logs or fixtures, and the glossary's words in code, API and UI.
+**Contract first** (changes go through the committed OpenAPI file); **migrations** (one in flight; guarded tables only gain columns; new tables are guarded); **definition of done** (API, screen and tests ship together); **error contract** (typed ProblemDetails); **data handling** (no client data in git, logs or fixtures).
