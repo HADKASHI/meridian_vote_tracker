@@ -34,7 +34,7 @@ The bonus (brief section 8, PDF-01 to PDF-06) extracts country votes from scanne
 - **Only a totals mismatch can be acknowledged;** other warnings (low confidence, vote number, missing member) are not, and a low-confidence row can be approved with the sheet.
 - **Accepting a mismatch is an analyst's word,** with no second person and no required reason; the edit history shows who and when.
 - **The Document Intelligence request and response shapes are the documented v4 ones, proven only against a hand-written fixture.** The RealData smoke test, which needs real credentials and real sheets, is the first live check (the operator reports Document Intelligence working against the live service; ADR 0009). Whether the layout model returns a drawn X as text, as a selection mark or not at all is unknown until then; the mapper counts any text in a vote column as a mark.
-- **Known bug: a sheet uploaded from the Imports page does not appear in the Extractions list.** The upload succeeds and the extraction exists, but it is missing from the list in Review until it is found some other way. Uploading from the Review page is not affected. The cause has not been investigated; it is not fixed.
+- **Known bug: a sheet uploaded from the Imports page does not appear in the Extractions list.** Reported by the operator: the sheet is uploaded, but its extraction does not show in the list. Whether uploading from the Review page is affected, and the cause, have not been checked; it is not fixed.
 - **The page image beside the table is not built.**
 
 ## Consequences
