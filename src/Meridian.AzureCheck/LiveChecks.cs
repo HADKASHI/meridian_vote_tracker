@@ -142,11 +142,11 @@ public static class LiveChecks
     }
 
     /// <summary>A reader for the endpoint, signing in with the key if there is one and with Entra ID (<c>az login</c>) if not.</summary>
-    public static IVoteSheetReader? CreateReader(string? endpoint, string? key)
+    public static IVoteSheetReader? CreateReader(string? endpoint, string? key, TokenCredential? credential = null)
     {
         var options = new DocumentIntelligenceOptions { Endpoint = endpoint, Key = key };
         return options.IsConfigured
-            ? new DocumentIntelligenceSheetReader(new HttpClient(), Options.Create(options), NullLogger<DocumentIntelligenceSheetReader>.Instance)
+            ? new DocumentIntelligenceSheetReader(new HttpClient(), Options.Create(options), NullLogger<DocumentIntelligenceSheetReader>.Instance, credential)
             : null;
     }
 
