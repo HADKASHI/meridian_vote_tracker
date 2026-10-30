@@ -93,14 +93,8 @@ public static class ExtractionsModule
             {
                 var extraction = await db.Extractions.AsNoTracking().Where(e => e.Id == extractionId)
                     .Select(e => new { e.FileName, e.BlobName }).SingleOrDefaultAsync(ct);
-                if (extraction is null) return TypedResults.NotFound();
-                var download = await FileDownloads.StreamAsync(blobs, loggers.CreateLogger("Meridian.Extractions.Download"),
-                    "extraction", extractionId, extraction.FileName, extraction.BlobName, ct);
-                return download.Result switch
-                {
-                    FileStreamHttpResult file => file,
-                    _ => (ProblemHttpResult)download.Result,
-                };
+                return await FileDownloads.StreamAsync(blobs, loggers.CreateLogger("Meridian.Extractions.Download"), "extraction", extractionId,
+                    extraction is null ? null : (extraction.FileName, extraction.BlobName), ct);
             })
             .WithName("downloadExtractionFile")
             .WithSummary("The scanned voting sheet PDF of an extraction as an attachment.")

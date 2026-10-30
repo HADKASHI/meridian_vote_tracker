@@ -69,13 +69,8 @@ public static class ImportsModule
             {
                 var import = await db.Imports.AsNoTracking().Where(i => i.Id == importId)
                     .Select(i => new { i.FileName, i.BlobName }).SingleOrDefaultAsync(ct);
-                if (import is null) return TypedResults.NotFound();
-                var download = await FileDownloads.StreamAsync(blobs, loggers.CreateLogger("Meridian.Imports.Download"), "import", importId, import.FileName, import.BlobName, ct);
-                return download.Result switch
-                {
-                    FileStreamHttpResult file => file,
-                    _ => (ProblemHttpResult)download.Result,
-                };
+                return await FileDownloads.StreamAsync(blobs, loggers.CreateLogger("Meridian.Imports.Download"), "import", importId,
+                    import is null ? null : (import.FileName, import.BlobName), ct);
             })
             .WithName("downloadImportFile")
             .WithSummary("The original file of an import (a CSV or a voting sheet PDF) as an attachment.")

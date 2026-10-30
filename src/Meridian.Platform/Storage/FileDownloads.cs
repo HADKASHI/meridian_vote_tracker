@@ -15,11 +15,15 @@ namespace Meridian.Platform.Storage;
 /// </summary>
 public static class FileDownloads
 {
-    /// <summary>The download of <paramref name="blobName"/> as <paramref name="fileName"/>, or a 404 problem if the blob is gone.</summary>
-    public static async Task<Results<FileStreamHttpResult, ProblemHttpResult>> StreamAsync(
-        BlobContainerClient blobs, ILogger logger, string kind, long id, string fileName, string blobName,
+    /// <summary>
+    /// The download of <paramref name="stored"/> (the file name and blob name the record holds), a 404 when there is no such
+    /// record (<paramref name="stored"/> is null) and a 404 problem if the blob itself is gone.
+    /// </summary>
+    public static async Task<Results<FileStreamHttpResult, NotFound, ProblemHttpResult>> StreamAsync(
+        BlobContainerClient blobs, ILogger logger, string kind, long id, (string FileName, string BlobName)? stored,
         CancellationToken cancellationToken)
     {
+        if (stored is not var (fileName, blobName)) return TypedResults.NotFound();
         try
         {
             var download = await blobs.GetBlobClient(blobName).DownloadStreamingAsync(cancellationToken: cancellationToken);
