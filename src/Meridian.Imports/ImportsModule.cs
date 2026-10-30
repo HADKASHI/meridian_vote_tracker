@@ -64,8 +64,6 @@ public static class ImportsModule
             .ProducesProblems(StatusCodes.Status404NotFound)
             .ForAnalysts();
 
-        // The outcome is bound as text, because minimal APIs parse enums case-sensitively and
-        // the client sends the glossary word (`invalid`); the contract still names the enum.
         imports.MapGet("/{importId:long}/file", async Task<Results<FileStreamHttpResult, NotFound, ProblemHttpResult>> (
                     long importId, MeridianDbContext db, BlobContainerClient blobs, ILoggerFactory loggers, CancellationToken ct) =>
             {
@@ -85,6 +83,8 @@ public static class ImportsModule
             .ProducesProblems(StatusCodes.Status404NotFound)
             .ForAnalysts();
 
+        // The outcome is bound as text, because minimal APIs parse enums case-sensitively and
+        // the client sends the glossary word (`invalid`); the contract still names the enum.
         imports.MapGet("/{importId:long}/rows", async Task<Results<Ok<PageDto<ImportRowDto>>, NotFound, ProblemHttpResult>> (
                     long importId, MeridianDbContext db, CancellationToken ct,
                     [FromQuery] string? outcome, long? voteId, int page = 1, int pageSize = 100) =>
