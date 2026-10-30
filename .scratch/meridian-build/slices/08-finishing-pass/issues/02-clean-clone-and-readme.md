@@ -4,9 +4,13 @@
 
 **Blocked by:** 01 (the README documents the smoke test's command)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `docker compose up --build` on a fresh clone, following only the README, starts every service and the app answers
-- [ ] The README covers running, data, users and roles, tests (including the e2e smoke test), the Azure run and the document map
-- [ ] It is accurate to the code: every command and path in it is checked
-- [ ] It does not mention the sandbox override or `.claude/sandbox/`
+- [x] `docker compose up --build` on a fresh clone, following only the README, starts every service and the app answers
+- [x] The README covers running, data, users and roles, tests (including the e2e smoke test), the Azure run and the document map
+- [x] It is accurate to the code: every command and path in it is checked
+- [x] It does not mention the sandbox override or `.claude/sandbox/`
+
+## Comments
+
+- Checked on a fresh clone of this branch with `member_states.csv` in `candidate_data/`: every service healthy, `migrate` exited 0, the app answered, and the smoke test passed against it. In this sandbox the images were built through the proxy override first; the CI compose job proves the same from a fresh checkout without it.
